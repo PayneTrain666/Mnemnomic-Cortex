@@ -97,3 +97,27 @@ cortex.set_temperature(torch.tensor(0.7))  # sharper attention
 
 * Run `pytest` to execute shape/unit tests (coming soon).
 * A GitHub Action checks smoke-test on every PR.
+
+## Limitations & Future Work
+
+> This project is research-grade. The architecture intentionally pushes boundaries and, as a result, comes with known trade-offs. Below is a condensed list of the main caveats and the roadmap to address them.
+
+### Where dragons lurk
+
+• **Non-differentiable, in-place memory writes** – Fine for single-GPU research but unsafe under DistributedDataParallel (DDP) because replicas drift.  
+• **Brute-force fractal search** – O(B S M D) distance calc hits latency when `mem_slots` is large.  
+• **Hologram interference** – Spectral energy can blow up without stronger normalization.  
+• **Noisy light-bulb triggering** – Simple z-score on a single projection; uncalibrated for real data.  
+• **Fancy mechanics lack supervision** – Without explicit recall losses the model may under-utilise HG/CGMN.  
+• **Checkpoint compatibility** – No versioned schema yet; buffer shapes could change.
+
+### Actionable roadmap (excerpt)
+
+Priority | Item
+:-- | :--
+P0 | Sync external memory writes across DDP; clamp & renorm holograms; add unit tests for fire-mask behaviour.
+P1 | Approximate NN search (e.g., FAISS IVF-PQ); cache FFT keys; micro-batch hologram updates.
+P2 | Contrastive recall loss; learned write gate with STE; adaptive light-bulb threshold.
+P3 | Collision control & slot re-assignment; versioned checkpoints; richer metric logging.
+
+See `docs/ROADMAP.md` for the full discussion.
