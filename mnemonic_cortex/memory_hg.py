@@ -218,7 +218,11 @@ class EnhancedHyperGeometricMemory(nn.Module):
         # update running avg (scalar)
         self.lb_top1_avg = self.lb_momentum * self.lb_top1_avg + (1-self.lb_momentum) * top1.detach()
         internal_fire = bool(top1 < self.lb_drop_ratio * self.lb_top1_avg)
-        any_fire = internal_fire or (isinstance(fire_mask, torch.Tensor) and fire_mask.any()) or bool(fire_mask)
+        any_fire = internal_fire or (
+            isinstance(fire_mask, torch.Tensor) and fire_mask.any()
+        ) or (
+            isinstance(fire_mask, bool) and fire_mask
+        )
         if any_fire:
             K = min(M, max(K, int(self.K_base * 1.5)))
 
