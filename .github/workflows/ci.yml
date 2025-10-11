@@ -20,3 +20,6 @@ jobs:
         run: |
           python -m mnemonic_cortex.train_smoke
           pytest -q
+      - name: Quick performance profile
+        run: |
+          python tools/profile.py --model cortex --batch 8 --seq 32 --steps 5
