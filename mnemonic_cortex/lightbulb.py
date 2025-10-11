@@ -12,11 +12,12 @@ class LightbulbDetector(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # x: (B,S,d)
-        s = self.proj(x).squeeze(-1)  # (B,S)
-        mean = s.mean(dim=1, keepdim=True)
-        std  = s.std(dim=1, keepdim=True).clamp_min(1e-6)
-        z = (s - mean) / std
-        fire = z.max(dim=1).values > self.thresh  # (B,)
+        with torch.amp.autocast(device_type=x.device.type, enabled=False):
+            s = self.proj(x).squeeze(-1)  # (B,S)
+            mean = s.mean(dim=1, keepdim=True)
+            std  = s.std(dim=1, keepdim=True).clamp_min(1e-6)
+            z = (s - mean) / std
+            fire = z.max(dim=1).values > self.thresh  # (B,)
         return fire
 
 class ExplosiveRecallScaler(nn.Module):
