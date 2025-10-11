@@ -32,6 +32,7 @@ class EnhancedMnemonicCortex(nn.Module):
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
+        self.r_proj = nn.Linear(input_dim, 256)
         self.retrieval = nn.Sequential(nn.Linear(256 + input_dim, 512), nn.ReLU(), nn.Linear(512, input_dim))
 
         # Lightbulb + temperature scaler
@@ -69,8 +70,7 @@ class EnhancedMnemonicCortex(nn.Module):
         cue = idx.unsqueeze(1).expand(-1, S, -1)                 # (B,S,256)
         # Project cue to input_dim if needed
         if cue.size(-1) != self.input_dim:
-            proj = torch.empty(self.input_dim, cue.size(-1), device=cue.device).normal_(std=0.02)
-            cue = torch.nn.functional.linear(cue, proj)
+            cue = self.r_proj(cue)
 
         if mtype == 'episodic':
             self.long_term_memory.hg(cue, operation='write')
@@ -95,7 +95,8 @@ class EnhancedMnemonicCortex(nn.Module):
             # Reconstructive via HG
             r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
 
-        return self.retrieval(torch.cat([r.mean(dim=1), context], dim=-1))
+        cue_vec = self.r_proj(r.mean(dim=1))
+        return self.retrieval(torch.cat([cue_vec, context], dim=-1))
 
     @torch.no_grad()
     def consolidate_memories(self, threshold: float = None):
