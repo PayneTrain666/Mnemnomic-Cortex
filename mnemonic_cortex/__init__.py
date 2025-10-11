@@ -6,6 +6,7 @@ from .memory_cgmn import EnhancedCGMNMemory
 from .memory_curved import EnhancedCurvedMemory
 from .sensory_buffer import EnhancedSensoryBuffer
 from .triple_hybrid import EnhancedTripleHybridMemory
+# Public API
 from .cortex import EnhancedMnemonicCortex
 
 __all__ = [

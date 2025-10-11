@@ -27,6 +27,8 @@ class EnhancedMnemonicCortex(nn.Module):
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
+        # Learned projection from 256-d cue to input_dim (replaces per-call random projection)
+        self.cue_proj = nn.Linear(256, input_dim)
         # Retrieval expects concatenation of a 256-d memory cue and the original context (input_dim)
         self.r_proj = nn.Linear(input_dim, 256)  # project memory readout to 256-d cue
         self.retrieval = nn.Sequential(nn.Linear(256 + input_dim, 512), nn.ReLU(), nn.Linear(512, input_dim))
@@ -56,7 +58,7 @@ class EnhancedMnemonicCortex(nn.Module):
         cue = idx.unsqueeze(1).expand(-1, S, -1)                 # (B,S,256)
         # Project cue to input_dim if needed
         if cue.size(-1) != self.input_dim:
-            cue = torch.nn.functional.linear(cue, torch.empty(self.input_dim, 256, device=cue.device).normal_(std=0.02))
+            cue = self.cue_proj(cue)  # (B,S,input_dim)
 
         if mtype == 'episodic':
             self.long_term_memory.hg(cue, operation='write')
@@ -97,12 +99,19 @@ class EnhancedMnemonicCortex(nn.Module):
         if operation == 'process':
             filtered = self.process_sensory_input(sensory_input)          # (B,S,d)
             wm_out = self.working_memory(filtered, operation='read')      # (B,S,d)
-            imp = self.importance_predictor(wm_out.mean(dim=1)).mean().item()
-            if imp > 0.7:
-                self.encode_memory(wm_out, context, mtype='episodic')
+            imp = self.importance_predictor(wm_out.mean(dim=1))  # (B,1)
+            # Smooth gating: scale information by importance probability and write during training only
+            if self.training:
+                scaled = wm_out * imp.unsqueeze(-1)  # (B,S,d)
+                self.encode_memory(scaled, context, mtype='episodic')
             return wm_out
         elif operation == 'retrieve':
             return self.retrieve_memory(sensory_input, context)
         else:
             self.consolidate_memories()
             return None
+
+    # Expose unified temperature setter
+    def set_temperature(self, t: torch.Tensor):
+        self.working_memory.set_temperature(t)
+        self.long_term_memory.set_temperature(t)

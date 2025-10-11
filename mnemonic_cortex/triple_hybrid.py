@@ -13,7 +13,11 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg = EnhancedHyperGeometricMemory(input_dim, mem_slots=hg_slots)
         self.cgmn = EnhancedCGMNMemory(input_dim, mem_slots=cgmn_slots)
         self.curved = EnhancedCurvedMemory(input_dim, mem_slots=curved_slots)
-        self.mix = nn.Parameter(torch.tensor([0.34, 0.33, 0.33]))  # [hg, cgmn, curved]
+        # Static mixing weights replaced by dynamic gate network
+        self.gate_net = nn.Sequential(
+            nn.Linear(input_dim, 64), nn.ReLU(),
+            nn.Linear(64, 3)  # logits for [hg, cgmn, curved]
+        )
 
         self.proj = nn.Sequential(nn.Linear(input_dim, output_dim), nn.LayerNorm(output_dim))
 
@@ -30,10 +34,14 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.curved(x, operation='write')
             return x
 
-        rhg = self.hg(x, operation='read')       # (B,S,d)
-        rcg = self.cgmn(x, operation='read')     # (B,S,d)
-        rcv = self.curved(x, operation='read')   # (B,S,d)
+        rhg = self.hg(x, operation='read')
+        rcg = self.cgmn(x, operation='read')
+        rcv = self.curved(x, operation='read')
 
-        w = torch.softmax(self.mix, dim=0)
-        fused = w[0]*rhg + w[1]*rcg + w[2]*rcv   # (B,S,d)
+        # Use mean cue to generate gating
+        cue = x.mean(dim=(1,2))  # (B,d)
+        w_logits = self.gate_net(cue)            # (B,3)
+        w = torch.softmax(w_logits, dim=-1)      # (B,3)
+        w = w.unsqueeze(-1).unsqueeze(-1)        # (B,3,1,1)
+        fused = w[:,0]*rhg + w[:,1]*rcg + w[:,2]*rcv
         return fused

@@ -9,6 +9,7 @@ class EnhancedSensoryBuffer(nn.Module):
         super().__init__()
         self.buffer_size = buffer_size
         self.input_dim = input_dim
+        assert input_dim % 8 == 0, "input_dim must be divisible by num_heads (8)"
         self.attn = nn.MultiheadAttention(input_dim, 8, batch_first=True)
         self.gru = nn.GRU(input_dim, input_dim, batch_first=True)
         self.salience = nn.Sequential(nn.Linear(input_dim, 64), nn.ReLU(), nn.Linear(64,1), nn.Sigmoid())
