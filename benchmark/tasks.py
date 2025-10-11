@@ -94,3 +94,21 @@ class SortDigitsTask(Dataset):
         return len(self.data)
     def __getitem__(self,i):
         return self.data[i]
+
+
+class ArithmeticTask(Dataset):
+    """Add two random 3-digit numbers presented as a sequence 'abc+def'. Target is their sum digits."""
+    def __init__(self, n_samples:int=10000):
+        self.data=[]
+        for _ in range(n_samples):
+            a=torch.randint(100,1000,(1,)).item()
+            b=torch.randint(100,1000,(1,)).item()
+            expr=f"{a:03d}+{b:03d}="
+            src=torch.tensor([TOK2IDX[c] for c in expr]+[TOK2IDX[EOS_TOKEN]])
+            result=str(a+b)
+            tgt=torch.tensor([TOK2IDX[SOS_TOKEN]]+[TOK2IDX[c] for c in result]+[TOK2IDX[EOS_TOKEN]])
+            self.data.append((src,tgt))
+    def __len__(self):
+        return len(self.data)
+    def __getitem__(self,i):
+        return self.data[i]
