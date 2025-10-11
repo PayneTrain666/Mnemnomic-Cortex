@@ -2,14 +2,13 @@ import torch
 import torch.nn as nn
 
 class EnhancedSensoryBuffer(nn.Module):
-    """Simple 3-D sensory buffer with self-attention + GRU and salience blending.
+    """Simple sensory buffer with self-attention + GRU and salience blending.
     Maintains a small cache of pooled summaries.
     """
     def __init__(self, buffer_size=5, input_dim=512):
         super().__init__()
         self.buffer_size = buffer_size
         self.input_dim = input_dim
-        assert input_dim % 8 == 0, "input_dim must be divisible by num_heads (8)"
         self.attn = nn.MultiheadAttention(input_dim, 8, batch_first=True)
         self.gru = nn.GRU(input_dim, input_dim, batch_first=True)
         self.salience = nn.Sequential(nn.Linear(input_dim, 64), nn.ReLU(), nn.Linear(64,1), nn.Sigmoid())
