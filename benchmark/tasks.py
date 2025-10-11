@@ -59,3 +59,38 @@ def collate_fn(batch):
         src_padded[i,:s.size(0)] = s
         tgt_padded[i,:t.size(0)] = t
     return src_padded, tgt_padded
+
+
+# ---------------- Additional tasks -----------------
+
+class ReverseTask(Dataset):
+    """Return sequence to be reversed."""
+    def __init__(self, n_samples: int=10000, max_len:int=20):
+        self.data=[]
+        for _ in range(n_samples):
+            seq = random_sequence(max_len)
+            src = torch.cat([seq, torch.tensor([TOK2IDX[EOS_TOKEN]])])
+            tgt = torch.cat([torch.tensor([TOK2IDX[SOS_TOKEN]]), seq.flip(0), torch.tensor([TOK2IDX[EOS_TOKEN]])])
+            self.data.append((src,tgt))
+    def __len__(self):
+        return len(self.data)
+    def __getitem__(self,i):
+        return self.data[i]
+
+
+class SortDigitsTask(Dataset):
+    """Digits only; target is digits sorted ascending."""
+    def __init__(self, n_samples:int=10000, max_len:int=10):
+        digits = [TOK2IDX[c] for c in "0123456789"]
+        self.data=[]
+        for _ in range(n_samples):
+            L=torch.randint(1,max_len+1,(1,)).item()
+            idx=torch.tensor(digits)[torch.randperm(10)[:L]]
+            src=torch.cat([idx, torch.tensor([TOK2IDX[EOS_TOKEN]])])
+            sorted_idx = torch.sort(idx)[0]
+            tgt=torch.cat([torch.tensor([TOK2IDX[SOS_TOKEN]]), sorted_idx, torch.tensor([TOK2IDX[EOS_TOKEN]])])
+            self.data.append((src,tgt))
+    def __len__(self):
+        return len(self.data)
+    def __getitem__(self,i):
+        return self.data[i]
