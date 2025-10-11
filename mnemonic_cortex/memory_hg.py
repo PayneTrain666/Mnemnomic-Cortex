@@ -205,7 +205,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
         # temperature: allow per-batch explosive recall scaling
         if fire_mask is not None and isinstance(fire_mask, torch.Tensor) and fire_mask.any():
             t_eff = (self.temperature / (1.0 + recall_boost * fire_mask.float())).view(-1,1,1)
-        elif fire_mask:
+        elif isinstance(fire_mask, bool) and fire_mask:
             t_eff = self.temperature / (1.0 + recall_boost)
         else:
             t_eff = self.temperature
