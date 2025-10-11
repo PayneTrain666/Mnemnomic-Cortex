@@ -133,7 +133,11 @@ class EnhancedCGMNMemory(nn.Module):
 
         # --- Lower temperature if any batch fires ---
         saved_temp = self.temperature.clone()
-        any_ext_fire = isinstance(fire_mask, torch.Tensor) and fire_mask.any() or bool(fire_mask)
+        any_ext_fire = (
+            isinstance(fire_mask, torch.Tensor) and fire_mask.any()
+        ) or (
+            isinstance(fire_mask, bool) and fire_mask
+        )
         if any_ext_fire:
             self.temperature = (self.temperature / (1.0 + recall_boost)).detach()
 
