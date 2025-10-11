@@ -12,6 +12,7 @@ class CortexConfig:
     hg_qubits: int = 8
     hg_topk: int = 32
     hg_fractal_scales: int = 4
+    hg_holo_dim: int = 256
 
     # CGMN memory
     cgmn_manifold_dim: int = 16

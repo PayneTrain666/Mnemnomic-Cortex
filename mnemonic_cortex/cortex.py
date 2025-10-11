@@ -8,11 +8,15 @@ from .lightbulb import LightbulbDetector, ExplosiveRecallScaler
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
     lightbulb-triggered 'explosive recall' (temperature modulation).
+    Adds:
+      • enable_energy_mode()
+      • forgetting-style consolidation via consolidate_memories(threshold)
     """
     def __init__(self, input_dim: int, output_dim: int,
                  sensory_buffer_size: int = 5,
                  wm_slots: int = 7, wm_slot_dim: int = 256,
-                 ltm_hg_slots: int = 2048, ltm_cgmn_slots: int = 1024, ltm_curved_slots: int = 512):
+                 ltm_hg_slots: int = 2048, ltm_cgmn_slots: int = 1024, ltm_curved_slots: int = 512,
+                 fusion: str = 'weighted'):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -20,17 +24,14 @@ class EnhancedMnemonicCortex(nn.Module):
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
         self.working_memory = EnhancedCurvedMemory(input_dim, hidden_dim=wm_slot_dim, mem_slots=wm_slots)
         self.long_term_memory = EnhancedTripleHybridMemory(input_dim, output_dim,
-                                                           hg_slots=ltm_hg_slots, cgmn_slots=ltm_cgmn_slots, curved_slots=ltm_curved_slots)
+                                                           hg_slots=ltm_hg_slots, cgmn_slots=ltm_cgmn_slots, curved_slots=ltm_curved_slots,
+                                                           fusion=fusion)
 
         # Context projection (kept simple: same dim by default)
         self.ctx_proj = nn.Linear(input_dim, input_dim)
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
-        # Learned projection from 256-d cue to input_dim (replaces per-call random projection)
-        self.cue_proj = nn.Linear(256, input_dim)
-        # Retrieval expects concatenation of a 256-d memory cue and the original context (input_dim)
-        self.r_proj = nn.Linear(input_dim, 256)  # project memory readout to 256-d cue
         self.retrieval = nn.Sequential(nn.Linear(256 + input_dim, 512), nn.ReLU(), nn.Linear(512, input_dim))
 
         # Lightbulb + temperature scaler
@@ -39,6 +40,16 @@ class EnhancedMnemonicCortex(nn.Module):
 
         # Importance predictor for consolidation condition
         self.importance_predictor = nn.Sequential(nn.Linear(input_dim,64), nn.ReLU(), nn.Linear(64,1), nn.Sigmoid())
+
+        # Forgetting threshold for consolidation
+        self.forgetting_threshold = 0.3
+        self.energy_mode = False
+
+    # ---------------- Helpers ----------------
+    def enable_energy_mode(self, enable: bool = True):
+        self.energy_mode = enable
+        self.long_term_memory.enable_energy_efficient_mode(enable)
+        self.working_memory.enable_energy_efficient_mode(enable)
 
     def _tile_context(self, context, S):
         # context: (B,c) -> project to (B,S,input_dim)
@@ -58,7 +69,8 @@ class EnhancedMnemonicCortex(nn.Module):
         cue = idx.unsqueeze(1).expand(-1, S, -1)                 # (B,S,256)
         # Project cue to input_dim if needed
         if cue.size(-1) != self.input_dim:
-            cue = self.cue_proj(cue)  # (B,S,input_dim)
+            proj = torch.empty(self.input_dim, cue.size(-1), device=cue.device).normal_(std=0.02)
+            cue = torch.nn.functional.linear(cue, proj)
 
         if mtype == 'episodic':
             self.long_term_memory.hg(cue, operation='write')
@@ -68,29 +80,32 @@ class EnhancedMnemonicCortex(nn.Module):
             self.long_term_memory.curved(cue, operation='write')
         return idx
 
-    def retrieve_memory(self, cue, context, strategy='associative'):
+    def retrieve_memory(self, cue, context, strategy='associative', fire_mask=None, recall_boost: float = 0.3):
+        """Retrieve memories with optional explosive recall (fire_mask)."""
         B,S,d = cue.shape
         ctx = self._tile_context(context, S)
-        # Combine cue with context
         c = (cue + ctx) * 0.5
 
         if strategy == 'direct':
-            r = self.long_term_memory(c, operation='read')
+            r = self.long_term_memory(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
         elif strategy == 'associative':
+            # Use curved memory path (kept simple; doesn't use fire)
             r = self.long_term_memory.curved(c, operation='read')
         else:
-            r = self.long_term_memory.hg(c, operation='read')
-        # Project memory readout to 256-dimensional embedding to match retrieval head expectations
-        cue_vec = self.r_proj(r.mean(dim=1))                 # (B,256)
-        return self.retrieval(torch.cat([cue_vec, context], dim=-1))
+            # Reconstructive via HG
+            r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
 
-    def consolidate_memories(self):
-        # simple decay on curved memory importance; hook others similarly
-        with torch.no_grad():
-            self.long_term_memory.curved.memory_importance.mul_(0.999)
+        return self.retrieval(torch.cat([r.mean(dim=1), context], dim=-1))
 
+    @torch.no_grad()
+    def consolidate_memories(self, threshold: float = None):
+        """Forget rarely used slots (usage-based) and gently decay working-memory importance."""
+        th = self.forgetting_threshold if threshold is None else float(threshold)
+        self.long_term_memory.consolidate_unused(th)
+        self.working_memory.memory_importance.mul_(0.999)
+
+    # ---------------- Forward ----------------
     def forward(self, sensory_input, context, operation='process'):
-        # Lightbulb-driven temperature control
         fire = self.lightbulb(sensory_input)                # (B,)
         temp = self.temp_scaler(fire)                       # (B,) scalars
         self.working_memory.set_temperature(temp)
@@ -99,19 +114,19 @@ class EnhancedMnemonicCortex(nn.Module):
         if operation == 'process':
             filtered = self.process_sensory_input(sensory_input)          # (B,S,d)
             wm_out = self.working_memory(filtered, operation='read')      # (B,S,d)
-            imp = self.importance_predictor(wm_out.mean(dim=1))  # (B,1)
-            # Smooth gating: scale information by importance probability and write during training only
-            if self.training:
-                scaled = wm_out * imp.unsqueeze(-1)  # (B,S,d)
-                self.encode_memory(scaled, context, mtype='episodic')
+            imp = self.importance_predictor(wm_out.mean(dim=1)).mean().item()
+            # Explosive recall: immediately write salient episodic trace with higher plasticity
+            if fire.any():
+                self.long_term_memory(wm_out, operation='write', fire_mask=fire, recall_boost=0.3)
+            elif imp > 0.7:
+                self.encode_memory(wm_out, context, mtype='episodic')
             return wm_out
+
         elif operation == 'retrieve':
-            return self.retrieve_memory(sensory_input, context)
+            # Route fire to LTM for sharper readout on the cue as well
+            fire_ret = self.lightbulb(sensory_input)  # (B,)
+            return self.retrieve_memory(sensory_input, context, strategy='direct', fire_mask=fire_ret, recall_boost=0.3)
+
         else:
             self.consolidate_memories()
             return None
-
-    # Expose unified temperature setter
-    def set_temperature(self, t: torch.Tensor):
-        self.working_memory.set_temperature(t)
-        self.long_term_memory.set_temperature(t)

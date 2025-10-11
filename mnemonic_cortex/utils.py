@@ -33,7 +33,6 @@ def fast_pairwise_l2(a: torch.Tensor, b: torch.Tensor):
     a: (B, N, D) or (N, D) ; b: (M, D) -> returns (B, N, M) or (N, M)
     """
     if a.dim() == 2:
-        # (N,D) vs (M,D) -> (N,M)
         a_sq = (a*a).sum(-1, keepdim=True)            # (N,1)
         b_sq = (b*b).sum(-1).unsqueeze(0)             # (1,M)
         prod = a @ b.t()                               # (N,M)

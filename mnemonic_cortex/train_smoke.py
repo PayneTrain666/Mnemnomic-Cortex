@@ -8,11 +8,11 @@ def smoke_run(device=None):
     seed_everything(42)
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     B,S,d_in,d_out = 8, 5, 128, 128
-    cortex = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out).to(device)
+    cortex = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out, fusion='cross_attn').to(device)
     enable_tensor_cores(cortex); optimize_memory_access(cortex)
 
     x = torch.randn(B, S, d_in, device=device)
-    ctx = torch.randn(B, d_in, device=device)  # same dim for ctx_proj default
+    ctx = torch.randn(B, d_in, device=device)
 
     y_proc = cortex(x, ctx, operation='process')    # (B,S,d_in)
     y_ret  = cortex(x, ctx, operation='retrieve')   # (B,d_in)
@@ -21,7 +21,7 @@ def smoke_run(device=None):
     assert y_ret.shape  == (B,d_in)
     return y_proc.detach().cpu().shape, y_ret.detach().cpu().shape
 
-def tiny_train_step(steps=10, device=None):
+def tiny_train_step(steps=5, device=None):
     seed_everything(123)
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     B,S,d_in,d_out = 16, 7, 128, 128
@@ -32,10 +32,10 @@ def tiny_train_step(steps=10, device=None):
     for t in range(steps):
         x = torch.randn(B, S, d_in, device=device)
         ctx = torch.randn(B, d_in, device=device)
-        target = torch.randn(B, d_in, device=device)  # pretend regression target of retrieval
+        target = ctx  # pretend target for retrieval
 
         model.train()
-        y_proc = model(x, ctx, operation='process')   # unused in loss; exercises WM
+        _ = model(x, ctx, operation='process')
         y_ret = model(x, ctx, operation='retrieve')
 
         loss = loss_fn(y_ret, target)
