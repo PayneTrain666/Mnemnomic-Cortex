@@ -20,6 +20,9 @@ class EnhancedCurvedMemory(nn.Module):
         self.decoder = nn.Sequential(nn.Linear(self.H, input_dim), nn.Tanh())
 
         self.register_buffer("temperature", torch.tensor(1.0))
+        # Persistent work buffers to avoid allocations during update_memory
+        self.register_buffer("_accum_buf", torch.zeros(self.M, self.H))
+        self.register_buffer("_count_buf", torch.zeros(self.M))
 
     def set_temperature(self, t: torch.Tensor):
         if t.numel() == 1:
@@ -46,14 +49,16 @@ class EnhancedCurvedMemory(nn.Module):
         upd = gate * mem + (1-gate) * cand                # (B,K,H)
         flat_idx = indices.reshape(-1)
         flat_upd = upd.reshape(-1, self.H)
-        accum = torch.zeros_like(self.memory_slots)
-        accum.index_add_(0, flat_idx, flat_upd)
-        counts = torch.zeros(self.M, device=accum.device).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype))
-        counts = counts.clamp_min_(1.0).unsqueeze(-1)
-        avg_upd = accum / counts
+        self._accum_buf.zero_()
+        self._accum_buf.index_add_(0, flat_idx, flat_upd)
+        self._count_buf.zero_()
+        self._count_buf.index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=self._count_buf.dtype))
+        counts = self._count_buf.clamp_min_(1.0).unsqueeze(-1)
+        avg_upd = self._accum_buf / counts
         self.memory_slots.data.mul_(0.95).add_(0.05 * avg_upd)
-        # importance EMA (crude)
-        self.memory_importance.data.index_add_(0, flat_idx, 0.05 * torch.ones_like(flat_idx, dtype=self.memory_importance.dtype).to(self.memory_importance.device))
+        # importance EMA (crude) with clamp
+        self.memory_importance.data.index_add_(0, flat_idx, 0.05 * torch.ones_like(flat_idx, dtype=self.memory_importance.dtype, device=self.memory_importance.device))
+        self.memory_importance.data.clamp_(0.0, 10.0)
 
     def associative_activation(self, query):  # (B,H) -> (B,M)
         act = torch.einsum('bd,md->bm', query, self.memory_slots)

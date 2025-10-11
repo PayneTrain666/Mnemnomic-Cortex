@@ -13,7 +13,9 @@ class LightbulbDetector(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # x: (B,S,d)
-        s = self.proj(x).squeeze(-1)  # (B,S)
+        # Keep computation in FP32 regardless of outer autocast context
+        with torch.cuda.amp.autocast(enabled=False):
+            s = self.proj(x.float()).squeeze(-1)  # (B,S) in fp32
         mean = s.mean(dim=1, keepdim=True)
         std  = s.std(dim=1, keepdim=True).clamp_min(1e-6)
         z = (s - mean) / std
