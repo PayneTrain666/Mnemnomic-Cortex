@@ -27,6 +27,8 @@ class EnhancedMnemonicCortex(nn.Module):
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
+        # Retrieval expects concatenation of a 256-d memory cue and the original context (input_dim)
+        self.r_proj = nn.Linear(input_dim, 256)  # project memory readout to 256-d cue
         self.retrieval = nn.Sequential(nn.Linear(256 + input_dim, 512), nn.ReLU(), nn.Linear(512, input_dim))
 
         # Lightbulb + temperature scaler
@@ -76,7 +78,9 @@ class EnhancedMnemonicCortex(nn.Module):
             r = self.long_term_memory.curved(c, operation='read')
         else:
             r = self.long_term_memory.hg(c, operation='read')
-        return self.retrieval(torch.cat([r.mean(dim=1), context], dim=-1))
+        # Project memory readout to 256-dimensional embedding to match retrieval head expectations
+        cue_vec = self.r_proj(r.mean(dim=1))                 # (B,256)
+        return self.retrieval(torch.cat([cue_vec, context], dim=-1))
 
     def consolidate_memories(self):
         # simple decay on curved memory importance; hook others similarly
