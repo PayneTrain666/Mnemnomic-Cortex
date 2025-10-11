@@ -113,13 +113,19 @@ class EnhancedMnemonicCortex(nn.Module):
 
         if operation == 'process':
             filtered = self.process_sensory_input(sensory_input)          # (B,S,d)
+
+            # --- Working-memory write phase ----------------------------------
+            # Store filtered sensory input into WM slots with importance gating.
+            imp = self.importance_predictor(filtered.mean(dim=1))         # (B,1)
+            self.working_memory(filtered, operation='write', importance=imp)
+
+            # --- Working-memory read phase -----------------------------------
             wm_out = self.working_memory(filtered, operation='read')      # (B,S,d)
-            imp = self.importance_predictor(wm_out.mean(dim=1)).mean().item()
-            # Explosive recall: immediately write salient episodic trace with higher plasticity
-            if fire.any():
-                self.long_term_memory(wm_out, operation='write', fire_mask=fire, recall_boost=0.3)
-            elif imp > 0.7:
-                self.encode_memory(wm_out, context, mtype='episodic')
+
+            # --- Consolidation into long-term memory ------------------------
+            if self.training:  # consolidate only during training
+                scaled = wm_out * imp.unsqueeze(-1)  # (B,S,d)
+                self.encode_memory(scaled, context, mtype='episodic')
             return wm_out
 
         elif operation == 'retrieve':
