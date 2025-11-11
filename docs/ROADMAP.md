@@ -21,22 +21,42 @@
 9. **CPU latency**  
    Heavy CUDA optimisations; CPU inference is slow.
 
-## Actionable improvements
+## Clear, actionable improvements (prioritized)
 
-### P0 – Correctness & Multi-GPU safety  
-* All-reduce external memories after writes.  
-* Clamp and renorm holograms.
+### P0 – Correctness & multi-GPU safety
 
-### P1 – Performance & Capacity  
-* Approximate NN search (FAISS IVF-PQ).  
-* Cache FFT keys & batched updates.
+* **Synchronize external memory updates in DDP** – after each write call `torch.distributed.all_reduce()` on holograms, keys/values and `usage_counts` (or register them as buffers and broadcast).
+* **Clamp & renorm holograms** – after `_holo_write` compute per-slot RMS; down-scale slots that exceed a cap and optionally whiten per-frequency bins.
+* **Unit-test pack**
+  * HG/CGMN lower effective temperature & increase top-k when `fire=True`.
+  * Retrieval entropy decreases on fire events.
+  * External writes are synchronised across ranks.
+  * Shapes/devices/dtypes match across CPU/GPU.
 
-### P2 – Learning Signal & Policy  
-* InfoNCE recall loss.  
-* Learned write gate (STE).  
-* Adaptive light-bulb threshold.
+### P1 – Performance & capacity
 
-### P3 – Robustness & UX  
-* Slot collision control.  
-* Versioned checkpoints.  
-* Rich metric logging.
+* **Approximate nearest-neighbour for fractal search** – coarse quantiser → shortlist, then refine or swap in FAISS IVF-PQ; reduces O(M) to O(M^α) with α ≪ 1.
+* **Cache frequency-domain keys** – reuse FFT + entangle for repeated queries.
+* **Micro-batch hologram updates** – accumulate for N steps and apply one fused `index_add_`.
+
+### P2 – Learning signal & policy
+
+* **Self-supervised recall loss** – contrastive / InfoNCE between cue and retrieved memory.
+* **Learned write gate with straight-through estimator** – stochastic Bernoulli gate; gradients flow while writes remain side-effectful.
+* **Calibrate light-bulb** – keep trigger rate in 5–15 % band with adaptive threshold; log histograms.
+* **Per-sample temperature in CGMN** (optional) – mirror HG behaviour, fallback to scalar if unstable.
+
+### P3 – Robustness & UX
+
+* **Hologram collision control** – soft capacity per slot, penalise over-used slots; periodic k-means re-assignment to defrag.
+* **Versioned checkpoints & state schema** – explicit versions for holograms, usage counts, thresholds, etc., validated on load.
+* **Metric logging that matters** – trigger rate, effective temp, top-k usage, write LR/EMA, hologram RMS, retrieval entropy, collision rate, consolidation events.
+
+---
+
+#### Practical expectations
+
+* **Capacity scaling** – linear until interference dominates; ANN search pushes threshold up.
+* **Latency profile** – hot path is fractal `cdist` + FFTs; ANN shortlist + batched FFTs give biggest wins.
+* **Training dynamics** – without recall objectives memory acts like residual; adding recall loss & learned gating activates the full stack.
+

@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.distributed as dist
 from .utils import fast_pairwise_l2
 
 def _complex_from_phase(phase: torch.Tensor) -> torch.Tensor:
@@ -18,7 +19,9 @@ class EnhancedHyperGeometricMemory(nn.Module):
     """
     def __init__(self, input_dim: int, manifold_dim: int = 24, mem_slots: int = 1024,
                  quantum_qubits: int = 8, topk: int = 32, fractal_scales: int = 4,
-                 holo_dim: int = 256, holo_lr: float = 0.1, holo_decay: float = 0.98):
+                 holo_dim: int = 256, holo_lr: float = 0.1, holo_decay: float = 0.98,
+                 ann_centroids: int = 256, ann_top_centroids: int = 8,
+                 ):
         super().__init__()
         self.input_dim = input_dim
         self.D = manifold_dim
@@ -30,9 +33,24 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.holo_lr = float(holo_lr)
         self.holo_decay = float(holo_decay)
 
+        # ---------- Micro-batch update buffers ----------
+        self._upd_idx_buffer = []   # list[Tensor]
+        self._upd_val_buffer = []   # list[Tensor]
+        self.flush_every = 4        # fuse updates every N writes
+
         # Addressing keys/values (real) for fractal search
         self.keys   = nn.Parameter(torch.randn(self.M, self.D))
         self.values = nn.Parameter(torch.randn(self.M, self.D * 3))  # legacy/fallback
+
+        # ---------- Coarse quantiser for ANN search ----------
+        self.use_ann = ann_centroids > 0 and ann_centroids < self.M
+        self.C = ann_centroids
+        self.C_top = ann_top_centroids
+        if self.use_ann:
+            self.register_buffer("centroids", torch.randn(self.C, self.D))
+            # assignment of each key to centroid id (M,)
+            self.register_buffer("centroid_ids", torch.zeros(self.M, dtype=torch.long))
+            self._recompute_centroids()
 
         # Quantum-ish extras
         self.quantum_phase = nn.Parameter(torch.randn(self.M, self.Q))
@@ -54,6 +72,10 @@ class EnhancedHyperGeometricMemory(nn.Module):
         # Usage tracking + active slots
         self.register_buffer("usage_counts", torch.zeros(self.M, dtype=torch.float32))
         self.active_slots = self.M  # may be reduced in energy-efficient mode
+        
+        # Collision control
+        self.soft_capacity_per_slot = float(self.M * 10)  # max hits per slot before penalty
+        self.collision_penalty_weight = 0.1  # weight for usage penalty in distance
 
         # ---------- Holographic (complex) associative memory ----------
         # Complex-valued holograms in frequency domain (superposition of bound pairs)
@@ -75,6 +97,26 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.lb_momentum = 0.99
         self.lb_drop_ratio = 0.7  # fire if current < 0.7 * avg
 
+    @torch.no_grad()
+    def _recompute_centroids(self, iters: int = 10):
+        """Lightweight k-means on self.keys to (re)initialise centroids."""
+        if not self.use_ann:
+            return
+        k = self.keys.data.clone()
+        # init centroids from random keys
+        idx = torch.randperm(self.M)[:self.C]
+        c = k[idx].clone()
+        for _ in range(iters):
+            dist = fast_pairwise_l2(k, c)          # (M,C)
+            assign = dist.argmin(dim=-1)           # (M,)
+            # compute new centroids
+            for ci in range(self.C):
+                mask = assign == ci
+                if mask.any():
+                    c[ci] = k[mask].mean(dim=0)
+        self.centroids.copy_(c)
+        self.centroid_ids.copy_(assign)
+
     # -------------------- Controls --------------------
     def set_temperature(self, t: torch.Tensor):
         if t.numel() == 1:
@@ -88,6 +130,16 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
     def enable_energy_efficient_mode(self, enable: bool = True):
         self.set_active_fraction(0.5 if enable else 1.0)
+
+    # ------------ DDP sync ---------------
+    @torch.no_grad()
+    def _sync_buffers_ddp(self):
+        """Synchronize external memory parameters/buffers across DDP ranks."""
+        if not (dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1):
+            return
+        for t in [self.holograms_fft.data, self.keys.data, self.values.data, self.usage_counts]:
+            dist.all_reduce(t, op=dist.ReduceOp.SUM)
+            t /= dist.get_world_size()
 
     @torch.no_grad()
     def consolidate_unused(self, threshold: float = 0.1, ema: float = 0.9):
@@ -105,6 +157,51 @@ class EnhancedHyperGeometricMemory(nn.Module):
             self.holograms_fft.data[mask] *= self.holo_decay
             self.usage_counts[mask] = 0.0
 
+    @torch.no_grad()
+    def defragment_slots(self, n_clusters: int = None, iters: int = 10):
+        """Redistribute memories via k-means on value embeddings to reduce collisions."""
+        if n_clusters is None:
+            n_clusters = self.M
+        
+        # Use values as embedding space for clustering
+        vals = self.values.data.clone()  # (M, D*3)
+        
+        # Simple k-means
+        idx = torch.randperm(self.M)[:n_clusters]
+        centroids = vals[idx].clone()
+        
+        for _ in range(iters):
+            dist = fast_pairwise_l2(vals, centroids)  # (M, n_clusters)
+            assign = dist.argmin(dim=-1)  # (M,)
+            # Update centroids
+            for ci in range(n_clusters):
+                mask = assign == ci
+                if mask.any():
+                    centroids[ci] = vals[mask].mean(dim=0)
+        
+        # Reassign keys to balance load (spread assignments evenly)
+        for ci in range(n_clusters):
+            mask = assign == ci
+            if mask.any():
+                # Reset usage counts for this cluster
+                self.usage_counts[mask] *= 0.5
+
+    def get_metrics(self):
+        """Return dict of diagnostic metrics."""
+        M = self.active_slots
+        holo_rms = self.holograms_fft[:M].abs().mean(dim=-1)  # (M,)
+        return {
+            'hg_temp': self.temperature.mean().item() if self.temperature.numel() > 1 else self.temperature.item(),
+            'hg_topk_base': self.K_base,
+            'hg_active_slots': M,
+            'hg_holo_rms_mean': holo_rms.mean().item(),
+            'hg_holo_rms_std': holo_rms.std().item(),
+            'hg_holo_rms_max': holo_rms.max().item(),
+            'hg_usage_mean': self.usage_counts[:M].mean().item(),
+            'hg_usage_max': self.usage_counts[:M].max().item(),
+            'hg_lb_top1_avg': self.lb_top1_avg.item(),
+        }
+
     # -------------------- Core ops --------------------
     def encode_to_manifold(self, x):
         # x: (B,S,input_dim) -> (B,S,D,3)
@@ -116,6 +213,9 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
     @torch.no_grad()
     def _fractal_cdist(self, q: torch.Tensor, k: torch.Tensor):
+        if self.use_ann:
+            return self._fractal_cdist_ann(q)
+        # original brute force
         # q: (B,S,D)  k: (M,D) -> (B,S,M)
         weights = torch.softmax(self.fractal_weights, dim=0)
         dsum = 0.0
@@ -124,6 +224,41 @@ class EnhancedHyperGeometricMemory(nn.Module):
             d = fast_pairwise_l2(q / sf, k / sf)  # (B,S,M or M_active)
             dsum = dsum + w * d
         return dsum
+
+    @torch.no_grad()
+    def _fractal_cdist_ann(self, q: torch.Tensor):
+        """Two-stage ANN search: centroids shortlist -> key subset."""
+        B,S,D = q.shape
+        # stage 1: distance to centroids
+        wts = torch.softmax(self.fractal_weights, dim=0)
+        d_cent = 0.0
+        for s,w in enumerate(wts):
+            sf = 2 ** s
+            d_cent = d_cent + w * fast_pairwise_l2(q / sf, self.centroids / sf)  # (B,S,C)
+        # select top-C_top centroids per query token
+        _, topc = torch.topk(d_cent, k=min(self.C_top, self.C), dim=-1, largest=False)  # (B,S,Ctop)
+        # build mask for keys belonging to selected centroids
+        device = q.device
+        mask = torch.zeros(self.M, device=device, dtype=torch.bool)
+        # gather unique centroid ids in batch for efficiency
+        uniq_c = torch.unique(topc)
+        mask_cent = torch.isin(self.centroid_ids.to(device), uniq_c)
+        candid_keys = self.keys[mask_cent]
+        # fallback to brute if too many candidates removed
+        if candid_keys.size(0) < 32:
+            candid_keys = self.keys
+        # compute full fractal distance on restricted keys
+        dsum = 0.0
+        for s, w in enumerate(wts):
+            sf = 2 ** s
+            d = fast_pairwise_l2(q / sf, candid_keys / sf)  # (B,S,M')
+            dsum = dsum + w * d
+        # need to map distances back to full M size for downstream logic
+        # create large tensor filled with inf
+        dist_full = torch.full((B,S,self.M), float('inf'), device=device, dtype=dsum.dtype)
+        idx_full = torch.nonzero(mask_cent, as_tuple=False).view(-1)
+        dist_full[:,:,idx_full] = dsum
+        return dist_full
 
     @torch.no_grad()
     def _record_usage(self, indices):
@@ -170,13 +305,39 @@ class EnhancedHyperGeometricMemory(nn.Module):
         contrib = weights.unsqueeze(-1) * Kv  # (B,S,K,H)
         flat_idx = indices.reshape(-1)        # (B*S*K,)
         flat_contrib = contrib.reshape(-1, self.holo_dim)  # (B*S*K,H)
-        accum = torch.zeros((M, self.holo_dim), dtype=self.holograms_fft.dtype, device=x.device)
+        # ---- Micro-batch accumulation ----
+        self._upd_idx_buffer.append(flat_idx)
+        self._upd_val_buffer.append(flat_contrib)
+
+        if len(self._upd_idx_buffer) >= self.flush_every:
+            self._flush_pending_updates(lr_mult)
+
+    @torch.no_grad()
+    def _flush_pending_updates(self, lr_mult: float = 1.0):
+        if not self._upd_idx_buffer:
+            return
+        flat_idx = torch.cat(self._upd_idx_buffer, dim=0)
+        flat_contrib = torch.cat(self._upd_val_buffer, dim=0)
+        self._upd_idx_buffer.clear()
+        self._upd_val_buffer.clear()
+
+        M = self.active_slots
+        device = self.holograms_fft.device
+        accum = torch.zeros((M, self.holo_dim), dtype=self.holograms_fft.dtype, device=device)
         accum.index_add_(0, flat_idx, flat_contrib)
-        counts = torch.zeros(M, device=x.device, dtype=accum.real.dtype).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.real.dtype))
+        counts = torch.zeros(M, device=device, dtype=accum.real.dtype).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.real.dtype))
         counts = counts.clamp_min_(1.0).unsqueeze(-1).to(accum.dtype)
         avg = accum / counts
+
         lr = self.holo_lr * lr_mult
         self.holograms_fft.data[:M] = self.holo_decay * self.holograms_fft.data[:M] + lr * avg
+
+        # After applying, run clamp/sync steps
+        rms = self.holograms_fft.abs().mean(dim=-1, keepdim=True)
+        max_rms = 5.0
+        scale = (max_rms / rms).clamp(max=1.0)
+        self.holograms_fft.data[:M] *= scale
+        self._sync_buffers_ddp()
 
     def _holo_read(self, x: torch.Tensor, indices: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
         """Unbind with conj(key) from selected holograms; weight and sum.
@@ -201,6 +362,10 @@ class EnhancedHyperGeometricMemory(nn.Module):
         M = self.active_slots
         k_active = self.keys[:M]
         dist = self._fractal_cdist(q, k_active)  # (B,S,M)
+        
+        # Apply collision penalty: penalize over-used slots
+        usage_penalty = (self.usage_counts[:M] / self.soft_capacity_per_slot).clamp(0, 1.0)
+        dist = dist + self.collision_penalty_weight * usage_penalty.view(1, 1, M)
 
         # temperature: allow per-batch explosive recall scaling
         if fire_mask is not None and isinstance(fire_mask, torch.Tensor) and fire_mask.any():

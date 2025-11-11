@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.distributed as dist
 
 class EnhancedCurvedMemory(nn.Module):
     """A simpler curved memory with scalar curvature gating and associative weights.
@@ -40,6 +41,15 @@ class EnhancedCurvedMemory(nn.Module):
     def enable_energy_efficient_mode(self, enable: bool = True):
         self.set_active_fraction(0.5 if enable else 1.0)
 
+    # ---------- DDP sync -------------
+    @torch.no_grad()
+    def _sync_buffers_ddp(self):
+        if not (dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1):
+            return
+        for t in [self.memory_slots.data, self.usage_counts, self.associative_weights.data]:
+            dist.all_reduce(t, op=dist.ReduceOp.SUM)
+            t /= dist.get_world_size()
+
     @torch.no_grad()
     def consolidate_unused(self, threshold: float = 0.1, ema: float = 0.9):
         if self.usage_counts.max() <= 0:
@@ -50,6 +60,18 @@ class EnhancedCurvedMemory(nn.Module):
             mean_slot = self.memory_slots[~mask].mean(dim=0, keepdim=True) if (~mask).any() else self.memory_slots.mean(dim=0, keepdim=True)
             self.memory_slots.data[mask] = ema * self.memory_slots.data[mask] + (1-ema) * mean_slot
             self.usage_counts[mask] = 0.0
+
+    def get_metrics(self):
+        """Return dict of diagnostic metrics."""
+        M = self.active_slots
+        return {
+            'curved_temp': self.temperature.mean().item() if self.temperature.numel() > 1 else self.temperature.item(),
+            'curved_topk_base': self.K_base,
+            'curved_active_slots': M,
+            'curved_usage_mean': self.usage_counts[:M].mean().item(),
+            'curved_usage_max': self.usage_counts[:M].max().item(),
+            'curved_importance_mean': self.memory_importance[:M].mean().item(),
+        }
 
     # Core ops
     def content_based_addressing(self, query):  # query: (B,H)
@@ -78,6 +100,7 @@ class EnhancedCurvedMemory(nn.Module):
         counts = counts.clamp_min_(1.0).unsqueeze(-1)
         avg_upd = accum / counts
         self.memory_slots.data.mul_(0.95).add_(0.05 * avg_upd)
+        self._sync_buffers_ddp()
         # importance EMA (crude)
         self.memory_importance.data.index_add_(0, flat_idx, 0.05 * torch.ones_like(flat_idx, dtype=self.memory_importance.dtype).to(self.memory_importance.device))
 

@@ -9,11 +9,28 @@ def train_epoch(model, loader, criterion, opt, device):
     total_loss = 0
     for src, tgt in loader:
         src, tgt = src.to(device), tgt.to(device)
-        logits = model(src)
+        
+        # Check if model returns aux losses
+        output = model(src, return_aux_losses=True) if hasattr(model, 'recall_loss_weight') else model(src)
+        
+        if isinstance(output, tuple):
+            logits, aux = output
+            recall_loss = aux.get('recall_loss', 0.0)
+        else:
+            logits = output
+            recall_loss = 0.0
+        
         L = min(logits.size(1), tgt.size(1))
         logits = logits[:,:L,:].contiguous().view(-1, logits.size(-1))
         tgt_flat = tgt[:,:L].contiguous().view(-1)
-        loss = criterion(logits, tgt_flat)
+        seq_loss = criterion(logits, tgt_flat)
+        
+        # Combine losses
+        if isinstance(recall_loss, torch.Tensor):
+            loss = seq_loss + model.recall_loss_weight * recall_loss
+        else:
+            loss = seq_loss
+        
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -32,7 +49,7 @@ def evaluate(model, loader, criterion, device):
             L = min(logits.size(1), tgt.size(1))
             logits_trunc = logits[:,:L,:].contiguous()
             tgt_trunc = tgt[:,:L]
-            loss = criterion(logits_trunc.view(-1, logits.size(-1)), tgt_trunc.view(-1))
+            loss = criterion(logits_trunc.reshape(-1, logits.size(-1)), tgt_trunc.reshape(-1))
             # token accuracy (ignore PAD)
             preds = logits_trunc.argmax(-1)
             mask = tgt_trunc != TOK2IDX['<pad>']

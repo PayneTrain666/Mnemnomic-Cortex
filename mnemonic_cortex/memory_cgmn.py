@@ -1,16 +1,19 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.distributed as dist
 from .utils import fast_pairwise_l2
 
 class EnhancedCGMNMemory(nn.Module):
     """Curved Geometric Memory Network (CGMN) with lightbulb-aware temperature & plasticity."""
     def __init__(self, input_dim: int, manifold_dim: int = 16, mem_slots: int = 512,
-                 slot_dim: int = 256, topk: int = 32):
+                 slot_dim: int = 256, topk: int = 32, use_per_sample_temp: bool = False):
         super().__init__()
         self.input_dim = input_dim
         self.D, self.M, self.H = manifold_dim, mem_slots, slot_dim
         self.K_base = min(topk, mem_slots)
+        self.use_per_sample_temp = use_per_sample_temp
+        self.temp_variance_threshold = 0.3  # fallback to scalar if variance > this
 
         self.manifold_projection = nn.Sequential(
             nn.Linear(input_dim, self.D * 3),
@@ -44,7 +47,20 @@ class EnhancedCGMNMemory(nn.Module):
     def set_temperature(self, t: torch.Tensor):
         if t.numel() == 1:
             self.temperature = t.detach()
+        elif self.use_per_sample_temp:
+            # Per-sample temperature with variance check
+            if t.numel() > 1:
+                variance = t.var()
+                if variance > self.temp_variance_threshold:
+                    # Too unstable, fall back to mean
+                    self.temperature = t.mean().detach()
+                else:
+                    # Keep per-sample temps
+                    self.temperature = t.detach()
+            else:
+                self.temperature = t.detach()
         else:
+            # Default: collapse to scalar
             self.temperature = t.mean().detach()
 
     def set_active_fraction(self, frac: float):
@@ -53,6 +69,15 @@ class EnhancedCGMNMemory(nn.Module):
 
     def enable_energy_efficient_mode(self, enable: bool = True):
         self.set_active_fraction(0.5 if enable else 1.0)
+
+    # ---------- DDP sync -------------
+    @torch.no_grad()
+    def _sync_buffers_ddp(self):
+        if not (dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1):
+            return
+        for t in [self.memory_slots.data, self.usage_counts]:
+            dist.all_reduce(t, op=dist.ReduceOp.SUM)
+            t /= dist.get_world_size()
 
     @torch.no_grad()
     def consolidate_unused(self, threshold: float = 0.1, ema: float = 0.9):
@@ -64,6 +89,18 @@ class EnhancedCGMNMemory(nn.Module):
             mean_slot = self.memory_slots[~mask].mean(dim=0, keepdim=True) if (~mask).any() else self.memory_slots.mean(dim=0, keepdim=True)
             self.memory_slots.data[mask] = ema * self.memory_slots.data[mask] + (1-ema) * mean_slot
             self.usage_counts[mask] = 0.0
+
+    def get_metrics(self):
+        """Return dict of diagnostic metrics."""
+        M = self.active_slots
+        return {
+            'cgmn_temp': self.temperature.mean().item() if self.temperature.numel() > 1 else self.temperature.item(),
+            'cgmn_topk_base': self.K_base,
+            'cgmn_active_slots': M,
+            'cgmn_usage_mean': self.usage_counts[:M].mean().item(),
+            'cgmn_usage_max': self.usage_counts[:M].max().item(),
+            'cgmn_lb_top1_avg': self.lb_top1_avg.item(),
+        }
 
     # ---------------- Core ----------------
     def manifold_ode_step(self, x):
@@ -86,7 +123,13 @@ class EnhancedCGMNMemory(nn.Module):
         dist = fast_pairwise_l2(q, mem_pos)                    # (B,S,M)
 
         # Temperature scaling + curvature weight
-        dist = dist / self.temperature.clamp_min(1e-6)
+        # Handle both scalar and per-sample temp
+        if self.temperature.numel() == 1:
+            temp_scale = self.temperature.clamp_min(1e-6)
+        else:
+            # Per-sample: (B,) -> (B,1,1) for broadcasting
+            temp_scale = self.temperature.view(-1, 1, 1).clamp_min(1e-6)
+        dist = dist / temp_scale
         curv_w = torch.exp(-self.curv_alpha * self.curvature[:M].norm(dim=-1))  # (M,)
         dist = dist * curv_w.view(1,1,M)
 
@@ -123,6 +166,8 @@ class EnhancedCGMNMemory(nn.Module):
         counts = counts.clamp_min_(1.0).unsqueeze(-1)
         avg_upd = accum / counts
         self.memory_slots.data.mul_(ema).add_((1-ema)*avg_upd)
+        # DDP sync
+        self._sync_buffers_ddp()
 
     def forward(self, x, operation='read', fire_mask=None, recall_boost: float = 0.3):
         """

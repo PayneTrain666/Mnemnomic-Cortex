@@ -18,7 +18,7 @@ class EnhancedSensoryBuffer(nn.Module):
     def update(self, x):  # x: (B,S,d)
         with torch.no_grad():
             pooled = x.mean(dim=1)                        # (B,d)
-            s = self.salience(pooled)                     # (B,1)
+            s = self.salience(pooled).mean()             # scalar salience
         self._cache.append((pooled, s))
 
     def attention_filter(self, x):  # x: (B,S,d) -> (B,S,d)

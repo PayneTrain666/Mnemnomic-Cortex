@@ -42,3 +42,4 @@ class Text8(Dataset):
                 if not b: break
                 h.update(b)
         return h.hexdigest()
+

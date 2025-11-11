@@ -10,9 +10,12 @@ class EnhancedTripleHybridMemory(nn.Module):
        - 'cross_attn': cross-attention over {HG,CGMN,Curved} per timestep
     Also propagates temperature and energy-efficient mode; exposes consolidation.
     """
-    def __init__(self, input_dim: int, output_dim: int, hg_slots: int = 2048, cgmn_slots: int = 1024, curved_slots: int = 512, fusion: str = 'weighted'):
+    def __init__(self, input_dim: int, output_dim: int, hg_slots: int = 2048, cgmn_slots: int = 1024, curved_slots: int = 512, fusion: str = 'weighted',
+                 hg_ann_centroids: int = 256, hg_ann_top: int = 8):
         super().__init__()
-        self.hg = EnhancedHyperGeometricMemory(input_dim, mem_slots=hg_slots)
+        self.hg = EnhancedHyperGeometricMemory(input_dim, mem_slots=hg_slots,
+                                                ann_centroids=hg_ann_centroids,
+                                                ann_top_centroids=hg_ann_top)
         self.cgmn = EnhancedCGMNMemory(input_dim, mem_slots=cgmn_slots)
         self.curved = EnhancedCurvedMemory(input_dim, mem_slots=curved_slots)
         self.mix = nn.Parameter(torch.tensor([0.34, 0.33, 0.33]))  # [hg, cgmn, curved]
