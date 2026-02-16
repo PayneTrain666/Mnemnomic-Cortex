@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from .utils import fast_pairwise_l2
-from .geometry_merger import GeometryMerger
+from .geometry_merger import GeometryMergerV2
 from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 
 def _complex_from_phase(phase: torch.Tensor) -> torch.Tensor:
@@ -64,8 +64,22 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.spin_conn = nn.Sequential(
             nn.Linear(self.D * 3, 64), nn.SiLU(), nn.Linear(64, 3)
         )
-        self.geometry_merger = GeometryMerger(init_tau=10.0)
+        self.geometry_merger = GeometryMergerV2(
+            q_dim=self.D, m_dim=self.D, spd_rank=4, use_heat_kernel=True
+        )
+        self.spd_L = nn.Parameter(torch.zeros(self.M, self.D, 4))
+        self.geometry_merger.spd_L = self.spd_L
         self.memory_curvature = nn.Parameter(torch.zeros(self.M))
+        self.qc_dim = 16
+        self.mem_complex = nn.Parameter(
+            (
+                torch.randn(self.M, self.qc_dim)
+                + 1j * torch.randn(self.M, self.qc_dim)
+            ).to(torch.complex64)
+        )
+        self.qc_head = nn.Sequential(
+            nn.Linear(self.D, 32), nn.SiLU(), nn.Linear(32, 2 * self.qc_dim)
+        )
 
         # Projections
         self.input_projection  = nn.Sequential(nn.Linear(input_dim, self.D * 3), nn.LayerNorm(self.D * 3), nn.GELU())
@@ -441,15 +455,22 @@ class EnhancedHyperGeometricMemory(nn.Module):
             K = min(M, max(K, int(self.K_base * 1.5)))
 
         dtop, itop = torch.topk(dist, K, dim=-1, largest=False)  # (B,S,K)
-        d_warped = self.geometry_merger(
-            dist=dtop.reshape(B * S, K),
+        q_feat = q.reshape(B * S, self.D)
+        qc = self.qc_head(q_feat)
+        q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
+        self.geometry_merger.spd_L = self.spd_L
+        w = self.geometry_merger(
+            base_dist=dtop.reshape(B * S, K),
             indices=itop.reshape(B * S, K),
-            slot_curv=self.memory_curvature,
-            q_query=q_query.reshape(B * S, 4),
-            q_memory=self.q_memory_slots,
-            context_stat=None,
+            q_feat=q_feat,
+            mem_feat=self.keys[:M],
+            slot_curv=self.memory_curvature[:M],
+            q_quat=q_query.reshape(B * S, 4),
+            mem_quat=self.q_memory_slots[:M],
+            q_complex=q_complex,
+            mem_complex=self.mem_complex[:M],
+            return_weights=True,
         ).view(B, S, K)
-        w = torch.softmax(-d_warped, dim=-1)                     # (B,S,K)
 
         self._record_usage(itop)
 

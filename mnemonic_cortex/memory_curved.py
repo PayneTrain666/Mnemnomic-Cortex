@@ -3,7 +3,7 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .geometry_merger import GeometryMerger
+from .geometry_merger import GeometryMergerV2
 from .geometry_utils import qexp, qmul, qnormalize
 
 
@@ -36,8 +36,22 @@ class EnhancedCurvedMemory(nn.Module):
         self.spin_conn = nn.Sequential(
             nn.Linear(self.H, 64), nn.SiLU(), nn.Linear(64, 3)
         )
-        self.geometry_merger = GeometryMerger(init_tau=10.0)
+        self.geometry_merger = GeometryMergerV2(
+            q_dim=self.H, m_dim=self.H, spd_rank=4, use_heat_kernel=True
+        )
+        self.spd_L = nn.Parameter(torch.zeros(self.M, self.H, 4))
+        self.geometry_merger.spd_L = self.spd_L
         self.memory_curvature = nn.Parameter(torch.zeros(self.M))
+        self.qc_dim = 16
+        self.mem_complex = nn.Parameter(
+            (
+                torch.randn(self.M, self.qc_dim)
+                + 1j * torch.randn(self.M, self.qc_dim)
+            ).to(torch.complex64)
+        )
+        self.qc_head = nn.Sequential(
+            nn.Linear(self.H, 32), nn.SiLU(), nn.Linear(32, 2 * self.qc_dim)
+        )
 
         self.register_buffer("temperature", torch.tensor(1.0))
 
@@ -183,17 +197,25 @@ class EnhancedCurvedMemory(nn.Module):
             self._update_spin_slots(q_query, idx)
             return x
         vals, idx = self.content_based_addressing(query)                 # (B,K)
-        vals = self.geometry_merger(
-            dist=vals,
+        qc = self.qc_head(query)
+        q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
+        m = self.active_slots
+        self.geometry_merger.spd_L = self.spd_L
+        geom_w = self.geometry_merger(
+            base_dist=vals,
             indices=idx,
-            slot_curv=self.memory_curvature[: self.active_slots],
-            q_query=q_query,
-            q_memory=self.q_memory_slots[: self.active_slots],
-            context_stat=None,
+            q_feat=query,
+            mem_feat=self.memory_slots[:m],
+            slot_curv=self.memory_curvature[:m],
+            q_quat=q_query,
+            mem_quat=self.q_memory_slots[:m],
+            q_complex=q_complex,
+            mem_complex=self.mem_complex[:m],
+            return_weights=True,
         )
         self._record_usage(idx)
         act = self.associative_activation(query)                         # (B,M_active)
-        comb = torch.softmax(-vals + act.gather(1, idx), dim=-1)        # (B,K)
+        comb = torch.softmax(torch.log(geom_w.clamp_min(1e-9)) + act.gather(1, idx), dim=-1)
         mem = self.memory_slots[idx]                                     # (B,K,H)
         read = torch.sum(comb.unsqueeze(-1) * mem, dim=1)               # (B,H)
         return self.decoder(read).unsqueeze(1).expand(-1, x.size(1), -1)  # (B,S,input_dim)

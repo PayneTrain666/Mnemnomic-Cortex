@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from .utils import fast_pairwise_l2
-from .geometry_merger import GeometryMerger
+from .geometry_merger import GeometryMergerV2
 from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 
 class EnhancedCGMNMemory(nn.Module):
@@ -30,7 +30,21 @@ class EnhancedCGMNMemory(nn.Module):
         self.spin_conn = nn.Sequential(
             nn.Linear(self.D * 3, 64), nn.SiLU(), nn.Linear(64, 3)
         )
-        self.geometry_merger = GeometryMerger(init_tau=10.0)
+        self.geometry_merger = GeometryMergerV2(
+            q_dim=self.D, m_dim=self.D, spd_rank=4, use_heat_kernel=True
+        )
+        self.spd_L = nn.Parameter(torch.zeros(self.M, self.D, 4))
+        self.geometry_merger.spd_L = self.spd_L
+        self.qc_dim = 16
+        self.mem_complex = nn.Parameter(
+            (
+                torch.randn(self.M, self.qc_dim)
+                + 1j * torch.randn(self.M, self.qc_dim)
+            ).to(torch.complex64)
+        )
+        self.qc_head = nn.Sequential(
+            nn.Linear(self.D, 32), nn.SiLU(), nn.Linear(32, 2 * self.qc_dim)
+        )
 
         # Simple ODE dynamics in manifold space
         self.ode_dynamics = nn.Sequential(nn.Linear(self.D * 3, 128), nn.Tanh(), nn.Linear(128, self.D * 3))
@@ -191,15 +205,23 @@ class EnhancedCGMNMemory(nn.Module):
         dtop, itop = torch.topk(dist, K, dim=-1, largest=False)        # (B,S,K)
         q_query = self._query_quat_from_manifold(positions)
         q_query = self._parallel_transport_spin(q_query, positions)
-        d_warped = self.geometry_merger(
-            dist=dtop.reshape(dtop.size(0) * dtop.size(1), K),
+        q_feat = query.reshape(query.size(0) * query.size(1), self.D)
+        qc = self.qc_head(q_feat)
+        q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
+        mem_feat = self.positional_encoding[:M].mean(dim=-1)  # (M,D)
+        self.geometry_merger.spd_L = self.spd_L
+        w = self.geometry_merger(
+            base_dist=dtop.reshape(dtop.size(0) * dtop.size(1), K),
             indices=itop.reshape(itop.size(0) * itop.size(1), K),
-            slot_curv=self.curvature,
-            q_query=q_query.reshape(q_query.size(0) * q_query.size(1), 4),
-            q_memory=self.q_memory_slots,
-            context_stat=None,
+            q_feat=q_feat,
+            mem_feat=mem_feat,
+            slot_curv=self.curvature[:M],
+            q_quat=q_query.reshape(q_query.size(0) * q_query.size(1), 4),
+            mem_quat=self.q_memory_slots[:M],
+            q_complex=q_complex,
+            mem_complex=self.mem_complex[:M],
+            return_weights=True,
         ).view_as(dtop)
-        w = torch.softmax(-d_warped, dim=-1)                           # (B,S,K)
         mem = self.memory_slots[:M][itop]                              # (B,S,K,H)
         attended = torch.sum(w.unsqueeze(-1) * mem, dim=2)             # (B,S,H)
         return attended, (w, itop), internal_fire, q_query

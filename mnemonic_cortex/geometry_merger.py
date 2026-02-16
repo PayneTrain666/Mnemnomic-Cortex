@@ -1,72 +1,167 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .geometry_utils import _d_euc, _d_hyp, _d_sph, qangle, qnormalize
+from .geometry_utils import qangle, qnormalize
 
-class GeometryMerger(nn.Module):
+
+def sph_warp(dist: torch.Tensor, gamma: float = 0.9) -> torch.Tensor:
+    return (2.0 * torch.sin(0.5 * gamma * dist)).abs()
+
+
+def lorentz_lift(x: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
+    # x: [..., D] -> [..., D+1], on upper sheet hyperboloid.
+    sq = torch.sum(x * x, dim=-1, keepdim=True)
+    t = torch.sqrt(1.0 + sq + eps)
+    return torch.cat([t, x], dim=-1)
+
+
+def lorentz_dist(a: torch.Tensor, b: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
+    # Minkowski inner product: <a,b>_L = -a0*b0 + sum_i ai*bi
+    ip = -(a[..., :1] * b[..., :1]).sum(dim=-1) + (a[..., 1:] * b[..., 1:]).sum(dim=-1)
+    z = (-ip).clamp_min(1.0 + eps)
+    return torch.acosh(z)
+
+
+def fubini_study(q_complex: torch.Tensor, mem_complex: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+    # q_complex: [B,C], mem_complex: [B,K,C] -> [B,K]
+    qn = q_complex / (q_complex.norm(dim=-1, keepdim=True).clamp_min(eps))
+    mn = mem_complex / (mem_complex.norm(dim=-1, keepdim=True).clamp_min(eps))
+    overlap = (qn.unsqueeze(1).conj() * mn).sum(dim=-1).abs().clamp(0.0, 1.0 - eps)
+    return torch.acos(overlap)
+
+
+class GeometryMergerV2(nn.Module):
     """
-    Mix Euclidean/Hyperbolic/Spherical/Spin distances; add gentle local curvature warp;
-    optionally treat spin as a warped-product factor.
-    Call this right before attention softmax.
+    Mix Euclidean / SPD / Lorentz / spherical / spin / Fubini-Study channels.
     """
-    def __init__(self, init_tau=10.0):
+
+    def __init__(self, q_dim: int, m_dim: int, spd_rank: int = 4, use_heat_kernel: bool = True):
         super().__init__()
-        self.gate = nn.Sequential(nn.Linear(4, 32), nn.SiLU(),
-                                  nn.Linear(32, 4), nn.Softmax(-1))
-        self.tau = nn.Parameter(torch.tensor([init_tau]*4, dtype=torch.float32))
-        self.spin_scale = nn.Parameter(torch.tensor(0.7))
-        self.local_beta = 0.12  # small curvature micro-warp
+        self.use_heat = use_heat_kernel
+        self.spd_rank = spd_rank
+        self.spd_L = None  # assigned by owner memory module
+        self.spd_eps = 1e-3
 
-    def forward(self, dist, indices, slot_curv, q_query=None, q_memory=None, context_stat=None):
-        """
-        dist:     [B,K]
-        indices:  [B,K]
-        slot_curv:[mem_slots] or [mem_slots,D] (we mean-reduce to [mem_slots])
-        q_query:  [B,4] or None
-        q_memory: [mem_slots,4] or None
-        context_stat: optional scalar tensor (B,) or None (used as a simple gate input)
-        """
-        B, K = dist.shape
-        device, dtype = dist.device, dist.dtype
+        self.gate = nn.Sequential(
+            nn.Linear(6, 64),
+            nn.SiLU(),
+            nn.Linear(64, 6),
+            nn.Softmax(dim=-1),
+        )
+
+        self.t_head = nn.Sequential(
+            nn.Linear(q_dim, 16),
+            nn.SiLU(),
+            nn.Linear(16, 1),
+            nn.Softplus(),
+        )
+        self.phi = nn.Sequential(
+            nn.Linear(q_dim, 64),
+            nn.SiLU(),
+            nn.Linear(64, 1),
+            nn.Tanh(),
+        )
+
+        self.spin_scale = nn.Parameter(torch.tensor(0.7))
+        self.local_beta = 0.10
+
+    def spd_distance(self, q_feat: torch.Tensor, mem_feat: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
+        # q_feat: [B,D], mem_feat:[M,D], indices:[B,K] -> [B,K]
+        bsz, dim = q_feat.shape
+        k = indices.size(1)
+        m_sel = mem_feat.index_select(0, indices.reshape(-1)).view(bsz, k, dim)
+
+        if self.spd_L is None:
+            return torch.norm(q_feat.unsqueeze(1) - m_sel, dim=-1)
+
+        l_sel = self.spd_L.index_select(0, indices.reshape(-1)).view(bsz, k, dim, self.spd_rank)
+        diff = (q_feat.unsqueeze(1) - m_sel).unsqueeze(-1)  # [B,K,D,1]
+        llt = torch.matmul(l_sel, l_sel.transpose(-1, -2))  # [B,K,D,D]
+        eye = torch.eye(dim, device=q_feat.device, dtype=q_feat.dtype).view(1, 1, dim, dim)
+        g = llt + self.spd_eps * eye
+        qf = torch.matmul(torch.matmul(diff.transpose(-2, -1), g), diff).squeeze(-1).squeeze(-1)
+        return torch.sqrt(qf.clamp_min(1e-12))
+
+    def forward(
+        self,
+        base_dist: torch.Tensor,
+        indices: torch.Tensor,
+        q_feat: torch.Tensor,
+        mem_feat: torch.Tensor,
+        slot_curv: torch.Tensor,
+        q_quat: torch.Tensor = None,
+        mem_quat: torch.Tensor = None,
+        q_complex: torch.Tensor = None,
+        mem_complex: torch.Tensor = None,
+        return_weights: bool = True,
+    ) -> torch.Tensor:
+        bsz, k = base_dist.shape
 
         if slot_curv.dim() == 2:
-            slot_c_all = slot_curv.mean(dim=1)    # [mem_slots]
+            slot_c_all = slot_curv.mean(dim=1)
         else:
-            slot_c_all = slot_curv                # [mem_slots]
-        slot_c = slot_c_all.index_select(0, indices.view(-1)).view(B, K)
+            slot_c_all = slot_curv
+        slot_c = slot_c_all.index_select(0, indices.reshape(-1)).view(bsz, k)
 
-        # components
-        de = _d_euc(dist)
-        dh = _d_hyp(dist, slot_c, alpha=0.6)
-        ds = _d_sph(dist, gamma=0.9)
+        d_euc = base_dist
+        d_sph = sph_warp(base_dist, gamma=0.9)
+        d_spd = self.spd_distance(q_feat, mem_feat, indices)
 
-        if (q_query is not None) and (q_memory is not None):
-            q_query = qnormalize(q_query)
-            q_mem = qnormalize(q_memory.index_select(0, indices.view(-1))).view(B,K,4)
-            dsp = (self.spin_scale * (qangle(q_query.unsqueeze(1).expand(B,K,4), q_mem)/math.pi))
+        q_l = lorentz_lift(q_feat)  # [B,D+1]
+        m_sel = mem_feat.index_select(0, indices.reshape(-1)).view(bsz, k, -1)
+        m_l = lorentz_lift(m_sel)  # [B,K,D+1]
+        d_lor = lorentz_dist(q_l.unsqueeze(1).expand_as(m_l), m_l)
+
+        if (q_quat is not None) and (mem_quat is not None):
+            qq = qnormalize(q_quat)
+            mq = qnormalize(mem_quat.index_select(0, indices.reshape(-1))).view(bsz, k, 4)
+            d_spin = self.spin_scale * (qangle(qq.unsqueeze(1).expand(bsz, k, 4), mq) / math.pi)
         else:
-            dsp = torch.zeros_like(dist)
+            d_spin = torch.zeros_like(base_dist)
 
-        # gate stats (simple and stable)
+        if (q_complex is not None) and (mem_complex is not None):
+            mc = mem_complex.index_select(0, indices.reshape(-1)).view(bsz, k, -1)
+            d_fs = fubini_study(q_complex, mc)
+        else:
+            d_fs = torch.zeros_like(base_dist)
+
         with torch.no_grad():
-            p = F.softmax(-dist, dim=-1)
-            entropy = (-p * (p.clamp_min(1e-9)).log()).sum(-1).mean()
-            mean_abs_c = slot_c.abs().mean()
-            spin_coh = 1.0 - dsp.mean()
-            if context_stat is None:
-                context_stat = torch.full((B,), 0.5, device=device, dtype=dtype)
-            stats = torch.tensor([entropy.item(), mean_abs_c.item(), spin_coh.item(), context_stat.mean().item()],
-                                 device=device).unsqueeze(0)  # [1,4]
+            s0 = q_feat.abs().mean(dim=-1)
+            s1 = q_feat.std(dim=-1)
+            s2 = slot_c.abs().mean(dim=-1)
+            s3 = d_euc.mean(dim=-1)
+            s4 = d_spd.mean(dim=-1)
+            s5 = d_lor.mean(dim=-1)
+            gate_in = torch.stack([s0, s1, s2, s3, s4, s5], dim=-1)
 
-        w = self.gate(stats).squeeze(0)  # [4]
+        w = self.gate(gate_in)  # [B,6]
+        d_blend = (
+            w[:, 0:1] * d_euc
+            + w[:, 1:2] * d_spd
+            + w[:, 2:3] * d_lor
+            + w[:, 3:4] * d_sph
+            + w[:, 4:5] * d_spin
+            + w[:, 5:6] * d_fs
+        )
 
-        # blended distance
-        d_mix = (w[0]*de + w[1]*dh + w[2]*ds + w[3]*dsp)
-        d_mix = d_mix * (1.0 + self.local_beta * torch.tanh(slot_c) * d_mix)  # micro-warp
+        d_blend = d_blend * (1.0 + self.local_beta * torch.tanh(slot_c) * d_blend)
+        scale = torch.exp(0.5 * self.phi(q_feat).clamp(-2, 2))
+        d_final = d_blend * scale
 
-        # optional warped-product (spin as second factor)
-        d_final = torch.sqrt(d_mix**2 + 0.5 * dsp**2)
+        if not return_weights:
+            return d_final
 
-        return d_final
+        if self.use_heat:
+            t = self.t_head(q_feat).clamp(1e-3, 0.3)
+            kx = torch.exp(-(d_final**2) / (4.0 * t))
+            weights = kx / (kx.sum(dim=-1, keepdim=True) + 1e-9)
+        else:
+            weights = F.softmax(-d_final, dim=-1)
+        return weights
+
+
+# Backward-compat alias for previous imports.
+GeometryMerger = GeometryMergerV2
