@@ -3,6 +3,7 @@ import torch.nn as nn
 from .memory_hg import EnhancedHyperGeometricMemory
 from .memory_cgmn import EnhancedCGMNMemory
 from .memory_curved import EnhancedCurvedMemory
+from .topology_manager import TopologyManagerV3
 
 class EnhancedTripleHybridMemory(nn.Module):
     """Wrapper combining HG, CGMN, and Curved memories with selectable fusion:
@@ -18,6 +19,7 @@ class EnhancedTripleHybridMemory(nn.Module):
                                                 ann_top_centroids=hg_ann_top)
         self.cgmn = EnhancedCGMNMemory(input_dim, mem_slots=cgmn_slots)
         self.curved = EnhancedCurvedMemory(input_dim, mem_slots=curved_slots)
+        self.topology_manager = TopologyManagerV3(subsystems=("hg", "cgmn", "curved"))
         self.mix = nn.Parameter(torch.tensor([0.34, 0.33, 0.33]))  # [hg, cgmn, curved]
         self.fusion_mode = fusion
         self.cross_fuser = nn.MultiheadAttention(input_dim, num_heads=4, batch_first=True)
@@ -38,6 +40,41 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg.consolidate_unused(threshold)
         self.cgmn.consolidate_unused(threshold)
         self.curved.consolidate_unused(threshold)
+
+    @torch.no_grad()
+    def evolve_topologies(self, fitness_by_subsystem):
+        """Update topology states using subsystem fitness values.
+        fitness_by_subsystem keys: 'hg' | 'cgmn' | 'curved'
+        """
+        out = {}
+        for name in ("hg", "cgmn", "curved"):
+            if name in fitness_by_subsystem:
+                out[name] = self.topology_manager.evolve_topology(
+                    fitness=float(fitness_by_subsystem[name]),
+                    subsystem=name,
+                )
+        return out
+
+    @torch.no_grad()
+    def mutate_curvatures(self, loss_value: float):
+        """Apply loss-aware curvature mutation via TopologyManagerV3."""
+        self.hg.memory_curvature.data.copy_(
+            self.topology_manager.mutate_curvature(
+                self.hg.memory_curvature.data, loss_value=loss_value, subsystem="hg"
+            )
+        )
+        self.cgmn.curvature.data.copy_(
+            self.topology_manager.mutate_curvature(
+                self.cgmn.curvature.data, loss_value=loss_value, subsystem="cgmn"
+            )
+        )
+        self.curved.memory_curvature.data.copy_(
+            self.topology_manager.mutate_curvature(
+                self.curved.memory_curvature.data,
+                loss_value=loss_value,
+                subsystem="curved",
+            )
+        )
 
     def _fuse(self, rhg, rcg, rcv):
         if self.fusion_mode == 'cross_attn':

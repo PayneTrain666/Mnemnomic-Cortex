@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from .utils import fast_pairwise_l2
+from .geometry_merger import GeometryMerger
+from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 
 class EnhancedCGMNMemory(nn.Module):
     """Curved Geometric Memory Network (CGMN) with lightbulb-aware temperature & plasticity."""
@@ -24,6 +26,11 @@ class EnhancedCGMNMemory(nn.Module):
         self.positional_encoding = nn.Parameter(torch.randn(self.M, self.D, 3))
         self.curvature = nn.Parameter(torch.randn(self.M, self.D))
         self.curv_alpha = nn.Parameter(torch.tensor(0.1))
+        self.q_memory_slots = nn.Parameter(qnormalize(torch.randn(self.M, 4)))
+        self.spin_conn = nn.Sequential(
+            nn.Linear(self.D * 3, 64), nn.SiLU(), nn.Linear(64, 3)
+        )
+        self.geometry_merger = GeometryMerger(init_tau=10.0)
 
         # Simple ODE dynamics in manifold space
         self.ode_dynamics = nn.Sequential(nn.Linear(self.D * 3, 128), nn.Tanh(), nn.Linear(128, self.D * 3))
@@ -42,6 +49,9 @@ class EnhancedCGMNMemory(nn.Module):
         self.register_buffer('lb_top1_avg', torch.tensor(1.0))
         self.lb_momentum = 0.99
         self.lb_drop_ratio = 0.7
+        self.hol_probe = HolonomyProbe(
+            lambda m: self.spin_conn(m.reshape(m.size(0), -1))
+        )
 
     # ---------------- Controls ----------------
     def set_temperature(self, t: torch.Tensor):
@@ -115,6 +125,42 @@ class EnhancedCGMNMemory(nn.Module):
             x = self.manifold_ode_step(x)
         return x
 
+    def _query_quat_from_manifold(self, manifold_x):
+        # manifold_x: (..., D, 3) -> (..., 4)
+        v = manifold_x.mean(dim=-2)
+        ones = torch.ones_like(v[..., :1])
+        return qnormalize(torch.cat([ones, 0.1 * v], dim=-1))
+
+    def _parallel_transport_spin(self, q, manifold_x, dt=1.0):
+        lead_shape = manifold_x.shape[:-2]
+        feat = manifold_x.reshape(-1, self.D * 3)
+        omega = self.spin_conn(feat).view(*lead_shape, 3)
+        dq = qexp(dt * omega)
+        return qmul(q, dq)
+
+    @torch.no_grad()
+    def _update_spin_slots(self, q_query, indices):
+        # q_query: (B,S,4), indices: (B,S,K)
+        flat_idx = indices.reshape(-1)
+        cur = self.q_memory_slots.index_select(0, flat_idx)
+        q_rep = q_query.reshape(-1, 4).repeat_interleave(indices.size(-1), dim=0)
+        upd = qnormalize(qmul(cur, q_rep))
+        blended = qnormalize(0.9 * cur + 0.1 * upd)
+        self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
+
+    @torch.no_grad()
+    def holonomy_stats(self, manifold_x: torch.Tensor):
+        # manifold_x: (B,S,D,3) or (B,D,3)
+        if manifold_x.dim() == 4:
+            patch = manifold_x.reshape(-1, manifold_x.size(-2), manifold_x.size(-1))
+        elif manifold_x.dim() == 3:
+            patch = manifold_x
+        else:
+            raise ValueError(
+                f"Expected manifold_x with 3 or 4 dims, got {list(manifold_x.shape)}"
+            )
+        return self.hol_probe(patch)
+
     def _attend(self, query, positions):
         # query: (B,S,D) ; positions: (B,S,D,3)
         M = self.active_slots
@@ -143,10 +189,20 @@ class EnhancedCGMNMemory(nn.Module):
             K = min(M, max(K, int(self.K_base * 1.5)))
 
         dtop, itop = torch.topk(dist, K, dim=-1, largest=False)        # (B,S,K)
-        w = torch.softmax(-dtop, dim=-1)                               # (B,S,K)
+        q_query = self._query_quat_from_manifold(positions)
+        q_query = self._parallel_transport_spin(q_query, positions)
+        d_warped = self.geometry_merger(
+            dist=dtop.reshape(dtop.size(0) * dtop.size(1), K),
+            indices=itop.reshape(itop.size(0) * itop.size(1), K),
+            slot_curv=self.curvature,
+            q_query=q_query.reshape(q_query.size(0) * q_query.size(1), 4),
+            q_memory=self.q_memory_slots,
+            context_stat=None,
+        ).view_as(dtop)
+        w = torch.softmax(-d_warped, dim=-1)                           # (B,S,K)
         mem = self.memory_slots[:M][itop]                              # (B,S,K,H)
         attended = torch.sum(w.unsqueeze(-1) * mem, dim=2)             # (B,S,H)
-        return attended, (w, itop), internal_fire
+        return attended, (w, itop), internal_fire, q_query
 
     @torch.no_grad()
     def _record_usage(self, indices):
@@ -189,7 +245,7 @@ class EnhancedCGMNMemory(nn.Module):
         man = self.manifold_projection(x).view(B,S,self.D,3)
         evolved = self._evolve(man)
         query = evolved.mean(dim=3)                                  # (B,S,D)
-        attended, wi, internal_fire = self._attend(query, evolved)
+        attended, wi, internal_fire, q_query = self._attend(query, evolved)
         self._record_usage(wi[1])
 
         if operation == 'write':
@@ -197,6 +253,7 @@ class EnhancedCGMNMemory(nn.Module):
             ema = 0.85 if (internal_fire or any_ext_fire) else 0.90
             enc = attended                                           # (B,S,H)
             self._write(enc, wi, ema=ema)
+            self._update_spin_slots(q_query, wi[1])
             self.temperature = saved_temp
             return x
 

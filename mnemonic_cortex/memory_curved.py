@@ -1,14 +1,26 @@
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.distributed as dist
+
+from .geometry_merger import GeometryMerger
+from .geometry_utils import qexp, qmul, qnormalize
+
 
 class EnhancedCurvedMemory(nn.Module):
     """A simpler curved memory with scalar curvature gating and associative weights.
     Added usage tracking, active slots, consolidation, energy mode.
     Functions as working memory as well.
     """
-    def __init__(self, input_dim: int, hidden_dim: int = 256, curvature_dim: int = 8, mem_slots: int = 128, topk: int = 16):
+
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int = 256,
+        curvature_dim: int = 8,
+        mem_slots: int = 128,
+        topk: int = 16,
+    ):
         super().__init__()
         self.input_dim = input_dim
         self.H, self.M = hidden_dim, mem_slots
@@ -20,6 +32,12 @@ class EnhancedCurvedMemory(nn.Module):
         self.memory_importance = nn.Parameter(torch.ones(self.M))
         self.associative_weights = nn.Parameter(torch.randn(self.M, self.M) * 0.01)
         self.decoder = nn.Sequential(nn.Linear(self.H, input_dim), nn.Tanh())
+        self.q_memory_slots = nn.Parameter(qnormalize(torch.randn(self.M, 4)))
+        self.spin_conn = nn.Sequential(
+            nn.Linear(self.H, 64), nn.SiLU(), nn.Linear(64, 3)
+        )
+        self.geometry_merger = GeometryMerger(init_tau=10.0)
+        self.memory_curvature = nn.Parameter(torch.zeros(self.M))
 
         self.register_buffer("temperature", torch.tensor(1.0))
 
@@ -57,52 +75,88 @@ class EnhancedCurvedMemory(nn.Module):
         usage_ratio = self.usage_counts / (self.usage_counts.max() + 1e-6)
         mask = usage_ratio < threshold
         if mask.any():
-            mean_slot = self.memory_slots[~mask].mean(dim=0, keepdim=True) if (~mask).any() else self.memory_slots.mean(dim=0, keepdim=True)
-            self.memory_slots.data[mask] = ema * self.memory_slots.data[mask] + (1-ema) * mean_slot
+            if (~mask).any():
+                mean_slot = self.memory_slots[~mask].mean(dim=0, keepdim=True)
+            else:
+                mean_slot = self.memory_slots.mean(dim=0, keepdim=True)
+            self.memory_slots.data[mask] = ema * self.memory_slots.data[mask] + (1 - ema) * mean_slot
             self.usage_counts[mask] = 0.0
 
     def get_metrics(self):
         """Return dict of diagnostic metrics."""
-        M = self.active_slots
+        m = self.active_slots
         return {
-            'curved_temp': self.temperature.mean().item() if self.temperature.numel() > 1 else self.temperature.item(),
-            'curved_topk_base': self.K_base,
-            'curved_active_slots': M,
-            'curved_usage_mean': self.usage_counts[:M].mean().item(),
-            'curved_usage_max': self.usage_counts[:M].max().item(),
-            'curved_importance_mean': self.memory_importance[:M].mean().item(),
+            "curved_temp": self.temperature.mean().item()
+            if self.temperature.numel() > 1
+            else self.temperature.item(),
+            "curved_topk_base": self.K_base,
+            "curved_active_slots": m,
+            "curved_usage_mean": self.usage_counts[:m].mean().item(),
+            "curved_usage_max": self.usage_counts[:m].max().item(),
+            "curved_importance_mean": self.memory_importance[:m].mean().item(),
         }
 
     # Core ops
     def content_based_addressing(self, query):  # query: (B,H)
-        M = self.active_slots
-        sim = torch.einsum('bd,md->bm', query, self.memory_slots[:M])      # (B,M)
-        gate = torch.sigmoid(self.curv_proj(query))                        # (B,1)
-        sim = sim * (0.5 + gate)                                           # scalar gating
-        sim = sim / self.temperature.clamp_min(1e-6)
-        K = min(self.K_base, M)
-        vals, idx = torch.topk(sim, K, dim=-1)
+        m = self.active_slots
+        qn = F.normalize(query, dim=-1)
+        mem_n = F.normalize(self.memory_slots[:m], dim=-1)
+        sim = torch.einsum("bd,md->bm", qn, mem_n)                        # (B,M)
+        gate = torch.sigmoid(self.curv_proj(query))                       # (B,1)
+        sim = sim * (0.5 + gate)                                          # scalar gating
+        dist = (1.0 - sim) / self.temperature.clamp_min(1e-6)
+        k = min(self.K_base, m)
+        vals, idx = torch.topk(dist, k, dim=-1, largest=False)
         return vals, idx
+
+    def _query_quat_from_hidden(self, h):
+        # h: (..., H) -> (..., 4)
+        v = h[..., :3]
+        ones = torch.ones_like(v[..., :1])
+        return qnormalize(torch.cat([ones, 0.1 * v], dim=-1))
+
+    def _parallel_transport_spin(self, q, h, dt=1.0):
+        omega = self.spin_conn(h.reshape(-1, self.H)).view(*h.shape[:-1], 3)
+        dq = qexp(dt * omega)
+        return qmul(q, dq)
+
+    @torch.no_grad()
+    def _update_spin_slots(self, q_query, indices):
+        # q_query: (B,4), indices: (B,K)
+        flat_idx = indices.reshape(-1)
+        cur = self.q_memory_slots.index_select(0, flat_idx)
+        q_rep = q_query.repeat_interleave(indices.size(-1), dim=0)
+        upd = qnormalize(qmul(cur, q_rep))
+        blended = qnormalize(0.9 * cur + 0.1 * upd)
+        self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
 
     @torch.no_grad()
     def update_memory(self, x, importance, indices):
-        enc = self.encoder(x).mean(dim=1)                 # (B,H)
-        B,K = indices.shape
-        mem = self.memory_slots[indices]                  # (B,K,H)
+        enc = self.encoder(x).mean(dim=1)                                # (B,H)
+        mem = self.memory_slots[indices]                                 # (B,K,H)
         gate = torch.sigmoid(self.memory_importance[indices].unsqueeze(-1))  # (B,K,1)
-        cand = enc.unsqueeze(1)                           # (B,1,H)
-        upd = gate * mem + (1-gate) * cand                # (B,K,H)
+        cand = enc.unsqueeze(1)                                          # (B,1,H)
+        upd = gate * mem + (1 - gate) * cand                             # (B,K,H)
         flat_idx = indices.reshape(-1)
         flat_upd = upd.reshape(-1, self.H)
         accum = torch.zeros_like(self.memory_slots)
         accum.index_add_(0, flat_idx, flat_upd)
-        counts = torch.zeros(self.M, device=accum.device).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype))
+        counts = torch.zeros(self.M, device=accum.device).index_add_(
+            0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype)
+        )
         counts = counts.clamp_min_(1.0).unsqueeze(-1)
         avg_upd = accum / counts
         self.memory_slots.data.mul_(0.95).add_(0.05 * avg_upd)
         self._sync_buffers_ddp()
         # importance EMA (crude)
-        self.memory_importance.data.index_add_(0, flat_idx, 0.05 * torch.ones_like(flat_idx, dtype=self.memory_importance.dtype).to(self.memory_importance.device))
+        self.memory_importance.data.index_add_(
+            0,
+            flat_idx,
+            0.05
+            * torch.ones_like(flat_idx, dtype=self.memory_importance.dtype).to(
+                self.memory_importance.device
+            ),
+        )
 
     @torch.no_grad()
     def _record_usage(self, indices):
@@ -110,25 +164,36 @@ class EnhancedCurvedMemory(nn.Module):
         self.usage_counts.index_add_(0, flat, torch.ones_like(flat, dtype=self.usage_counts.dtype))
 
     def associative_activation(self, query):  # (B,H) -> (B,M)
-        M = self.active_slots
-        act = torch.einsum('bd,md->bm', query, self.memory_slots[:M])
+        m = self.active_slots
+        act = torch.einsum("bd,md->bm", query, self.memory_slots[:m])
         for _ in range(2):
             act = torch.softmax(act, dim=-1)
-            act = torch.einsum('bm,mn->bn', act, self.associative_weights[:M,:M])
+            act = torch.einsum("bm,mn->bn", act, self.associative_weights[:m, :m])
         return act
 
-    def forward(self, x, operation='read', importance=None):
-        enc = self.encoder(x)                             # (B,S,H)
-        query = enc.mean(dim=1)                           # (B,H)
-        if operation == 'write':
+    def forward(self, x, operation="read", importance=None):
+        enc = self.encoder(x)                                            # (B,S,H)
+        query = enc.mean(dim=1)                                          # (B,H)
+        q_query = self._query_quat_from_hidden(query)
+        q_query = self._parallel_transport_spin(q_query, query)
+        if operation == "write":
             _, idx = self.content_based_addressing(query)
             self._record_usage(idx)
             self.update_memory(x, importance, idx)
+            self._update_spin_slots(q_query, idx)
             return x
-        vals, idx = self.content_based_addressing(query)  # (B,K)
+        vals, idx = self.content_based_addressing(query)                 # (B,K)
+        vals = self.geometry_merger(
+            dist=vals,
+            indices=idx,
+            slot_curv=self.memory_curvature[: self.active_slots],
+            q_query=q_query,
+            q_memory=self.q_memory_slots[: self.active_slots],
+            context_stat=None,
+        )
         self._record_usage(idx)
-        act = self.associative_activation(query)          # (B,M_active)
-        comb = torch.softmax(vals + act.gather(1, idx), dim=-1)  # (B,K)
-        mem = self.memory_slots[idx]                      # (B,K,H)
-        read = torch.sum(comb.unsqueeze(-1) * mem, dim=1) # (B,H)
+        act = self.associative_activation(query)                         # (B,M_active)
+        comb = torch.softmax(-vals + act.gather(1, idx), dim=-1)        # (B,K)
+        mem = self.memory_slots[idx]                                     # (B,K,H)
+        read = torch.sum(comb.unsqueeze(-1) * mem, dim=1)               # (B,H)
         return self.decoder(read).unsqueeze(1).expand(-1, x.size(1), -1)  # (B,S,input_dim)

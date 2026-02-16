@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from .utils import fast_pairwise_l2
+from .geometry_merger import GeometryMerger
+from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 
 def _complex_from_phase(phase: torch.Tensor) -> torch.Tensor:
     """phase: (..., D) real -> complex unit vector e^{i phase}."""
@@ -58,6 +60,12 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
         # Ricci flow operator across the manifold dimension
         self.ricci_flow = nn.Parameter(torch.eye(self.D))
+        self.q_memory_slots = nn.Parameter(qnormalize(torch.randn(self.M, 4)))
+        self.spin_conn = nn.Sequential(
+            nn.Linear(self.D * 3, 64), nn.SiLU(), nn.Linear(64, 3)
+        )
+        self.geometry_merger = GeometryMerger(init_tau=10.0)
+        self.memory_curvature = nn.Parameter(torch.zeros(self.M))
 
         # Projections
         self.input_projection  = nn.Sequential(nn.Linear(input_dim, self.D * 3), nn.LayerNorm(self.D * 3), nn.GELU())
@@ -96,6 +104,9 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.register_buffer('lb_top1_avg', torch.tensor(1.0))
         self.lb_momentum = 0.99
         self.lb_drop_ratio = 0.7  # fire if current < 0.7 * avg
+        self.hol_probe = HolonomyProbe(
+            lambda m: self.spin_conn(m.reshape(m.size(0), -1))
+        )
 
     @torch.no_grad()
     def _recompute_centroids(self, iters: int = 10):
@@ -210,6 +221,42 @@ class EnhancedHyperGeometricMemory(nn.Module):
         # Apply Ricci flow across D: z[b,s,:,q] = sum_e z[b,s,e,q] * R[e,d]
         z = torch.einsum('bseq,ed->bsdq', z, self.ricci_flow)  # (B,S,D,3)
         return z
+
+    def _query_quat_from_manifold(self, manifold_x):
+        # manifold_x: (..., D, 3) -> (..., 4)
+        v = manifold_x.mean(dim=-2)
+        ones = torch.ones_like(v[..., :1])
+        return qnormalize(torch.cat([ones, 0.1 * v], dim=-1))
+
+    def _parallel_transport_spin(self, q, manifold_x, dt=1.0):
+        lead_shape = manifold_x.shape[:-2]
+        feat = manifold_x.reshape(-1, self.D * 3)
+        omega = self.spin_conn(feat).view(*lead_shape, 3)
+        dq = qexp(dt * omega)
+        return qmul(q, dq)
+
+    @torch.no_grad()
+    def _update_spin_slots(self, q_query, indices):
+        # q_query: (B,S,4), indices: (B,S,K)
+        flat_idx = indices.reshape(-1)
+        cur = self.q_memory_slots.index_select(0, flat_idx)
+        q_rep = q_query.reshape(-1, 4).repeat_interleave(indices.size(-1), dim=0)
+        upd = qnormalize(qmul(cur, q_rep))
+        blended = qnormalize(0.9 * cur + 0.1 * upd)
+        self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
+
+    @torch.no_grad()
+    def holonomy_stats(self, manifold_x: torch.Tensor):
+        # manifold_x: (B,S,D,3) or (B,D,3)
+        if manifold_x.dim() == 4:
+            patch = manifold_x.reshape(-1, manifold_x.size(-2), manifold_x.size(-1))
+        elif manifold_x.dim() == 3:
+            patch = manifold_x
+        else:
+            raise ValueError(
+                f"Expected manifold_x with 3 or 4 dims, got {list(manifold_x.shape)}"
+            )
+        return self.hol_probe(patch)
 
     @torch.no_grad()
     def _fractal_cdist(self, q: torch.Tensor, k: torch.Tensor):
@@ -359,6 +406,8 @@ class EnhancedHyperGeometricMemory(nn.Module):
         B, S, _ = x.shape
         z = self.encode_to_manifold(x)           # (B,S,D,3)
         q = z.mean(dim=3)                        # (B,S,D)
+        q_query = self._query_quat_from_manifold(z)  # (B,S,4)
+        q_query = self._parallel_transport_spin(q_query, z)  # (B,S,4)
         M = self.active_slots
         k_active = self.keys[:M]
         dist = self._fractal_cdist(q, k_active)  # (B,S,M)
@@ -392,13 +441,22 @@ class EnhancedHyperGeometricMemory(nn.Module):
             K = min(M, max(K, int(self.K_base * 1.5)))
 
         dtop, itop = torch.topk(dist, K, dim=-1, largest=False)  # (B,S,K)
-        w = torch.softmax(-dtop, dim=-1)                         # (B,S,K)
+        d_warped = self.geometry_merger(
+            dist=dtop.reshape(B * S, K),
+            indices=itop.reshape(B * S, K),
+            slot_curv=self.memory_curvature,
+            q_query=q_query.reshape(B * S, 4),
+            q_memory=self.q_memory_slots,
+            context_stat=None,
+        ).view(B, S, K)
+        w = torch.softmax(-d_warped, dim=-1)                     # (B,S,K)
 
         self._record_usage(itop)
 
         if operation == 'write':
             lr_mult = 1.0 + (0.5 if any_fire else 0.0)
             self._holo_write(x, itop, w, lr_mult=lr_mult)
+            self._update_spin_slots(q_query, itop)
             return x
 
         holo_feat = self._holo_read(x, itop, w)                 # (B,S,2H)
