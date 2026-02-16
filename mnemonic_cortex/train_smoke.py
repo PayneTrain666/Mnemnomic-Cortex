@@ -44,6 +44,13 @@ def tiny_train_step(steps=5, device=None):
         nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
 
+        # Drive topology adaptation from a simple fitness proxy.
+        fitness = 1.0 / (1.0 + float(loss.detach().cpu()))
+        model.long_term_memory.evolve_topologies(
+            {"hg": fitness, "cgmn": fitness, "curved": fitness}
+        )
+        model.long_term_memory.mutate_curvatures(float(loss.detach().cpu()))
+
     return float(loss.detach().cpu())
 
 if __name__ == "__main__":
