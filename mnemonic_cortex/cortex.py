@@ -155,6 +155,20 @@ class EnhancedMnemonicCortex(nn.Module):
         metrics['forgetting_threshold'] = self.forgetting_threshold
         return metrics
 
+    @torch.no_grad()
+    def get_holonomy_stats(self, x: torch.Tensor):
+        """Diagnostics for latent spin holonomy in HG/CGMN paths."""
+        bsz, seq, _ = x.shape
+        hg_man = self.long_term_memory.hg.encode_to_manifold(x)
+        cg_man = self.long_term_memory.cgmn.manifold_projection(x).view(
+            bsz, seq, self.long_term_memory.cgmn.D, 3
+        )
+        cg_man = self.long_term_memory.cgmn._evolve(cg_man)
+        return {
+            "hg": self.long_term_memory.hg.holonomy_stats(hg_man),
+            "cgmn": self.long_term_memory.cgmn.holonomy_stats(cg_man),
+        }
+
     def save_checkpoint(self, path: str, version: str = '1.0'):
         """Save versioned checkpoint with explicit schema."""
         import torch
