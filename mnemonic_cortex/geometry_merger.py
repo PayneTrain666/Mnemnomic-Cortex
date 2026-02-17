@@ -4,46 +4,50 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .geometry_utils import qangle, qnormalize
+from .geometry_utils import (
+    fubini_study_batched,
+    lorentz_dist,
+    lorentz_lift,
+    qangle,
+    qnormalize,
+    sph_warp,
+)
 
 
-def sph_warp(dist: torch.Tensor, gamma: float = 0.9) -> torch.Tensor:
-    return (2.0 * torch.sin(0.5 * gamma * dist)).abs()
-
-
-def lorentz_lift(x: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
-    # x: [..., D] -> [..., D+1], on upper sheet hyperboloid.
-    sq = torch.sum(x * x, dim=-1, keepdim=True)
-    t = torch.sqrt(1.0 + sq + eps)
-    return torch.cat([t, x], dim=-1)
-
-
-def lorentz_dist(a: torch.Tensor, b: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
-    # Minkowski inner product: <a,b>_L = -a0*b0 + sum_i ai*bi
-    ip = -(a[..., :1] * b[..., :1]).sum(dim=-1) + (a[..., 1:] * b[..., 1:]).sum(dim=-1)
-    z = (-ip).clamp_min(1.0 + eps)
-    return torch.acosh(z)
-
-
-def fubini_study(q_complex: torch.Tensor, mem_complex: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
-    # q_complex: [B,C], mem_complex: [B,K,C] -> [B,K]
-    qn = q_complex / (q_complex.norm(dim=-1, keepdim=True).clamp_min(eps))
-    mn = mem_complex / (mem_complex.norm(dim=-1, keepdim=True).clamp_min(eps))
-    overlap = (qn.unsqueeze(1).conj() * mn).sum(dim=-1).abs().clamp(0.0, 1.0 - eps)
-    return torch.acos(overlap)
-
-
-class GeometryMergerV2(nn.Module):
+class GeometryMergerV3(nn.Module):
     """
-    Mix Euclidean / SPD / Lorentz / spherical / spin / Fubini-Study channels.
+    Like V2, but with:
+      - Conformal scalar omega(x): distance -> exp(omega) * distance (bounded)
+      - Small clamped micro-warp b
+      - Backward-compatible debug keys
     """
 
-    def __init__(self, q_dim: int, m_dim: int, spd_rank: int = 4, use_heat_kernel: bool = True):
+    def __init__(
+        self,
+        q_dim: int,
+        m_dim: int,
+        spd_rank: int = 4,
+        use_heat_kernel: bool = True,
+        micro_b: float = 0.02,
+        omega_max: float = 0.20,
+    ):
         super().__init__()
         self.use_heat = use_heat_kernel
+
         self.spd_rank = spd_rank
-        self.spd_L = None  # assigned by owner memory module
+        self.spd_L = None
         self.spd_eps = 1e-3
+
+        self.register_buffer("micro_b", torch.tensor(float(micro_b)))
+        self.register_buffer("micro_b_max", torch.tensor(0.05))
+        self.register_buffer("omega_max", torch.tensor(float(omega_max)))
+        self.register_buffer("temp_scale", torch.tensor(1.0))
+
+        self.omega_head = nn.Sequential(
+            nn.Linear(q_dim, 64),
+            nn.SiLU(),
+            nn.Linear(64, 1),
+        )
 
         self.gate = nn.Sequential(
             nn.Linear(6, 64),
@@ -51,6 +55,7 @@ class GeometryMergerV2(nn.Module):
             nn.Linear(64, 6),
             nn.Softmax(dim=-1),
         )
+        self.register_buffer("gate_bias", torch.zeros(6))
 
         self.t_head = nn.Sequential(
             nn.Linear(q_dim, 16),
@@ -58,18 +63,34 @@ class GeometryMergerV2(nn.Module):
             nn.Linear(16, 1),
             nn.Softplus(),
         )
-        self.phi = nn.Sequential(
-            nn.Linear(q_dim, 64),
-            nn.SiLU(),
-            nn.Linear(64, 1),
-            nn.Tanh(),
-        )
 
         self.spin_scale = nn.Parameter(torch.tensor(0.7))
-        self.local_beta = 0.10
+
+        self._last_debug = {
+            "w_avg": None,
+            "t_avg": None,
+            "phi_scale_avg": None,
+            "omega_avg": None,
+        }
+
+    @torch.no_grad()
+    def set_gate_bias(self, bias_vec: torch.Tensor):
+        self.gate_bias.copy_(bias_vec.to(self.gate_bias.device, self.gate_bias.dtype))
+
+    @torch.no_grad()
+    def set_temp_scale(self, s: float):
+        self.temp_scale.fill_(float(s))
+
+    @torch.no_grad()
+    def set_micro_b(self, b: float):
+        b = min(float(b), float(self.micro_b_max.item()))
+        self.micro_b.fill_(b)
+
+    @torch.no_grad()
+    def set_omega_max(self, max_abs: float):
+        self.omega_max.fill_(float(max_abs))
 
     def spd_distance(self, q_feat: torch.Tensor, mem_feat: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
-        # q_feat: [B,D], mem_feat:[M,D], indices:[B,K] -> [B,K]
         bsz, dim = q_feat.shape
         k = indices.size(1)
         m_sel = mem_feat.index_select(0, indices.reshape(-1)).view(bsz, k, dim)
@@ -78,12 +99,12 @@ class GeometryMergerV2(nn.Module):
             return torch.norm(q_feat.unsqueeze(1) - m_sel, dim=-1)
 
         l_sel = self.spd_L.index_select(0, indices.reshape(-1)).view(bsz, k, dim, self.spd_rank)
-        diff = (q_feat.unsqueeze(1) - m_sel).unsqueeze(-1)  # [B,K,D,1]
-        llt = torch.matmul(l_sel, l_sel.transpose(-1, -2))  # [B,K,D,D]
+        diff = (q_feat.unsqueeze(1) - m_sel).unsqueeze(-1)
+        llt = torch.matmul(l_sel, l_sel.transpose(-1, -2))
         eye = torch.eye(dim, device=q_feat.device, dtype=q_feat.dtype).view(1, 1, dim, dim)
         g = llt + self.spd_eps * eye
-        qf = torch.matmul(torch.matmul(diff.transpose(-2, -1), g), diff).squeeze(-1).squeeze(-1)
-        return torch.sqrt(qf.clamp_min(1e-12))
+        gdiff = torch.matmul(torch.matmul(diff.transpose(-2, -1), g), diff).squeeze(-1).squeeze(-1)
+        return torch.sqrt(gdiff.clamp_min(1e-12))
 
     def forward(
         self,
@@ -107,13 +128,13 @@ class GeometryMergerV2(nn.Module):
         slot_c = slot_c_all.index_select(0, indices.reshape(-1)).view(bsz, k)
 
         d_euc = base_dist
-        d_sph = sph_warp(base_dist, gamma=0.9)
         d_spd = self.spd_distance(q_feat, mem_feat, indices)
+        d_sph = sph_warp(base_dist, gamma=0.9)
 
-        q_l = lorentz_lift(q_feat)  # [B,D+1]
+        q_l = lorentz_lift(q_feat)
         m_sel = mem_feat.index_select(0, indices.reshape(-1)).view(bsz, k, -1)
-        m_l = lorentz_lift(m_sel)  # [B,K,D+1]
-        d_lor = lorentz_dist(q_l.unsqueeze(1).expand_as(m_l), m_l)
+        m_l = lorentz_lift(m_sel)
+        d_lor = lorentz_dist(q_l.unsqueeze(1), m_l)
 
         if (q_quat is not None) and (mem_quat is not None):
             qq = qnormalize(q_quat)
@@ -124,7 +145,7 @@ class GeometryMergerV2(nn.Module):
 
         if (q_complex is not None) and (mem_complex is not None):
             mc = mem_complex.index_select(0, indices.reshape(-1)).view(bsz, k, -1)
-            d_fs = fubini_study(q_complex, mc)
+            d_fs = fubini_study_batched(q_complex, mc)
         else:
             d_fs = torch.zeros_like(base_dist)
 
@@ -137,7 +158,13 @@ class GeometryMergerV2(nn.Module):
             s5 = d_lor.mean(dim=-1)
             gate_in = torch.stack([s0, s1, s2, s3, s4, s5], dim=-1)
 
-        w = self.gate(gate_in)  # [B,6]
+        w_int = self.gate(gate_in)
+        if torch.any(self.gate_bias != 0):
+            logits = (w_int + 1e-6).log() + self.gate_bias.view(1, -1)
+            w = torch.softmax(logits, dim=-1)
+        else:
+            w = w_int
+
         d_blend = (
             w[:, 0:1] * d_euc
             + w[:, 1:2] * d_spd
@@ -147,21 +174,32 @@ class GeometryMergerV2(nn.Module):
             + w[:, 5:6] * d_fs
         )
 
-        d_blend = d_blend * (1.0 + self.local_beta * torch.tanh(slot_c) * d_blend)
-        scale = torch.exp(0.5 * self.phi(q_feat).clamp(-2, 2))
-        d_final = d_blend * scale
+        b = self.micro_b.clamp_max(self.micro_b_max)
+        d_blend = d_blend * (1.0 + b * torch.tanh(slot_c) * d_blend)
 
-        if not return_weights:
-            return d_final
+        omega = self.omega_head(q_feat).clamp(-self.omega_max, self.omega_max)
+        conf_scale = torch.exp(omega)
+        d_final = d_blend * conf_scale
 
         if self.use_heat:
-            t = self.t_head(q_feat).clamp(1e-3, 0.3)
+            t = self.t_head(q_feat).clamp_min(1e-3) * self.temp_scale.clamp(0.25, 4.0)
             kx = torch.exp(-(d_final**2) / (4.0 * t))
             weights = kx / (kx.sum(dim=-1, keepdim=True) + 1e-9)
         else:
+            t = torch.ones_like(conf_scale)
             weights = F.softmax(-d_final, dim=-1)
-        return weights
+
+        with torch.no_grad():
+            self._last_debug = {
+                "w_avg": w.mean(dim=0).detach().cpu(),
+                "t_avg": t.mean().item(),
+                "phi_scale_avg": conf_scale.mean().item(),
+                "omega_avg": omega.mean().item(),
+            }
+
+        return weights if return_weights else d_final
 
 
-# Backward-compat alias for previous imports.
-GeometryMerger = GeometryMergerV2
+# Backward-compat aliases.
+GeometryMergerV2 = GeometryMergerV3
+GeometryMerger = GeometryMergerV3

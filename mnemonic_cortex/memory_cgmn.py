@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from .utils import fast_pairwise_l2
-from .geometry_merger import GeometryMergerV2
+from .geometry_merger import GeometryMergerV3
 from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 
 class EnhancedCGMNMemory(nn.Module):
@@ -30,7 +30,7 @@ class EnhancedCGMNMemory(nn.Module):
         self.spin_conn = nn.Sequential(
             nn.Linear(self.D * 3, 64), nn.SiLU(), nn.Linear(64, 3)
         )
-        self.geometry_merger = GeometryMergerV2(
+        self.geometry_merger = GeometryMergerV3(
             q_dim=self.D, m_dim=self.D, spd_rank=4, use_heat_kernel=True
         )
         self.spd_L = nn.Parameter(torch.zeros(self.M, self.D, 4))

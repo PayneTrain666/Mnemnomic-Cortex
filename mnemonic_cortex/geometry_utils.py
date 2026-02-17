@@ -34,6 +34,35 @@ def _d_hyp(d, slot_c, alpha=0.6):
 def _d_sph(d, gamma=0.9):
     return (2.0 * torch.sin(0.5 * gamma * d)).abs()
 
+
+def lorentz_lift(x, eps=1e-6):
+    # x:[...,D] -> X:[...,D+1] on H^D
+    x_norm2 = (x * x).sum(dim=-1, keepdim=True)
+    x0 = torch.sqrt(1.0 + x_norm2 + eps)
+    return torch.cat([x0, x], dim=-1)
+
+
+def mink_dot(x, y):
+    # Lorentzian dot, time-like 0
+    return -x[..., 0] * y[..., 0] + (x[..., 1:] * y[..., 1:]).sum(-1)
+
+
+def lorentz_dist(x, y, eps=1e-6):
+    z = (-mink_dot(x, y)).clamp_min(1.0 + eps)
+    return torch.acosh(z)
+
+
+def sph_warp(d, gamma=0.9):
+    return (2.0 * torch.sin(0.5 * gamma * d)).abs()
+
+
+def fubini_study_batched(psi, phi):
+    # psi:[B,d] complex; phi:[B,K,d] complex -> [B,K]
+    psi = psi / (psi.abs().pow(2).sum(-1, keepdim=True).sqrt() + 1e-9)
+    phi = phi / (phi.abs().pow(2).sum(-1, keepdim=True).sqrt() + 1e-9)
+    ip = (psi.unsqueeze(1).conj() * phi).sum(-1).abs().clamp(0.0, 1.0 - 1e-6)
+    return torch.arccos(ip)
+
 class HolonomyProbe(nn.Module):
     """Diagnostics-only holonomy estimator over tiny latent loops."""
 

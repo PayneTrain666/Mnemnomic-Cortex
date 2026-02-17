@@ -53,6 +53,13 @@ class EnhancedTripleHybridMemory(nn.Module):
                     fitness=float(fitness_by_subsystem[name]),
                     subsystem=name,
                 )
+                # Apply a small channel-prior nudge to each merger.
+                if name == "hg":
+                    self.topology_manager.steer_merger(self.hg.geometry_merger, subsystem="hg")
+                elif name == "cgmn":
+                    self.topology_manager.steer_merger(self.cgmn.geometry_merger, subsystem="cgmn")
+                else:
+                    self.topology_manager.steer_merger(self.curved.geometry_merger, subsystem="curved")
         return out
 
     @torch.no_grad()
@@ -75,6 +82,10 @@ class EnhancedTripleHybridMemory(nn.Module):
                 subsystem="curved",
             )
         )
+        # Mutate SPD factors with the same topology mode, gently.
+        self.hg.spd_L.data.copy_(self.topology_manager.mutate_tensor_like(self.hg.spd_L.data, subsystem="hg"))
+        self.cgmn.spd_L.data.copy_(self.topology_manager.mutate_tensor_like(self.cgmn.spd_L.data, subsystem="cgmn"))
+        self.curved.spd_L.data.copy_(self.topology_manager.mutate_tensor_like(self.curved.spd_L.data, subsystem="curved"))
 
     def _fuse(self, rhg, rcg, rcv):
         if self.fusion_mode == 'cross_attn':
