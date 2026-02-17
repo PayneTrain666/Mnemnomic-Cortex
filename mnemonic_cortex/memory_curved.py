@@ -3,7 +3,7 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .geometry_merger import GeometryMergerV2
+from .geometry_merger import GeometryMergerV3
 from .geometry_utils import qexp, qmul, qnormalize
 
 
@@ -36,7 +36,7 @@ class EnhancedCurvedMemory(nn.Module):
         self.spin_conn = nn.Sequential(
             nn.Linear(self.H, 64), nn.SiLU(), nn.Linear(64, 3)
         )
-        self.geometry_merger = GeometryMergerV2(
+        self.geometry_merger = GeometryMergerV3(
             q_dim=self.H, m_dim=self.H, spd_rank=4, use_heat_kernel=True
         )
         self.spd_L = nn.Parameter(torch.zeros(self.M, self.H, 4))
