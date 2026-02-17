@@ -24,6 +24,8 @@ def main():
         optim.zero_grad()
         loss.backward()
         optim.step()
+        if hasattr(model, "topology_step"):
+            model.topology_step(loss.item())
     torch.cuda.synchronize() if args.device.startswith('cuda') else None
     dt=time.time()-t0
     print(f"{args.model} - {args.steps} steps: {dt:.2f}s  => {(dt/args.steps):.4f}s/step")

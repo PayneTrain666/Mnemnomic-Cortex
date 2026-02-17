@@ -34,6 +34,8 @@ def train_epoch(model, loader, criterion, opt, device):
         opt.zero_grad()
         loss.backward()
         opt.step()
+        if hasattr(model, "topology_step"):
+            model.topology_step(loss.item())
         total_loss += loss.item()
     return total_loss / len(loader)
 

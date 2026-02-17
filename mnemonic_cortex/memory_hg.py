@@ -6,6 +6,8 @@ import torch.distributed as dist
 from .utils import fast_pairwise_l2
 from .geometry_merger import GeometryMergerV3
 from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
+from .holo_head import HoloHead
+from .lightbulb_controller import LightbulbController
 
 def _complex_from_phase(phase: torch.Tensor) -> torch.Tensor:
     """phase: (..., D) real -> complex unit vector e^{i phase}."""
@@ -80,6 +82,31 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.qc_head = nn.Sequential(
             nn.Linear(self.D, 32), nn.SiLU(), nn.Linear(32, 2 * self.qc_dim)
         )
+        self.holo = HoloHead(
+            dim=self.D,
+            num_slots=self.M,
+            temperature=1.0,
+            phase_noise_std=0.0,
+            lightbulb_thresh=0.92,
+            explosive_temp=0.6,
+            explosive_alpha=0.6,
+        )
+        self.qhm_alpha_head = nn.Sequential(
+            nn.Linear(self.D, 32), nn.SiLU(), nn.Linear(32, 1), nn.Sigmoid()
+        )
+        self.lb_ctrl = LightbulbController(
+            z_thresh_on=2.0,
+            z_thresh_off=1.2,
+            cooldown_steps=6,
+            max_stage2_steps=2,
+            budget_per_100=6,
+            prefocus_temp_mult=0.87,
+            explosive_temp_mult=0.55,
+            prefocus_alpha_boost=0.12,
+            explosive_alpha_boost=0.42,
+        )
+        self.qhm_enabled = True
+        self.qhm_alpha_override = None
 
         # Projections
         self.input_projection  = nn.Sequential(nn.Linear(input_dim, self.D * 3), nn.LayerNorm(self.D * 3), nn.GELU())
@@ -258,6 +285,25 @@ class EnhancedHyperGeometricMemory(nn.Module):
         upd = qnormalize(qmul(cur, q_rep))
         blended = qnormalize(0.9 * cur + 0.1 * upd)
         self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
+
+    def _blend_qhm_weights(self, q_feat, indices, w_geo):
+        # q_feat: [N,D], indices: [N,K], w_geo: [N,K]
+        if not self.qhm_enabled:
+            return w_geo
+        qhm = self.holo.weights(q_feat, indices)
+        ctrl = self.lb_ctrl(qhm["resonance"], qhm["coherence"], qhm["weights"])
+        w_geo_sharp = torch.softmax(
+            torch.log(w_geo.clamp_min(1e-9)) / max(1e-6, float(ctrl["temp_mult"])),
+            dim=-1,
+        )
+        if self.qhm_alpha_override is None:
+            alpha = 0.5 * (qhm["alpha"] + self.qhm_alpha_head(q_feat)) + float(ctrl["alpha_boost"])
+        else:
+            alpha = torch.full_like(qhm["alpha"], float(self.qhm_alpha_override)) + float(
+                ctrl["alpha_boost"]
+            )
+        alpha = alpha.clamp(0.0, float(ctrl["alpha_max"]))
+        return (1 - alpha) * w_geo_sharp + alpha * qhm["weights"]
 
     @torch.no_grad()
     def holonomy_stats(self, manifold_x: torch.Tensor):
@@ -470,6 +516,12 @@ class EnhancedHyperGeometricMemory(nn.Module):
             q_complex=q_complex,
             mem_complex=self.mem_complex[:M],
             return_weights=True,
+        ).view(B, S, K)
+        self.holo.renorm_slots()
+        w = self._blend_qhm_weights(
+            q_feat,
+            itop.reshape(B * S, K),
+            w.reshape(B * S, K),
         ).view(B, S, K)
 
         self._record_usage(itop)

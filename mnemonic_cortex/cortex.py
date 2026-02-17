@@ -4,6 +4,7 @@ from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
 from .lightbulb import LightbulbDetector, ExplosiveRecallScaler
+from .topology_manager_v2 import TopologyManagerV2
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -62,12 +63,24 @@ class EnhancedMnemonicCortex(nn.Module):
             nn.Linear(64, 1),
             nn.Sigmoid()
         )
+        self.topology = TopologyManagerV2(default_policy="default")
+        self.topology.apply_to_model(self)
 
     # ---------------- Helpers ----------------
     def enable_energy_mode(self, enable: bool = True):
         self.energy_mode = enable
         self.long_term_memory.enable_energy_efficient_mode(enable)
         self.working_memory.enable_energy_efficient_mode(enable)
+
+    @torch.no_grad()
+    def apply_topology_policy(self, name: str):
+        """Switch active topology policy and apply it immediately."""
+        self.topology.activate_policy(name, model=self)
+
+    @torch.no_grad()
+    def topology_step(self, loss_value: float):
+        """Call once per optimizer step with scalar loss."""
+        self.topology.step(self, loss_value)
 
     def _ste_write_gate(self, x):
         """Compute write gate with straight-through estimator.

@@ -35,6 +35,8 @@ def main():
                 loss = crit(logits.view(-1, vocab_size), tgt.view(-1))
                 if train:
                     opt.zero_grad(); loss.backward(); opt.step()
+                    if hasattr(model, "topology_step"):
+                        model.topology_step(loss.item())
                 total_loss += loss.item()*tgt.numel()
                 ntok += tgt.numel()
         return math.exp(total_loss/ntok)

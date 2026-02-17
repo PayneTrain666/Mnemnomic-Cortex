@@ -5,6 +5,8 @@ import torch.nn.functional as F
 
 from .geometry_merger import GeometryMergerV3
 from .geometry_utils import qexp, qmul, qnormalize
+from .holo_head import HoloHead
+from .lightbulb_controller import LightbulbController
 
 
 class EnhancedCurvedMemory(nn.Module):
@@ -52,6 +54,31 @@ class EnhancedCurvedMemory(nn.Module):
         self.qc_head = nn.Sequential(
             nn.Linear(self.H, 32), nn.SiLU(), nn.Linear(32, 2 * self.qc_dim)
         )
+        self.holo = HoloHead(
+            dim=self.H,
+            num_slots=self.M,
+            temperature=1.0,
+            phase_noise_std=0.0,
+            lightbulb_thresh=0.92,
+            explosive_temp=0.55,
+            explosive_alpha=0.65,
+        )
+        self.qhm_alpha_head = nn.Sequential(
+            nn.Linear(self.H, 32), nn.SiLU(), nn.Linear(32, 1), nn.Sigmoid()
+        )
+        self.lb_ctrl = LightbulbController(
+            z_thresh_on=2.0,
+            z_thresh_off=1.2,
+            cooldown_steps=6,
+            max_stage2_steps=2,
+            budget_per_100=6,
+            prefocus_temp_mult=0.9,
+            explosive_temp_mult=0.55,
+            prefocus_alpha_boost=0.12,
+            explosive_alpha_boost=0.45,
+        )
+        self.qhm_enabled = True
+        self.qhm_alpha_override = None
 
         self.register_buffer("temperature", torch.tensor(1.0))
 
@@ -144,6 +171,24 @@ class EnhancedCurvedMemory(nn.Module):
         blended = qnormalize(0.9 * cur + 0.1 * upd)
         self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
 
+    def _blend_qhm_weights(self, q_feat, indices, w_geo):
+        if not self.qhm_enabled:
+            return w_geo
+        qhm = self.holo.weights(q_feat, indices)
+        ctrl = self.lb_ctrl(qhm["resonance"], qhm["coherence"], qhm["weights"])
+        w_geo_sharp = torch.softmax(
+            torch.log(w_geo.clamp_min(1e-9)) / max(1e-6, float(ctrl["temp_mult"])),
+            dim=-1,
+        )
+        if self.qhm_alpha_override is None:
+            alpha = 0.5 * (qhm["alpha"] + self.qhm_alpha_head(q_feat)) + float(ctrl["alpha_boost"])
+        else:
+            alpha = torch.full_like(qhm["alpha"], float(self.qhm_alpha_override)) + float(
+                ctrl["alpha_boost"]
+            )
+        alpha = alpha.clamp(0.0, float(ctrl["alpha_max"]))
+        return (1 - alpha) * w_geo_sharp + alpha * qhm["weights"]
+
     @torch.no_grad()
     def update_memory(self, x, importance, indices):
         enc = self.encoder(x).mean(dim=1)                                # (B,H)
@@ -213,6 +258,8 @@ class EnhancedCurvedMemory(nn.Module):
             mem_complex=self.mem_complex[:m],
             return_weights=True,
         )
+        self.holo.renorm_slots()
+        geom_w = self._blend_qhm_weights(query, idx, geom_w)
         self._record_usage(idx)
         act = self.associative_activation(query)                         # (B,M_active)
         comb = torch.softmax(torch.log(geom_w.clamp_min(1e-9)) + act.gather(1, idx), dim=-1)
