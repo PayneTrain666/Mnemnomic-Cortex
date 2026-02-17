@@ -1,10 +1,24 @@
 import torch
 import torch.nn as nn
+from typing import Dict
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
 from .lightbulb import LightbulbDetector, ExplosiveRecallScaler
 from .topology_manager_v2 import TopologyManagerV2
+from .consolidated_lexicon import ConsolidatedLexicon
+from .cms_ops import (
+    CMSRecordLogger,
+    dump_cpg_shards,
+    load_cpg_shards_into_lexicon,
+    run_cms_consolidation_ema,
+)
+from .consolidation_broker import ConsolidationBroker
+from .ahg import AHGConfig, AntiHallucinationGuard
+from .config_loader import apply_config_to_broker, load_yaml_config
+from .cps import ConsolidatedParamStore, UnifiedParamCfg
+from .cps_fuser import CPSFuser, FuserCfg
+from .diagnostics import ModelDiagnostics
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -17,10 +31,13 @@ class EnhancedMnemonicCortex(nn.Module):
                  sensory_buffer_size: int = 5,
                  wm_slots: int = 7, wm_slot_dim: int = 256,
                  ltm_hg_slots: int = 2048, ltm_cgmn_slots: int = 1024, ltm_curved_slots: int = 512,
-                 fusion: str = 'weighted'):
+                 fusion: str = 'weighted',
+                 cms_vocab_size: int = 0,
+                 cms_senses: int = 3):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self._ctx_heads = self._pick_num_heads(input_dim)
 
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
         self.working_memory = EnhancedCurvedMemory(input_dim, hidden_dim=wm_slot_dim, mem_slots=wm_slots)
@@ -30,6 +47,22 @@ class EnhancedMnemonicCortex(nn.Module):
 
         # Context projection (kept simple: same dim by default)
         self.ctx_proj = nn.Linear(input_dim, input_dim)
+        # Transformer-style context processors for stronger sequence conditioning.
+        self.ctx_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
+        self.ctx_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=input_dim,
+                nhead=self._ctx_heads,
+                dim_feedforward=max(128, input_dim * 4),
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=1,
+        )
+        self.ctx_norm = nn.LayerNorm(input_dim)
+        self.query_ctx_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
+        self.query_norm = nn.LayerNorm(input_dim)
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
@@ -65,6 +98,27 @@ class EnhancedMnemonicCortex(nn.Module):
         )
         self.topology = TopologyManagerV2(default_policy="default")
         self.topology.apply_to_model(self)
+        self.consolidated_lexicon = None
+        self.consolidation_broker = None
+        self.ahg = AntiHallucinationGuard(AHGConfig())
+        self.last_ahg_decision = None
+        self.last_cms_aux = None
+        self.last_cps_aux = None
+        self.cms_logger = None
+        self.cps = ConsolidatedParamStore(
+            default_cfg=UnifiedParamCfg(d_euclid=input_dim, d_hyp=64, d_spher=64, d_fisher=64, d_phase=32)
+        )
+        self.cps_fuser = CPSFuser(FuserCfg(d_model=input_dim))
+        self.diagnostics = ModelDiagnostics(enabled=False)
+        if int(cms_vocab_size) > 0:
+            self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
 
     # ---------------- Helpers ----------------
     def enable_energy_mode(self, enable: bool = True):
@@ -81,6 +135,202 @@ class EnhancedMnemonicCortex(nn.Module):
     def topology_step(self, loss_value: float):
         """Call once per optimizer step with scalar loss."""
         self.topology.step(self, loss_value)
+
+    def enable_consolidated_lexicon(
+        self,
+        vocab_size: int,
+        senses: int = 3,
+        d_hyper: int = 32,
+        q_complex: int = 8,
+        d_euclid: int = 16,
+        d_pron: int = 12,
+        d_char: int = 16,
+        conformal_b: float = 0.02,
+    ):
+        """Attach a sense-aware consolidated lexicon for token-level fusion."""
+        self.consolidated_lexicon = ConsolidatedLexicon(
+            vocab_size=vocab_size,
+            model_dim=self.input_dim,
+            senses=senses,
+            d_hyper=d_hyper,
+            q_complex=q_complex,
+            d_euclid=d_euclid,
+            d_pron=d_pron,
+            d_char=d_char,
+            conformal_b=conformal_b,
+            context_dim=self.input_dim,
+        )
+        return self
+
+    def enable_consolidation_broker(
+        self,
+        vocab_size: int,
+        store_configs: dict = None,
+        config_path: str = "cm_config.yaml",
+    ):
+        """
+        Attach a multi-store CMS broker (CRS/SKS/CAS/PSS) for intent routing.
+        """
+        self.consolidation_broker = ConsolidationBroker(
+            vocab_size=vocab_size,
+            model_dim=self.input_dim,
+            store_configs=store_configs,
+        )
+        try:
+            gcfg = load_yaml_config(config_path)
+            apply_config_to_broker(self.consolidation_broker, gcfg)
+            self.ahg = AntiHallucinationGuard(gcfg.ahg)
+        except Exception:
+            # Keep defaults if config is not present or invalid.
+            pass
+        return self
+
+    def enable_ahg(self, cfg: AHGConfig = None):
+        self.ahg = AntiHallucinationGuard(cfg or AHGConfig())
+        return self
+
+    def enable_diagnostics(
+        self,
+        enabled: bool = True,
+        log_path: str = None,
+        flush_every: int = 100,
+    ):
+        self.diagnostics.configure(enabled=enabled, log_path=log_path, flush_every=flush_every)
+        return self
+
+    def flush_diagnostics(self):
+        return self.diagnostics.flush()
+
+    def enable_cms_logger(
+        self,
+        out_dir: str = "cms_logs",
+        max_buffer: int = 100000,
+        sample_rate: float = 0.1,
+    ):
+        self.cms_logger = CMSRecordLogger(
+            out_dir=out_dir, max_buffer=max_buffer, sample_rate=sample_rate
+        )
+        return self
+
+    def flush_cms_logger(self):
+        if self.cms_logger is None:
+            return None
+        return self.cms_logger.flush()
+
+    @torch.no_grad()
+    def run_cms_consolidation_ema(self, records, ema: float = 0.9):
+        if self.consolidated_lexicon is None:
+            return
+        run_cms_consolidation_ema(self.consolidated_lexicon, records, ema=ema)
+
+    def save_cms_shards(
+        self,
+        out_dir: str,
+        shard_size: int = 4096,
+        quantize: bool = False,
+    ):
+        if self.consolidated_lexicon is None:
+            return []
+        return dump_cpg_shards(
+            self.consolidated_lexicon,
+            out_dir=out_dir,
+            shard_size=shard_size,
+            quantize=quantize,
+        )
+
+    @torch.no_grad()
+    def load_cms_shards(self, shard_dir: str, keys=None):
+        if self.consolidated_lexicon is None:
+            return
+        load_cpg_shards_into_lexicon(self.consolidated_lexicon, shard_dir=shard_dir, keys=keys)
+
+    def get_consolidated_parameter_groups(
+        self,
+        base_lr: float = 1e-3,
+        assoc_lr_scale: float = 1.0,
+        routing_lr_scale: float = 1.0,
+        weight_decay: float = 0.0,
+    ):
+        """Return logically grouped CMS params for optimizers."""
+        if self.consolidated_lexicon is None:
+            return []
+        return self.consolidated_lexicon.build_optimizer_param_groups(
+            base_lr=base_lr,
+            assoc_lr_scale=assoc_lr_scale,
+            routing_lr_scale=routing_lr_scale,
+            weight_decay=weight_decay,
+        )
+
+    def _apply_consolidated_memory(
+        self,
+        sensory_input,
+        token_ids,
+        context_features=None,
+        consolidation_intent: str = "auto",
+    ):
+        if (self.consolidated_lexicon is None and self.consolidation_broker is None) or token_ids is None:
+            return sensory_input
+        if token_ids.shape[:2] != sensory_input.shape[:2]:
+            raise ValueError(
+                f"token_ids shape {list(token_ids.shape)} must match sensory_input batch/seq "
+                f"{list(sensory_input.shape[:2])}"
+            )
+        bsz, seq, dim = sensory_input.shape
+        flat_ids = token_ids.reshape(-1).long()
+        flat_base = sensory_input.reshape(-1, dim)
+        if context_features is None:
+            ctx = sensory_input.mean(dim=1, keepdim=True).expand(-1, seq, -1)
+            flat_ctx = ctx.reshape(-1, dim)
+        else:
+            if context_features.shape[:2] != sensory_input.shape[:2]:
+                raise ValueError(
+                    f"context_features shape {list(context_features.shape)} must match sensory_input "
+                    f"batch/seq {list(sensory_input.shape[:2])}"
+                )
+            flat_ctx = context_features.reshape(-1, context_features.size(-1))
+        if self.consolidation_broker is not None:
+            fused, baux = self.consolidation_broker.route_fuse(
+                flat_ids,
+                flat_base,
+                flat_ctx,
+                intent=consolidation_intent,
+            )
+            primary = baux["selected_store"]
+            aux = baux["stores"][primary]
+            aux["broker"] = baux
+            self.last_cms_aux = aux
+            self.diagnostics.log(
+                "cms_broker_route",
+                {
+                    "intent": consolidation_intent,
+                    "selected_store": primary,
+                },
+            )
+        else:
+            fused, _, aux = self.consolidated_lexicon(flat_ids, flat_base, flat_ctx)
+            self.last_cms_aux = aux
+            self.diagnostics.log("cms_single_store", {"intent": consolidation_intent})
+
+        # Optional CPS fusion: token-keyed polymorphic unified parameter overlay.
+        cps_fused = []
+        cps_loss = fused.new_tensor(0.0)
+        for tid in flat_ids.tolist():
+            up = self.cps.ensure(f"token:{int(tid)}")
+            v, loss = self.cps_fuser.fuse(up.view())
+            cps_fused.append(v)
+            cps_loss = cps_loss + loss
+        if cps_fused:
+            cps_fused = torch.stack(cps_fused, dim=0).to(fused.device, fused.dtype)
+            fused = 0.85 * fused + 0.15 * cps_fused
+            cps_loss = cps_loss / max(1, len(cps_fused))
+            self.last_cps_aux = {"agree_loss": cps_loss}
+            aux["cps"] = self.last_cps_aux
+            self.diagnostics.record_scalar("cps_agree_loss", float(cps_loss.detach().item()))
+            self.diagnostics.log("cps_fusion", {"count": int(len(cps_fused))})
+
+        if self.cms_logger is not None:
+            self.cms_logger.log_from_aux(flat_ids, aux)
+        return fused.view(bsz, seq, dim)
 
     def _ste_write_gate(self, x):
         """Compute write gate with straight-through estimator.
@@ -107,7 +357,12 @@ class EnhancedMnemonicCortex(nn.Module):
 
     def process_sensory_input(self, sensory_input):
         self.sensory_buffer.update(sensory_input)
-        return self.sensory_buffer.attention_filter(sensory_input)
+        base = self.sensory_buffer.attention_filter(sensory_input)
+        attn_out, _ = self.ctx_attn(base, base, base, need_weights=False)
+        enc_out = self.ctx_encoder(base)
+        out = self.ctx_norm(base + 0.5 * attn_out + 0.5 * enc_out)
+        self.diagnostics.record_scalar("sensory_norm", float(out.norm(dim=-1).mean().item()))
+        return out
 
     def encode_memory(self, info, context, mtype):
         B,S,d = info.shape
@@ -133,6 +388,37 @@ class EnhancedMnemonicCortex(nn.Module):
         B,S,d = cue.shape
         ctx = self._tile_context(context, S)
         c = (cue + ctx) * 0.5
+        qctx, _ = self.query_ctx_attn(c, ctx, ctx, need_weights=False)
+        c = self.query_norm(c + qctx)
+
+        if self.consolidation_broker is not None and self.ahg is not None:
+            query = c.mean(dim=1)
+            bdiag = self.consolidation_broker.route_read(query, intent="auto", k=8)
+            xdiag = self.consolidation_broker.cross_store_diagnostics(query, k=8)
+            decision = self.ahg.decide(bdiag, xdiag)
+            self.last_ahg_decision = {
+                "action": decision.action,
+                "reason": decision.reason,
+                "scores": decision.scores,
+            }
+            self.diagnostics.log(
+                "ahg_decision",
+                {
+                    "action": decision.action,
+                    "strategy_in": strategy,
+                    "proto": decision.scores.get("proto", -1.0),
+                    "fisher": decision.scores.get("fisher", -1.0),
+                    "agree": decision.scores.get("agree", -1.0),
+                },
+            )
+            if decision.action == "explosive":
+                recall_boost = max(recall_boost, 0.65)
+            elif decision.action == "refine":
+                strategy = "direct"
+            elif decision.action == "ask":
+                # conservative fallback answer vector from context only
+                z = torch.zeros(context.size(0), 256, device=context.device, dtype=context.dtype)
+                return self.retrieval(torch.cat([z, context], dim=-1))
 
         if strategy == 'direct':
             r = self.long_term_memory(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
@@ -144,6 +430,8 @@ class EnhancedMnemonicCortex(nn.Module):
             r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
 
         cue_vec = self.r_proj(r.mean(dim=1))
+        self.diagnostics.record_scalar("recall_boost", float(recall_boost))
+        self.diagnostics.log("retrieve_path", {"strategy": strategy})
         return self.retrieval(torch.cat([cue_vec, context], dim=-1))
 
     @torch.no_grad()
@@ -152,6 +440,25 @@ class EnhancedMnemonicCortex(nn.Module):
         th = self.forgetting_threshold if threshold is None else float(threshold)
         self.long_term_memory.consolidate_unused(th)
         self.working_memory.memory_importance.mul_(0.999)
+        self.diagnostics.log("consolidate_memories", {"threshold": th})
+        if self.consolidation_broker is not None:
+            try:
+                hg = self.long_term_memory.hg.output_projection(self.long_term_memory.hg.values.detach())
+                cg = self.long_term_memory.cgmn.output_projection(self.long_term_memory.cgmn.memory_slots.detach())
+                cv = self.long_term_memory.curved.decoder(self.long_term_memory.curved.memory_slots.detach())
+                items = torch.cat([hg, cg, cv], dim=0)
+                metas = (
+                    [{"domain": "reasoning", "tags": ["hg"]}] * hg.size(0)
+                    + [{"domain": "reasoning", "tags": ["cgmn"]}] * cg.size(0)
+                    + [{"domain": "reasoning", "tags": ["curved"]}] * cv.size(0)
+                )
+                self.consolidation_broker.unify_and_route_write(items, metas, domain="reasoning")
+                self.diagnostics.log(
+                    "unify_and_route_write",
+                    {"items": int(items.size(0)), "domain": "reasoning"},
+                )
+            except Exception:
+                pass
 
     def get_metrics(self):
         """Collect diagnostic metrics from all components."""
@@ -163,6 +470,18 @@ class EnhancedMnemonicCortex(nn.Module):
         metrics.update(self.long_term_memory.cgmn.get_metrics())
         metrics.update(self.long_term_memory.curved.get_metrics())
         metrics.update(self.working_memory.get_metrics())
+        if self.consolidation_broker is not None:
+            b = self.consolidation_broker.get_metrics()
+            for k, v in b.items():
+                for kk, vv in v.items():
+                    metrics[f"broker_{k}_{kk}"] = vv
+        if self.last_ahg_decision is not None:
+            metrics["ahg_last_action"] = self.last_ahg_decision.get("action", "none")
+        dsum = self.diagnostics.summary()
+        metrics["diag_enabled"] = float(1.0 if dsum.get("enabled") else 0.0)
+        metrics["diag_events_buffered"] = float(dsum.get("events_buffered", 0))
+        for k, v in dsum.get("ema", {}).items():
+            metrics[f"diag_ema_{k}"] = float(v)
         # Cortex-level
         metrics['energy_mode'] = self.energy_mode
         metrics['forgetting_threshold'] = self.forgetting_threshold
@@ -267,7 +586,24 @@ class EnhancedMnemonicCortex(nn.Module):
         return loss
 
     # ---------------- Forward ----------------
-    def forward(self, sensory_input, context, operation='process', return_aux_losses=False):
+    def forward(
+        self,
+        sensory_input,
+        context,
+        operation='process',
+        return_aux_losses=False,
+        token_ids=None,
+        use_consolidated_memory=False,
+        context_features=None,
+        consolidation_intent="auto",
+    ):
+        if use_consolidated_memory and token_ids is not None:
+            sensory_input = self._apply_consolidated_memory(
+                sensory_input,
+                token_ids,
+                context_features=context_features,
+                consolidation_intent=consolidation_intent,
+            )
         fire = self.lightbulb(sensory_input)                # (B,)
         temp = self.temp_scaler(fire)                       # (B,) scalars
         self.working_memory.set_temperature(temp)
@@ -275,11 +611,13 @@ class EnhancedMnemonicCortex(nn.Module):
 
         if operation == 'process':
             filtered = self.process_sensory_input(sensory_input)          # (B,S,d)
+            self.diagnostics.record_scalar("fire_rate", float(fire.float().mean().item()))
 
             # --- Working-memory write phase ----------------------------------
             # Store filtered sensory input into WM slots with importance gating.
             imp = self.importance_predictor(filtered.mean(dim=1))         # (B,1)
             self.working_memory(filtered, operation='write', importance=imp)
+            self.diagnostics.record_scalar("importance_mean", float(imp.mean().item()))
 
             # --- Working-memory read phase -----------------------------------
             wm_out = self.working_memory(filtered, operation='read')      # (B,S,d)
@@ -289,6 +627,7 @@ class EnhancedMnemonicCortex(nn.Module):
                 # Learned write gate with STE
                 gate, gate_prob = self._ste_write_gate(filtered)  # (B,1)
                 scaled = wm_out * imp.unsqueeze(-1)  # (B,S,d)
+                self.diagnostics.record_scalar("write_gate_prob", float(gate_prob.mean().item()))
                 
                 # Only encode if gate=1 (batched conditional write)
                 if gate.sum() > 0:  # at least one sample wants to write
@@ -301,6 +640,7 @@ class EnhancedMnemonicCortex(nn.Module):
             if return_aux_losses and self.training:
                 recall_loss = self.compute_recall_loss(filtered, context)
                 gate, gate_prob = self._ste_write_gate(filtered)
+                self.diagnostics.record_scalar("recall_loss", float(recall_loss.detach().item()))
                 return wm_out, {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
             
             return wm_out

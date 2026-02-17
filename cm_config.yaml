@@ -1,0 +1,25 @@
+stores:
+  CRS:
+    senses: 3
+    geometries: {hyperbolic: 0.6, cproj: 0.25, fisher: 0.15}
+    conformal_b: 0.04
+  SKS:
+    senses: 4
+    geometries: {hyperbolic: 0.4, cproj: 0.35, fisher: 0.25}
+    conformal_b: 0.03
+  CAS:
+    senses: 4
+    geometries: {hyperbolic: 0.3, cproj: 0.5, fisher: 0.2}
+    conformal_b: 0.02
+  PSS:
+    senses: 3
+    geometries: {hyperbolic: 0.4, cproj: 0.2, fisher: 0.4}
+    conformal_b: 0.03
+
+ahg:
+  proto_tau: 0.45
+  fisher_tau: 0.60
+  phase_rho: 0.10
+  agree_tau: 0.15
+  ask_on_uncertain: true
+  refuse_on_high_risk: true

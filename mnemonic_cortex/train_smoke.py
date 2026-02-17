@@ -8,14 +8,21 @@ def smoke_run(device=None):
     seed_everything(42)
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     B,S,d_in,d_out = 8, 5, 128, 128
-    cortex = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out, fusion='cross_attn').to(device)
+    cortex = EnhancedMnemonicCortex(
+        input_dim=d_in,
+        output_dim=d_out,
+        fusion='cross_attn',
+        cms_vocab_size=4096,
+        cms_senses=3,
+    ).to(device)
     enable_tensor_cores(cortex); optimize_memory_access(cortex)
 
     x = torch.randn(B, S, d_in, device=device)
     ctx = torch.randn(B, d_in, device=device)
+    token_ids = torch.randint(0, 4096, (B, S), device=device)
 
-    y_proc = cortex(x, ctx, operation='process')    # (B,S,d_in)
-    y_ret  = cortex(x, ctx, operation='retrieve')   # (B,d_in)
+    y_proc = cortex(x, ctx, operation='process', token_ids=token_ids, use_consolidated_memory=True)    # (B,S,d_in)
+    y_ret  = cortex(x, ctx, operation='retrieve', token_ids=token_ids, use_consolidated_memory=True)   # (B,d_in)
     cortex(x, ctx, operation='consolidate')         # None
     assert y_proc.shape == (B,S,d_in)
     assert y_ret.shape  == (B,d_in)
@@ -25,24 +32,27 @@ def tiny_train_step(steps=5, device=None):
     seed_everything(123)
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     B,S,d_in,d_out = 16, 7, 128, 128
-    model = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out).to(device)
+    model = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out, cms_vocab_size=4096, cms_senses=3).to(device)
     opt = optim.AdamW(model.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
 
     for t in range(steps):
         x = torch.randn(B, S, d_in, device=device)
         ctx = torch.randn(B, d_in, device=device)
+        token_ids = torch.randint(0, 4096, (B, S), device=device)
         target = ctx  # pretend target for retrieval
 
         model.train()
-        _ = model(x, ctx, operation='process')
-        y_ret = model(x, ctx, operation='retrieve')
+        _ = model(x, ctx, operation='process', token_ids=token_ids, use_consolidated_memory=True)
+        y_ret = model(x, ctx, operation='retrieve', token_ids=token_ids, use_consolidated_memory=True)
 
         loss = loss_fn(y_ret, target)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
+        if model.consolidated_lexicon is not None:
+            model.consolidated_lexicon.renorm_constraints_()
 
         # One-line adaptive geometry/topology step.
         model.topology_step(float(loss.detach().cpu()))

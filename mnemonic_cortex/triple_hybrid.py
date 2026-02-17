@@ -14,6 +14,7 @@ class EnhancedTripleHybridMemory(nn.Module):
     def __init__(self, input_dim: int, output_dim: int, hg_slots: int = 2048, cgmn_slots: int = 1024, curved_slots: int = 512, fusion: str = 'weighted',
                  hg_ann_centroids: int = 256, hg_ann_top: int = 8):
         super().__init__()
+        nheads = self._pick_num_heads(input_dim)
         self.hg = EnhancedHyperGeometricMemory(input_dim, mem_slots=hg_slots,
                                                 ann_centroids=hg_ann_centroids,
                                                 ann_top_centroids=hg_ann_top)
@@ -22,8 +23,27 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.topology_manager = TopologyManagerV3(subsystems=("hg", "cgmn", "curved"))
         self.mix = nn.Parameter(torch.tensor([0.34, 0.33, 0.33]))  # [hg, cgmn, curved]
         self.fusion_mode = fusion
-        self.cross_fuser = nn.MultiheadAttention(input_dim, num_heads=4, batch_first=True)
+        self.cross_fuser = nn.MultiheadAttention(input_dim, num_heads=nheads, batch_first=True)
+        self.refiner = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=input_dim,
+                nhead=nheads,
+                dim_feedforward=max(128, input_dim * 2),
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=1,
+        )
+        self.refiner_norm = nn.LayerNorm(input_dim)
         self.proj = nn.Sequential(nn.Linear(input_dim, output_dim), nn.LayerNorm(output_dim))
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
 
     def set_temperature(self, t: torch.Tensor):
         self.hg.set_temperature(t)
@@ -94,10 +114,13 @@ class EnhancedTripleHybridMemory(nn.Module):
             tokens = tokens.view(B*S, 3, D)                  # (B*S,3,D)
             fused, _ = self.cross_fuser(tokens, tokens, tokens)  # (B*S,3,D)
             fused = fused.mean(dim=1).view(B,S,D)            # (B,S,D)
-            return fused
+            refined = self.refiner(fused)
+            return self.refiner_norm(fused + refined)
         else:
             w = torch.softmax(self.mix, dim=0)
-            return w[0]*rhg + w[1]*rcg + w[2]*rcv
+            fused = w[0]*rhg + w[1]*rcg + w[2]*rcv
+            refined = self.refiner(fused)
+            return self.refiner_norm(fused + refined)
 
     def forward(self, x: torch.Tensor, operation: str = 'read', fire_mask=None, recall_boost: float = 0.3):
         if operation == 'write':

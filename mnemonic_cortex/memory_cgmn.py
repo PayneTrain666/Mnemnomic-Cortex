@@ -286,10 +286,10 @@ class EnhancedCGMNMemory(nn.Module):
     @torch.no_grad()
     def _write(self, encoded, weights_indices, ema=0.9):
         w, idx = weights_indices
-        B,S,K = idx.shape
-        updates = torch.sum(w.unsqueeze(-1) * encoded.unsqueeze(2), dim=1)  # (B,K,H)
+        # encoded: (B,S,H), w: (B,S,K), idx: (B,S,K)
+        # Build per-(B,S,K) updates so source rows align 1:1 with flattened indices.
         flat_idx = idx.reshape(-1)
-        flat_upd = updates.reshape(-1, self.H)
+        flat_upd = (w.unsqueeze(-1) * encoded.unsqueeze(2)).reshape(-1, self.H)
         accum = torch.zeros_like(self.memory_slots)
         accum.index_add_(0, flat_idx, flat_upd)
         counts = torch.zeros(self.M, device=accum.device).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype))

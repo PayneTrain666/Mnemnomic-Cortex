@@ -28,6 +28,7 @@ class TopologyManagerV2:
             gate_bias=None,
             curvature_mode="mix",
             curvature_rate=mutation_rate,
+            curvature_clip=1.5,
             curvature_mix=(0.4, 0.3, 0.2, 0.1),
             qhm_enable=True,
             qhm_alpha_override=None,
@@ -70,6 +71,7 @@ class TopologyManagerV2:
         gate_bias=None,
         curvature_mode="mix",
         curvature_rate=0.01,
+        curvature_clip=1.5,
         curvature_mix=(0.4, 0.3, 0.2, 0.1),
         qhm_enable=True,
         qhm_alpha_override=None,
@@ -101,6 +103,7 @@ class TopologyManagerV2:
             gate_bias=None if gate_bias is None else torch.as_tensor(gate_bias, dtype=torch.float32),
             curvature_mode=str(curvature_mode),
             curvature_rate=float(curvature_rate),
+            curvature_clip=float(curvature_clip),
             curvature_mix=tuple(float(x) for x in curvature_mix),
             qhm_enable=bool(qhm_enable),
             qhm_alpha_override=qhm_alpha_override,
@@ -307,6 +310,7 @@ class TopologyManagerV2:
         pol = self.current_policy()
         mode = pol["curvature_mode"]
         rate = float(pol["curvature_rate"])
+        clip = float(pol.get("curvature_clip", 1.5))
 
         if curvature.dim() == 2:
             slot_scalar = curvature.mean(dim=1)
@@ -323,7 +327,8 @@ class TopologyManagerV2:
             if kind == "spherical":
                 return s - rate * torch.abs(torch.randn_like(s))
             if kind == "euclidean":
-                return rate * torch.randn_like(s)
+                # non-destructive euclidean perturbation
+                return s + rate * torch.randn_like(s)
             if kind == "fractal":
                 s_f = torch.fft.rfft(s.float())
                 noise = torch.randn_like(s_f.real) * rate
@@ -343,6 +348,8 @@ class TopologyManagerV2:
         else:
             slot_new = do_mut(slot_scalar, mode)
 
+        # Safety clamp to avoid runaway curvature explosions.
+        slot_new = clip * torch.tanh(slot_new / max(1e-6, clip))
         return expand_back(slot_new)
 
     # ------------------- One-call training hook -------------------
@@ -362,10 +369,12 @@ class TopologyManagerV2:
                         par.data.copy_(self.mutate_curvature(par.data))
 
         ltm = getattr(model, "long_term_memory", None)
+        maybe_mutate(getattr(model, "working_memory", None))
         if ltm is not None:
             maybe_mutate(getattr(ltm, "hyper_geometric", None))
             maybe_mutate(getattr(ltm, "hg", None))
             maybe_mutate(getattr(ltm, "cgmn", None))
+            maybe_mutate(getattr(ltm, "curved", None))
 
         self.apply_to_model(model)
 

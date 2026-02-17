@@ -16,9 +16,11 @@ def train_epoch(model, loader, criterion, opt, device):
         if isinstance(output, tuple):
             logits, aux = output
             recall_loss = aux.get('recall_loss', 0.0)
+            cms_loss = aux.get('cms_loss', 0.0)
         else:
             logits = output
             recall_loss = 0.0
+            cms_loss = 0.0
         
         L = min(logits.size(1), tgt.size(1))
         logits = logits[:,:L,:].contiguous().view(-1, logits.size(-1))
@@ -26,10 +28,12 @@ def train_epoch(model, loader, criterion, opt, device):
         seq_loss = criterion(logits, tgt_flat)
         
         # Combine losses
+        extra_loss = 0.0
         if isinstance(recall_loss, torch.Tensor):
-            loss = seq_loss + model.recall_loss_weight * recall_loss
-        else:
-            loss = seq_loss
+            extra_loss = extra_loss + model.recall_loss_weight * recall_loss
+        if isinstance(cms_loss, torch.Tensor):
+            extra_loss = extra_loss + cms_loss
+        loss = seq_loss + extra_loss
         
         opt.zero_grad()
         loss.backward()
@@ -37,6 +41,8 @@ def train_epoch(model, loader, criterion, opt, device):
         if hasattr(model, "topology_step"):
             model.topology_step(loss.item())
         total_loss += loss.item()
+    if hasattr(model, "flush_cms_logger"):
+        model.flush_cms_logger()
     return total_loss / len(loader)
 
 
@@ -62,12 +68,15 @@ def evaluate(model, loader, criterion, device):
     return total_loss / len(loader), acc
 
 
-def run(model_name, task_cls, n_epochs=1, batch_size=32, device='cpu'):
+def run(model_name, task_cls, n_epochs=1, batch_size=32, device='cpu', cms_log_dir=None):
     train_ds = task_cls(2000)
     test_ds  = task_cls(400)
     train_loader = DataLoader(train_ds, batch_size, shuffle=True, collate_fn=collate_fn)
     test_loader  = DataLoader(test_ds, batch_size, shuffle=False, collate_fn=collate_fn)
-    model = get_model(model_name, VOCAB_SIZE).to(device)
+    model_kwargs = {}
+    if model_name.lower() == "cortex" and cms_log_dir:
+        model_kwargs["cms_log_dir"] = cms_log_dir
+    model = get_model(model_name, VOCAB_SIZE, **model_kwargs).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=TOK2IDX['<pad>'])
     results = {}

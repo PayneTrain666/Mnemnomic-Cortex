@@ -3,8 +3,8 @@ from dataclasses import dataclass
 @dataclass
 class CortexConfig:
     # Core dims
-    input_dim: int = 128
-    output_dim: int = 128
+    input_dim: int = 160
+    output_dim: int = 160
 
     # HG memory
     hg_manifold_dim: int = 24
@@ -34,3 +34,7 @@ class CortexConfig:
 
     # Misc
     seed: int = 42
+
+    # Consolidated lexicon (optional)
+    cms_vocab_size: int = 0
+    cms_senses: int = 3
