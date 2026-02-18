@@ -29,6 +29,24 @@ class CPSFuser(nn.Module):
         self.map_P = nn.Linear(cfg.d_phase, d)
         self.gate_phase = nn.Sequential(nn.Linear(cfg.d_phase, d), nn.Sigmoid())
 
+    def set_curriculum_stage(self, stage: int):
+        """
+        Curriculum:
+          0: E + S
+          1: E + S + H
+          2: E + S + H + P
+          3+: E + S + H + P + F (+T optionally via future map)
+        """
+        if stage <= 0:
+            self.cfg.use_heads = ("S",)
+        elif stage == 1:
+            self.cfg.use_heads = ("H", "S")
+        elif stage == 2:
+            self.cfg.use_heads = ("H", "S", "P")
+        else:
+            self.cfg.use_heads = ("H", "S", "P", "F")
+        return self
+
     def fuse(self, view: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         assert "E" in view, "Euclidean head required for base."
         base = view["E"]

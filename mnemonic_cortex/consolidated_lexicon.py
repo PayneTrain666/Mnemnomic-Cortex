@@ -113,8 +113,8 @@ class ConsolidatedLexicon(nn.Module):
 
     @torch.no_grad()
     def renorm_constraints_(self):
-        self.mu_h.data.clamp_(-0.95, 0.95)
-        self.mu_p.data = _unit_complex_real(self.mu_p.data)
+        self.mu_h.clamp_(-0.95, 0.95)
+        self.mu_p.copy_(_unit_complex_real(self.mu_p))
 
     def _weighted_structured(self, idx: torch.Tensor, sense_w: torch.Tensor) -> Dict[str, torch.Tensor]:
         take = lambda m: m.index_select(0, idx)

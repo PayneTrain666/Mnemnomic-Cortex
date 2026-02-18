@@ -1,0 +1,8 @@
+routing:
+  enabled: true
+  top_k: 2
+  entropy_target_factor: 0.6
+  regularizer_weight: 0.001
+  balance_weight: 0.05
+  sparsity_weight: 0.1
+

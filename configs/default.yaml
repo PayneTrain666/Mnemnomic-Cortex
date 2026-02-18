@@ -1,0 +1,20 @@
+model:
+  d_model: 96
+  wm_slots: 7
+  ltm_hg_slots: 2048
+  ltm_cgmn_slots: 1024
+  ltm_curved_slots: 512
+
+memory:
+  topk_hg: 32
+  topk_cgmn: 32
+  topk_curved: 16
+  conformal_b: 0.1
+  curvature_clip: 1.0
+
+training:
+  lr: 2e-4
+  weight_decay: 0.02
+  grad_clip: 1.2
+  target_grad_norm: 0.6
+

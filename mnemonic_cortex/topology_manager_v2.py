@@ -366,7 +366,7 @@ class TopologyManagerV2:
                 if hasattr(mem, attr):
                     par = getattr(mem, attr)
                     if isinstance(par, torch.nn.Parameter):
-                        par.data.copy_(self.mutate_curvature(par.data))
+                        par.copy_(self.mutate_curvature(par))
 
         ltm = getattr(model, "long_term_memory", None)
         maybe_mutate(getattr(model, "working_memory", None))

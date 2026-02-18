@@ -107,9 +107,9 @@ def run_cms_consolidation_ema(lexicon, records: List[Dict], ema: float = 0.9):
         h = torch.stack(b["h"]).mean(dim=0)
         p = _unit_complex_real(torch.stack(b["p"]).mean(dim=0, keepdim=True)).squeeze(0)
         e = torch.stack(b["e"]).mean(dim=0)
-        lexicon.mu_h.data[tid, s].mul_(ema).add_((1.0 - ema) * h)
-        lexicon.mu_p.data[tid, s].mul_(ema).add_((1.0 - ema) * p)
-        lexicon.mu_e.data[tid, s].mul_(ema).add_((1.0 - ema) * e)
+        lexicon.mu_h[tid, s].mul_(ema).add_((1.0 - ema) * h)
+        lexicon.mu_p[tid, s].mul_(ema).add_((1.0 - ema) * p)
+        lexicon.mu_e[tid, s].mul_(ema).add_((1.0 - ema) * e)
     cms_safety_clamp(lexicon)
 
 
@@ -200,7 +200,7 @@ def load_cpg_shards_into_lexicon(lexicon, shard_dir: str, keys: Optional[List[st
                 value = obj["value"]
             target = getattr(lexicon, name)
             if name == "w":
-                target.data.copy_(value.to(target.device))
+                target.copy_(value.to(target.device))
             else:
-                target.data[ids] = value.to(target.device)
+                target[ids] = value.to(target.device)
     cms_safety_clamp(lexicon)

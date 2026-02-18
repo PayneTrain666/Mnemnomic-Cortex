@@ -1,0 +1,9 @@
+quant:
+  enabled: false
+  mode: ptq
+  euclid_group: 64
+  hyp_group: 32
+  spher_group: 32
+  fisher_group: 32
+  phase_group: 32
+

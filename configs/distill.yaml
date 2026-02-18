@@ -1,0 +1,7 @@
+distill:
+  enabled: false
+  embedding_weight: 0.5
+  mse_weight: 0.1
+  neighbor_kl_weight: 0.2
+  cms_teacher_weight: 0.2
+

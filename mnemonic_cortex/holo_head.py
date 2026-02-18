@@ -66,7 +66,7 @@ class HoloHead(nn.Module):
         )
 
         with torch.no_grad():
-            self.slots.data = _unit_complex(self.slots.data)
+            self.slots.copy_(_unit_complex(self.slots))
 
     @torch.no_grad()
     def set_temperature(self, t: float):
@@ -84,7 +84,7 @@ class HoloHead(nn.Module):
 
     @torch.no_grad()
     def renorm_slots(self):
-        self.slots.data = _unit_complex(self.slots.data)
+        self.slots.copy_(_unit_complex(self.slots))
 
     def _encode_complex(self, q_real: torch.Tensor) -> torch.Tensor:
         if q_real.size(-1) != self.dim:
