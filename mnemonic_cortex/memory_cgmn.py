@@ -7,6 +7,10 @@ from .geometry_merger import GeometryMergerV3
 from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 from .holo_head import HoloHead
 from .lightbulb_controller import LightbulbController
+from .memory.conformal import ConformalMLP, warp_knn_with_stats
+from geometry.blend import GeometryBlender
+from geometry.metric_heads import GeometryMetric
+from topology.manager_v3 import DynamicTopologyManagerV2
 
 class EnhancedCGMNMemory(nn.Module):
     """Curved Geometric Memory Network (CGMN) with lightbulb-aware temperature & plasticity."""
@@ -28,6 +32,18 @@ class EnhancedCGMNMemory(nn.Module):
         self.positional_encoding = nn.Parameter(torch.randn(self.M, self.D, 3))
         self.curvature = nn.Parameter(torch.randn(self.M, self.D))
         self.curv_alpha = nn.Parameter(torch.tensor(0.1))
+        self.curvature_scalar = nn.Parameter(self.curvature.detach().mean(dim=-1))
+        self.conformal_b = 0.1
+        self.conformal_mlp = ConformalMLP(self.D)
+        self.last_router_features = None
+        self.geom_blender = GeometryBlender(num_slots=self.M)
+        self.topology_v3 = DynamicTopologyManagerV2(bank="cgmn")
+        self.topology = self.topology_v3
+        self.last_geom_weights = None
+        self.metric_dim = 64
+        self.geom_metric = GeometryMetric(d_query=self.D, d_key=self.metric_dim, d_metric=self.metric_dim)
+        self.metric_keys = nn.Parameter(torch.randn(self.M, self.metric_dim) * 0.02)
+        self.geom_gamma = 0.30
         self.q_memory_slots = nn.Parameter(qnormalize(torch.randn(self.M, 4)))
         self.spin_conn = nn.Sequential(
             nn.Linear(self.D * 3, 64), nn.SiLU(), nn.Linear(64, 3)
@@ -121,12 +137,37 @@ class EnhancedCGMNMemory(nn.Module):
     def enable_energy_efficient_mode(self, enable: bool = True):
         self.set_active_fraction(0.5 if enable else 1.0)
 
+    @torch.no_grad()
+    def step_topology(self, loss_value: float):
+        fit = self.topology.update_fitness(float(loss_value))
+        self.topology.pick_mode()
+        curv_scalar = self.topology.curvature_scalar(self.curvature)
+        _, wext = self.topology.mode_weights()
+        curv_new = self.topology.mutate_curvature(curv_scalar, wext)
+        if self.curvature.ndim == 2:
+            self.curvature.copy_(curv_new.unsqueeze(-1).expand_as(self.curvature))
+        else:
+            self.curvature.copy_(curv_new)
+        self.curvature_scalar.copy_(curv_new)
+        pri = self.topology.mode_priors().to(self.metric_keys.device)
+        self.geom_blender.set_mode_priors(pri, mix=0.05)
+        telem = {
+            "entropy": float(self.last_router_features.get("entropy", torch.tensor(0.5)).mean().item())
+            if isinstance(self.last_router_features, dict)
+            else 0.5,
+            "dist_mean": float(self.last_router_features.get("dist_mean", torch.tensor(1.0)).mean().item())
+            if isinstance(self.last_router_features, dict)
+            else 1.0,
+        }
+        self.conformal_b = self.topology.schedule_conformal_b(self.conformal_b, telemetry=telem)
+        return fit
+
     # ---------- DDP sync -------------
     @torch.no_grad()
     def _sync_buffers_ddp(self):
         if not (dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1):
             return
-        for t in [self.memory_slots.data, self.usage_counts]:
+        for t in [self.memory_slots, self.usage_counts]:
             dist.all_reduce(t, op=dist.ReduceOp.SUM)
             t /= dist.get_world_size()
 
@@ -138,20 +179,30 @@ class EnhancedCGMNMemory(nn.Module):
         mask = usage_ratio < threshold
         if mask.any():
             mean_slot = self.memory_slots[~mask].mean(dim=0, keepdim=True) if (~mask).any() else self.memory_slots.mean(dim=0, keepdim=True)
-            self.memory_slots.data[mask] = ema * self.memory_slots.data[mask] + (1-ema) * mean_slot
+            self.memory_slots[mask].copy_(ema * self.memory_slots[mask] + (1 - ema) * mean_slot)
             self.usage_counts[mask] = 0.0
 
     def get_metrics(self):
         """Return dict of diagnostic metrics."""
         M = self.active_slots
-        return {
+        m = {
             'cgmn_temp': self.temperature.mean().item() if self.temperature.numel() > 1 else self.temperature.item(),
             'cgmn_topk_base': self.K_base,
             'cgmn_active_slots': M,
             'cgmn_usage_mean': self.usage_counts[:M].mean().item(),
             'cgmn_usage_max': self.usage_counts[:M].max().item(),
             'cgmn_lb_top1_avg': self.lb_top1_avg.item(),
+            'cgmn_conformal_b': float(self.conformal_b),
+            'cgmn_topology_fitness_ema': float(self.topology_v3.fitness_ema or 0.0),
         }
+        if hasattr(self.topology_v3, "mode"):
+            mode_map = {"hyperbolic": 0.0, "spherical": 1.0, "euclidean": 2.0, "fractal": 3.0}
+            m["cgmn_topology_mode"] = mode_map.get(str(self.topology_v3.mode), -1.0)
+        if isinstance(self.last_geom_weights, dict):
+            for k in ("hyperbolic", "spherical", "euclidean", "fractal", "torus", "cp"):
+                if k in self.last_geom_weights:
+                    m[f"cgmn_geom_w_{k}"] = float(self.last_geom_weights[k])
+        return m
 
     # ---------------- Core ----------------
     def manifold_ode_step(self, x):
@@ -187,7 +238,7 @@ class EnhancedCGMNMemory(nn.Module):
         q_rep = q_query.reshape(-1, 4).repeat_interleave(indices.size(-1), dim=0)
         upd = qnormalize(qmul(cur, q_rep))
         blended = qnormalize(0.9 * cur + 0.1 * upd)
-        self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
+        self.q_memory_slots.index_copy_(0, flat_idx, blended)
 
     def _blend_qhm_weights(self, q_feat, indices, w_geo):
         # q_feat: [N,D], indices: [N,K], w_geo: [N,K]
@@ -236,7 +287,9 @@ class EnhancedCGMNMemory(nn.Module):
             # Per-sample: (B,) -> (B,1,1) for broadcasting
             temp_scale = self.temperature.view(-1, 1, 1).clamp_min(1e-6)
         dist = dist / temp_scale
-        curv_w = torch.exp(-self.curv_alpha * self.curvature[:M].norm(dim=-1))  # (M,)
+        # Use scalar curvature per slot to keep warping/broadcast stable.
+        slot_curv = self.curvature_scalar[:M]
+        curv_w = torch.exp(-self.curv_alpha * slot_curv.abs())  # (M,)
         dist = dist * curv_w.view(1,1,M)
 
         # Top-k with internal lightbulb boost
@@ -252,16 +305,37 @@ class EnhancedCGMNMemory(nn.Module):
         q_query = self._query_quat_from_manifold(positions)
         q_query = self._parallel_transport_spin(q_query, positions)
         q_feat = query.reshape(query.size(0) * query.size(1), self.D)
+        dtop_flat = dtop.reshape(dtop.size(0) * dtop.size(1), K)
+        itop_flat = itop.reshape(itop.size(0) * itop.size(1), K)
+        curv_eff, mode_w4, mode_wext = self.geom_blender(q_feat)
+        self.last_geom_weights = mode_wext
+        topk_keys = self.metric_keys[:M][itop_flat]
+        d_geo = self.geom_metric.distances(q_feat, topk_keys, mode_w4)
+        dtop_mix = (1.0 - self.geom_gamma) * dtop_flat + self.geom_gamma * d_geo
+        pre_probs = torch.softmax(-dtop_mix.detach(), dim=-1)
+        pre_entropy = float((-(pre_probs * pre_probs.clamp_min(1e-9).log()).sum(dim=-1).mean()).item())
+        self.conformal_b = self.topology_v3.schedule_conformal_b(
+            self.conformal_b,
+            telemetry={"entropy": pre_entropy, "dist_mean": float(dtop_mix.detach().mean().item())},
+        )
+        dtop_warp, conformal_aux = warp_knn_with_stats(
+            distances=dtop_mix,
+            indices=itop_flat,
+            query_vec=q_feat,
+            curv_per_slot=curv_eff[:M],
+            conformal_mlp=self.conformal_mlp,
+            b=self.conformal_b,
+        )
         qc = self.qc_head(q_feat)
         q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
         mem_feat = self.positional_encoding[:M].mean(dim=-1)  # (M,D)
         self.geometry_merger.spd_L = self.spd_L
         w = self.geometry_merger(
-            base_dist=dtop.reshape(dtop.size(0) * dtop.size(1), K),
-            indices=itop.reshape(itop.size(0) * itop.size(1), K),
+            base_dist=dtop_warp,
+            indices=itop_flat,
             q_feat=q_feat,
             mem_feat=mem_feat,
-            slot_curv=self.curvature[:M],
+            slot_curv=curv_eff[:M],
             q_quat=q_query.reshape(q_query.size(0) * q_query.size(1), 4),
             mem_quat=self.q_memory_slots[:M],
             q_complex=q_complex,
@@ -271,9 +345,17 @@ class EnhancedCGMNMemory(nn.Module):
         self.holo.renorm_slots()
         w = self._blend_qhm_weights(
             q_feat,
-            itop.reshape(itop.size(0) * itop.size(1), K),
+            itop_flat,
             w.reshape(w.size(0) * w.size(1), K),
         ).view_as(dtop)
+        bsz, seq, _ = dtop.shape
+        w_entropy = -(w * (w.clamp_min(1e-9)).log()).sum(dim=-1).mean(dim=1).detach()
+        self.last_router_features = {
+            "omega_mean": conformal_aux["omega_mean"].reshape(bsz, seq).mean(dim=1),
+            "curv_mean": conformal_aux["curv_mean"].reshape(bsz, seq).mean(dim=1),
+            "dist_mean": dtop_warp.reshape(bsz, seq, K).mean(dim=(1, 2)).detach(),
+            "entropy": w_entropy,
+        }
         mem = self.memory_slots[:M][itop]                              # (B,S,K,H)
         attended = torch.sum(w.unsqueeze(-1) * mem, dim=2)             # (B,S,H)
         return attended, (w, itop), internal_fire, q_query
@@ -295,7 +377,7 @@ class EnhancedCGMNMemory(nn.Module):
         counts = torch.zeros(self.M, device=accum.device).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype))
         counts = counts.clamp_min_(1.0).unsqueeze(-1)
         avg_upd = accum / counts
-        self.memory_slots.data.mul_(ema).add_((1-ema)*avg_upd)
+        self.memory_slots.mul_(ema).add_((1 - ema) * avg_upd)
         # DDP sync
         self._sync_buffers_ddp()
 

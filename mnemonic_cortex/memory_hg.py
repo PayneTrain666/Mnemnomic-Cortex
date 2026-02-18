@@ -8,6 +8,10 @@ from .geometry_merger import GeometryMergerV3
 from .geometry_utils import HolonomyProbe, qexp, qmul, qnormalize
 from .holo_head import HoloHead
 from .lightbulb_controller import LightbulbController
+from .memory.conformal import ConformalMLP, warp_knn_with_stats
+from geometry.blend import GeometryBlender
+from geometry.metric_heads import GeometryMetric
+from topology.manager_v3 import DynamicTopologyManagerV2
 
 def _complex_from_phase(phase: torch.Tensor) -> torch.Tensor:
     """phase: (..., D) real -> complex unit vector e^{i phase}."""
@@ -107,6 +111,17 @@ class EnhancedHyperGeometricMemory(nn.Module):
         )
         self.qhm_enabled = True
         self.qhm_alpha_override = None
+        self.conformal_b = 0.1
+        self.conformal_mlp = ConformalMLP(self.D)
+        self.last_router_features = None
+        self.geom_blender = GeometryBlender(num_slots=self.M)
+        self.topology_v3 = DynamicTopologyManagerV2(bank="hg")
+        self.topology = self.topology_v3
+        self.last_geom_weights = None
+        self.metric_dim = 64
+        self.geom_metric = GeometryMetric(d_query=self.D, d_key=self.metric_dim, d_metric=self.metric_dim)
+        self.metric_keys = nn.Parameter(torch.randn(self.M, self.metric_dim) * 0.02)
+        self.geom_gamma = 0.30
 
         # Projections
         self.input_projection  = nn.Sequential(nn.Linear(input_dim, self.D * 3), nn.LayerNorm(self.D * 3), nn.GELU())
@@ -154,7 +169,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
         """Lightweight k-means on self.keys to (re)initialise centroids."""
         if not self.use_ann:
             return
-        k = self.keys.data.clone()
+        k = self.keys.detach().clone()
         # init centroids from random keys
         idx = torch.randperm(self.M)[:self.C]
         c = k[idx].clone()
@@ -183,13 +198,34 @@ class EnhancedHyperGeometricMemory(nn.Module):
     def enable_energy_efficient_mode(self, enable: bool = True):
         self.set_active_fraction(0.5 if enable else 1.0)
 
+    @torch.no_grad()
+    def step_topology(self, loss_value: float):
+        fit = self.topology.update_fitness(float(loss_value))
+        self.topology.pick_mode()
+        curv_scalar = self.topology.curvature_scalar(self.memory_curvature[: self.M])
+        _, wext = self.topology.mode_weights()
+        curv_new = self.topology.mutate_curvature(curv_scalar, wext)
+        self.memory_curvature.copy_(curv_new)
+        pri = self.topology.mode_priors().to(self.metric_keys.device)
+        self.geom_blender.set_mode_priors(pri, mix=0.05)
+        telem = {
+            "entropy": float(self.last_router_features.get("entropy", torch.tensor(0.5)).mean().item())
+            if isinstance(self.last_router_features, dict)
+            else 0.5,
+            "dist_mean": float(self.last_router_features.get("dist_mean", torch.tensor(1.0)).mean().item())
+            if isinstance(self.last_router_features, dict)
+            else 1.0,
+        }
+        self.conformal_b = self.topology.schedule_conformal_b(self.conformal_b, telemetry=telem)
+        return fit
+
     # ------------ DDP sync ---------------
     @torch.no_grad()
     def _sync_buffers_ddp(self):
         """Synchronize external memory parameters/buffers across DDP ranks."""
         if not (dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1):
             return
-        for t in [self.holograms_fft.data, self.keys.data, self.values.data, self.usage_counts]:
+        for t in [self.holograms_fft, self.keys, self.values, self.usage_counts]:
             dist.all_reduce(t, op=dist.ReduceOp.SUM)
             t /= dist.get_world_size()
 
@@ -203,10 +239,10 @@ class EnhancedHyperGeometricMemory(nn.Module):
         if mask.any():
             k_mean = self.keys[~mask].mean(dim=0, keepdim=True) if (~mask).any() else self.keys.mean(dim=0, keepdim=True)
             v_mean = self.values[~mask].mean(dim=0, keepdim=True) if (~mask).any() else self.values.mean(dim=0, keepdim=True)
-            self.keys.data[mask] = ema * self.keys.data[mask] + (1-ema) * k_mean
-            self.values.data[mask] = ema * self.values.data[mask] + (1-ema) * v_mean
+            self.keys[mask].copy_(ema * self.keys[mask] + (1 - ema) * k_mean)
+            self.values[mask].copy_(ema * self.values[mask] + (1 - ema) * v_mean)
             # gentle decay on holograms
-            self.holograms_fft.data[mask] *= self.holo_decay
+            self.holograms_fft[mask].mul_(self.holo_decay)
             self.usage_counts[mask] = 0.0
 
     @torch.no_grad()
@@ -216,7 +252,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
             n_clusters = self.M
         
         # Use values as embedding space for clustering
-        vals = self.values.data.clone()  # (M, D*3)
+        vals = self.values.detach().clone()  # (M, D*3)
         
         # Simple k-means
         idx = torch.randperm(self.M)[:n_clusters]
@@ -242,7 +278,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
         """Return dict of diagnostic metrics."""
         M = self.active_slots
         holo_rms = self.holograms_fft[:M].abs().mean(dim=-1)  # (M,)
-        return {
+        m = {
             'hg_temp': self.temperature.mean().item() if self.temperature.numel() > 1 else self.temperature.item(),
             'hg_topk_base': self.K_base,
             'hg_active_slots': M,
@@ -252,7 +288,17 @@ class EnhancedHyperGeometricMemory(nn.Module):
             'hg_usage_mean': self.usage_counts[:M].mean().item(),
             'hg_usage_max': self.usage_counts[:M].max().item(),
             'hg_lb_top1_avg': self.lb_top1_avg.item(),
+            'hg_conformal_b': float(self.conformal_b),
+            'hg_topology_fitness_ema': float(self.topology_v3.fitness_ema or 0.0),
         }
+        if hasattr(self.topology_v3, "mode"):
+            mode_map = {"hyperbolic": 0.0, "spherical": 1.0, "euclidean": 2.0, "fractal": 3.0}
+            m["hg_topology_mode"] = mode_map.get(str(self.topology_v3.mode), -1.0)
+        if isinstance(self.last_geom_weights, dict):
+            for k in ("hyperbolic", "spherical", "euclidean", "fractal", "torus", "cp"):
+                if k in self.last_geom_weights:
+                    m[f"hg_geom_w_{k}"] = float(self.last_geom_weights[k])
+        return m
 
     # -------------------- Core ops --------------------
     def encode_to_manifold(self, x):
@@ -284,7 +330,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
         q_rep = q_query.reshape(-1, 4).repeat_interleave(indices.size(-1), dim=0)
         upd = qnormalize(qmul(cur, q_rep))
         blended = qnormalize(0.9 * cur + 0.1 * upd)
-        self.q_memory_slots.data.index_copy_(0, flat_idx, blended)
+        self.q_memory_slots.index_copy_(0, flat_idx, blended)
 
     def _blend_qhm_weights(self, q_feat, indices, w_geo):
         # q_feat: [N,D], indices: [N,K], w_geo: [N,K]
@@ -437,13 +483,13 @@ class EnhancedHyperGeometricMemory(nn.Module):
         avg = accum / counts
 
         lr = self.holo_lr * lr_mult
-        self.holograms_fft.data[:M] = self.holo_decay * self.holograms_fft.data[:M] + lr * avg
+        self.holograms_fft[:M].copy_(self.holo_decay * self.holograms_fft[:M] + lr * avg)
 
         # After applying, run clamp/sync steps
         rms = self.holograms_fft.abs().mean(dim=-1, keepdim=True)
         max_rms = 5.0
         scale = (max_rms / rms).clamp(max=1.0)
-        self.holograms_fft.data[:M] *= scale
+        self.holograms_fft[:M].mul_(scale)
         self._sync_buffers_ddp()
 
     def _holo_read(self, x: torch.Tensor, indices: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
@@ -502,11 +548,32 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
         dtop, itop = torch.topk(dist, K, dim=-1, largest=False)  # (B,S,K)
         q_feat = q.reshape(B * S, self.D)
+        dtop_flat = dtop.reshape(B * S, K)
+        itop_flat = itop.reshape(B * S, K)
+        curv_eff, mode_w4, mode_wext = self.geom_blender(q_feat)
+        self.last_geom_weights = mode_wext
+        topk_keys = self.metric_keys[:M][itop_flat]
+        d_geo = self.geom_metric.distances(q_feat, topk_keys, mode_w4)
+        dtop_mix = (1.0 - self.geom_gamma) * dtop_flat + self.geom_gamma * d_geo
+        pre_probs = torch.softmax(-dtop_mix.detach(), dim=-1)
+        pre_entropy = float((-(pre_probs * pre_probs.clamp_min(1e-9).log()).sum(dim=-1).mean()).item())
+        self.conformal_b = self.topology_v3.schedule_conformal_b(
+            self.conformal_b,
+            telemetry={"entropy": pre_entropy, "dist_mean": float(dtop_mix.detach().mean().item())},
+        )
+        dtop_warp, conformal_aux = warp_knn_with_stats(
+            distances=dtop_mix,
+            indices=itop_flat,
+            query_vec=q_feat,
+            curv_per_slot=curv_eff[:M],
+            conformal_mlp=self.conformal_mlp,
+            b=self.conformal_b,
+        )
         qc = self.qc_head(q_feat)
         q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
         self.geometry_merger.spd_L = self.spd_L
         w = self.geometry_merger(
-            base_dist=dtop.reshape(B * S, K),
+            base_dist=dtop_warp,
             indices=itop.reshape(B * S, K),
             q_feat=q_feat,
             mem_feat=self.keys[:M],
@@ -523,6 +590,13 @@ class EnhancedHyperGeometricMemory(nn.Module):
             itop.reshape(B * S, K),
             w.reshape(B * S, K),
         ).view(B, S, K)
+        w_entropy = -(w * (w.clamp_min(1e-9)).log()).sum(dim=-1).mean(dim=1).detach()
+        self.last_router_features = {
+            "omega_mean": conformal_aux["omega_mean"].reshape(B, S).mean(dim=1),
+            "curv_mean": conformal_aux["curv_mean"].reshape(B, S).mean(dim=1),
+            "dist_mean": dtop_warp.reshape(B, S, K).mean(dim=(1, 2)).detach(),
+            "entropy": w_entropy,
+        }
 
         self._record_usage(itop)
 

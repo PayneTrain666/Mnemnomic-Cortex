@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Dict
+from typing import Dict, List
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
@@ -19,6 +19,14 @@ from .config_loader import apply_config_to_broker, load_yaml_config
 from .cps import ConsolidatedParamStore, UnifiedParamCfg
 from .cps_fuser import CPSFuser, FuserCfg
 from .diagnostics import ModelDiagnostics
+from .consolidated_memory import ConsolidatedMemoryCfg, ConsolidatedMemoryStore
+from .consolidation_broker_v2 import BrokerCfg, ConsolidationBrokerV2
+from .multi_cps import MultiCPSManager
+from .router_advanced import AdvancedDomainRouter
+from .distillation import CrossDomainDistiller
+from .quantization import CPSQuantizer, QuantPolicy
+from .quant_fuser import QuantAwareCPSFuser
+from .router_losses import router_regularizer
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -63,6 +71,11 @@ class EnhancedMnemonicCortex(nn.Module):
         self.ctx_norm = nn.LayerNorm(input_dim)
         self.query_ctx_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
         self.query_norm = nn.LayerNorm(input_dim)
+        # WM <-> LTM bridge attention (bidirectional).
+        self.wm_to_ltm_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
+        self.ltm_to_wm_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
+        self.mem_bridge_gate = nn.Parameter(torch.tensor(0.22))
+        self.mem_bridge_norm = nn.LayerNorm(input_dim)
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
@@ -109,6 +122,15 @@ class EnhancedMnemonicCortex(nn.Module):
             default_cfg=UnifiedParamCfg(d_euclid=input_dim, d_hyp=64, d_spher=64, d_fisher=64, d_phase=32)
         )
         self.cps_fuser = CPSFuser(FuserCfg(d_model=input_dim))
+        self.multi_cps = None
+        self.advanced_cms = None
+        self.advanced_broker = None
+        self.advanced_router = None
+        self.advanced_distiller = None
+        self.advanced_quantizers = {}
+        self.quant_fuser = None
+        self.advanced_router_feat_proj = None
+        self.last_router_decision = None
         self.diagnostics = ModelDiagnostics(enabled=False)
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
@@ -130,11 +152,70 @@ class EnhancedMnemonicCortex(nn.Module):
     def apply_topology_policy(self, name: str):
         """Switch active topology policy and apply it immediately."""
         self.topology.activate_policy(name, model=self)
+        self.diagnostics.log("topology_policy", {"active_policy": str(name)})
 
     @torch.no_grad()
     def topology_step(self, loss_value: float):
         """Call once per optimizer step with scalar loss."""
         self.topology.step(self, loss_value)
+        self.step_topology(loss_value)
+        self.diagnostics.record_scalar("topology_fitness_ema", float(self.topology.fitness_ema or 0.0))
+        pol = self.topology.current_policy()
+        self.diagnostics.log(
+            "topology_step",
+            {
+                "loss": float(loss_value),
+                "active_policy": str(self.topology.active_policy),
+                "micro_b": float(pol.get("micro_b", 0.0)),
+                "omega_max": float(pol.get("omega_max", 0.0)),
+                "curvature_rate": float(pol.get("curvature_rate", 0.0)),
+            },
+        )
+
+    @torch.no_grad()
+    def step_topology(self, loss_value: float):
+        """
+        Pass-through topology update to WM/LTM geometry-local controllers.
+        """
+        if hasattr(self, "long_term_memory") and hasattr(self.long_term_memory, "step_topology"):
+            self.long_term_memory.step_topology(float(loss_value))
+        if hasattr(self, "working_memory") and hasattr(self.working_memory, "step_topology"):
+            self.working_memory.step_topology(float(loss_value))
+
+    @torch.no_grad()
+    def step_topology_schedulers(self, loss_val: float, telemetry_by_bank: Dict[str, Dict] = None):
+        """
+        Optional centralized topology scheduler for WM/HG/CGMN banks.
+        """
+        telemetry_by_bank = telemetry_by_bank or {}
+
+        wm = getattr(self, "working_memory", None)
+        if wm is not None and hasattr(wm, "topology"):
+            wm.topology.update_fitness(float(loss_val))
+            wm.topology.mode_weights(telemetry=telemetry_by_bank.get("WM", {}))
+            wm.conformal_b = wm.topology.schedule_conformal_b(
+                float(getattr(wm, "conformal_b", 0.05)),
+                telemetry=telemetry_by_bank.get("WM", {}),
+            )
+
+        ltm = getattr(self, "long_term_memory", None)
+        hg = getattr(ltm, "hg", None) if ltm is not None else None
+        if hg is not None and hasattr(hg, "topology"):
+            hg.topology.update_fitness(float(loss_val))
+            hg.topology.mode_weights(telemetry=telemetry_by_bank.get("HG", {}))
+            hg.conformal_b = hg.topology.schedule_conformal_b(
+                float(getattr(hg, "conformal_b", 0.05)),
+                telemetry=telemetry_by_bank.get("HG", {}),
+            )
+
+        cg = getattr(ltm, "cgmn", None) if ltm is not None else None
+        if cg is not None and hasattr(cg, "topology"):
+            cg.topology.update_fitness(float(loss_val))
+            cg.topology.mode_weights(telemetry=telemetry_by_bank.get("CGMN", {}))
+            cg.conformal_b = cg.topology.schedule_conformal_b(
+                float(getattr(cg, "conformal_b", 0.05)),
+                telemetry=telemetry_by_bank.get("CGMN", {}),
+            )
 
     def enable_consolidated_lexicon(
         self,
@@ -188,6 +269,103 @@ class EnhancedMnemonicCortex(nn.Module):
     def enable_ahg(self, cfg: AHGConfig = None):
         self.ahg = AntiHallucinationGuard(cfg or AHGConfig())
         return self
+
+    def enable_advanced_consolidation(
+        self,
+        cps_domains=None,
+        cms_cfg: ConsolidatedMemoryCfg = None,
+        broker_cfg: BrokerCfg = None,
+    ):
+        """
+        Optional advanced stack:
+          - standalone consolidated memory store
+          - multi-domain CPS manager
+          - CPS<->CMS broker v2
+          - content-aware domain router
+          - cross-domain distiller
+          - per-domain quantizers and quant-aware fuser
+        """
+        cms_cfg = cms_cfg or ConsolidatedMemoryCfg(d_model=self.input_dim)
+        broker_cfg = broker_cfg or BrokerCfg()
+        domains = list(cps_domains or ["core", "science", "reasoning", "creativity"])
+
+        self.advanced_cms = ConsolidatedMemoryStore(cms_cfg)
+        self.multi_cps = MultiCPSManager()
+        # Keep existing CPS as core domain.
+        self.multi_cps.register("core", self.cps, self.cps_fuser)
+        for dom in domains:
+            if dom == "core":
+                continue
+            c = ConsolidatedParamStore(
+                default_cfg=UnifiedParamCfg(
+                    d_euclid=self.input_dim,
+                    d_hyp=64,
+                    d_spher=64,
+                    d_fisher=64,
+                    d_phase=32,
+                )
+            )
+            f = CPSFuser(FuserCfg(d_model=self.input_dim))
+            self.multi_cps.register(dom, c, f)
+        self.advanced_broker = ConsolidationBrokerV2(
+            cms=self.advanced_cms,
+            multi_cps=self.multi_cps,
+            cfg=broker_cfg,
+        )
+        self.advanced_router = AdvancedDomainRouter(
+            domain_list=list(self.multi_cps.cps.keys()),
+            d_in=self.input_dim,
+            hidden=max(64, self.input_dim),
+        )
+        self.advanced_distiller = CrossDomainDistiller(self.multi_cps, cms=self.advanced_cms)
+        self.advanced_quantizers = {
+            dom: CPSQuantizer(QuantPolicy()) for dom in self.multi_cps.cps.keys()
+        }
+        self.quant_fuser = QuantAwareCPSFuser(
+            d_out=self.input_dim,
+            dims={"E": self.input_dim, "H": 64, "S": 64, "F": 64, "T": 2, "P": 32},
+            quantizer=self.advanced_quantizers.get("core"),
+        )
+        # Router consumes content embedding + projected memory confidence signals.
+        self.advanced_router_feat_proj = nn.Sequential(
+            nn.LayerNorm(12),
+            nn.Linear(12, self.input_dim),
+            nn.Tanh(),
+        )
+        self.diagnostics.log(
+            "advanced_consolidation_enabled",
+            {"domains": list(self.multi_cps.cps.keys())},
+        )
+        return self
+
+    def set_cps_curriculum_stage(self, stage: int):
+        self.cps_fuser.set_curriculum_stage(int(stage))
+        self.diagnostics.log("cps_curriculum_stage", {"stage": int(stage), "use_heads": list(self.cps_fuser.cfg.use_heads)})
+        return self
+
+    def cps_embed_tokens(self, token_list: List[str]) -> torch.Tensor:
+        """
+        Returns fused embedding per token (T, input_dim), creating CPS entries on-demand.
+        """
+        if not token_list:
+            return torch.zeros(0, self.input_dim, device=self.ctx_proj.weight.device)
+        embs = []
+        for t in token_list:
+            key = f"token:{t}"
+            up = self.cps.ensure(key)
+            fused, _ = self.cps_fuser.fuse(up.view())
+            embs.append(fused.unsqueeze(0))
+        return torch.cat(embs, dim=0)
+
+    def cps_agreement_loss(self, token_list: List[str]) -> torch.Tensor:
+        if not token_list:
+            return torch.tensor(0.0, device=self.ctx_proj.weight.device)
+        total = None
+        for t in token_list:
+            up = self.cps.ensure(f"token:{t}")
+            _, agree = self.cps_fuser.fuse(up.view())
+            total = agree if total is None else (total + agree)
+        return total / max(1, len(token_list))
 
     def enable_diagnostics(
         self,
@@ -311,12 +489,80 @@ class EnhancedMnemonicCortex(nn.Module):
             self.last_cms_aux = aux
             self.diagnostics.log("cms_single_store", {"intent": consolidation_intent})
 
+        def _batchify_feat(x: torch.Tensor, bsz_: int, device, dtype):
+            if not isinstance(x, torch.Tensor):
+                return torch.zeros(bsz_, device=device, dtype=dtype)
+            x = x.detach().to(device=device, dtype=dtype).reshape(-1)
+            if x.numel() == 0:
+                return torch.zeros(bsz_, device=device, dtype=dtype)
+            if x.numel() == 1:
+                return x.expand(bsz_)
+            if x.numel() != bsz_:
+                return x.mean().expand(bsz_)
+            return x
+
+        def _collect_ltm_router_stats(bsz_: int, device, dtype):
+            comps = [
+                getattr(self.long_term_memory, "hg", None),
+                getattr(self.long_term_memory, "cgmn", None),
+                getattr(self.long_term_memory, "curved", None),
+            ]
+            vals = []
+            for comp in comps:
+                feat = getattr(comp, "last_router_features", None) if comp is not None else None
+                for key in ("omega_mean", "curv_mean", "dist_mean", "entropy"):
+                    v = feat.get(key) if isinstance(feat, dict) else None
+                    vals.append(_batchify_feat(v, bsz_, device, dtype).unsqueeze(-1))
+            return torch.cat(vals, dim=-1) if vals else torch.zeros(bsz_, 12, device=device, dtype=dtype)
+
+        router_query = flat_ctx
+        router_probs = None
+        domain_names = []
+        if (
+            self.advanced_router is not None
+            and self.multi_cps is not None
+            and self.advanced_router_feat_proj is not None
+        ):
+            ltm_stats = _collect_ltm_router_stats(bsz, flat_ctx.device, flat_ctx.dtype)  # (B,12)
+            stats_proj = self.advanced_router_feat_proj(ltm_stats)  # (B,d)
+            stats_proj = stats_proj.unsqueeze(1).expand(-1, seq, -1).reshape(-1, dim)  # (B*S,d)
+            router_query = flat_ctx + stats_proj
+            _, _, router_probs = self.advanced_router(router_query, top_k=2)  # (B*S,n_domains)
+            domain_names = list(self.advanced_router.domains)
+            self.last_router_decision = {
+                "domains": domain_names,
+                "probs_mean": router_probs.detach().mean(dim=0).tolist(),
+                "ltm_stats_mean": ltm_stats.detach().mean(dim=0).tolist(),
+            }
+            self.diagnostics.log(
+                "advanced_router_features",
+                {
+                    "domains": domain_names,
+                    "omega_hg": float(ltm_stats[:, 0].mean().item()),
+                    "omega_cgmn": float(ltm_stats[:, 4].mean().item()),
+                    "omega_curved": float(ltm_stats[:, 8].mean().item()),
+                    "entropy_hg": float(ltm_stats[:, 3].mean().item()),
+                    "entropy_cgmn": float(ltm_stats[:, 7].mean().item()),
+                    "entropy_curved": float(ltm_stats[:, 11].mean().item()),
+                },
+            )
+
         # Optional CPS fusion: token-keyed polymorphic unified parameter overlay.
         cps_fused = []
         cps_loss = fused.new_tensor(0.0)
-        for tid in flat_ids.tolist():
-            up = self.cps.ensure(f"token:{int(tid)}")
-            v, loss = self.cps_fuser.fuse(up.view())
+        routed_counts = {d: 0 for d in domain_names}
+        for i, tid in enumerate(flat_ids.tolist()):
+            key = f"token:{int(tid)}"
+            if router_probs is not None and domain_names:
+                dom_idx = int(router_probs[i].argmax().item())
+                dom = domain_names[dom_idx]
+                cps_store, cps_fuser = self.multi_cps.get(dom)
+                routed_counts[dom] = routed_counts.get(dom, 0) + 1
+                up = cps_store.ensure(key)
+                v, loss = cps_fuser.fuse(up.view())
+            else:
+                up = self.cps.ensure(key)
+                v, loss = self.cps_fuser.fuse(up.view())
             cps_fused.append(v)
             cps_loss = cps_loss + loss
         if cps_fused:
@@ -324,6 +570,13 @@ class EnhancedMnemonicCortex(nn.Module):
             fused = 0.85 * fused + 0.15 * cps_fused
             cps_loss = cps_loss / max(1, len(cps_fused))
             self.last_cps_aux = {"agree_loss": cps_loss}
+            if router_probs is not None:
+                reg, reg_aux = router_regularizer(router_probs)
+                self.last_cps_aux["router_reg"] = reg.detach()
+                self.last_cps_aux["router_aux"] = reg_aux
+                self.last_cps_aux["router_domain_counts"] = routed_counts
+                self.diagnostics.record_scalar("router_reg", float(reg.detach().item()))
+                self.diagnostics.log("advanced_router_domain_counts", routed_counts)
             aux["cps"] = self.last_cps_aux
             self.diagnostics.record_scalar("cps_agree_loss", float(cps_loss.detach().item()))
             self.diagnostics.log("cps_fusion", {"count": int(len(cps_fused))})
@@ -355,6 +608,18 @@ class EnhancedMnemonicCortex(nn.Module):
         cproj = self.ctx_proj(context)                    # (B,input_dim)
         return cproj.unsqueeze(1).expand(-1, S, -1)
 
+    def _bridge_wm_ltm(self, wm_seq: torch.Tensor, ltm_seq: torch.Tensor, phase: str) -> torch.Tensor:
+        gate = torch.sigmoid(self.mem_bridge_gate)
+        wm_from_ltm, w_wm = self.wm_to_ltm_attn(wm_seq, ltm_seq, ltm_seq, need_weights=True)
+        ltm_from_wm, w_ltm = self.ltm_to_wm_attn(ltm_seq, wm_seq, wm_seq, need_weights=True)
+        merged = self.mem_bridge_norm(
+            0.60 * wm_seq + 0.20 * (gate * wm_from_ltm) + 0.20 * (gate * ltm_from_wm)
+        )
+        self.diagnostics.record_scalar(f"bridge_gate_{phase}", float(gate.detach().item()))
+        self.diagnostics.record_scalar(f"bridge_attn_wm_{phase}", float(w_wm.detach().mean().item()))
+        self.diagnostics.record_scalar(f"bridge_attn_ltm_{phase}", float(w_ltm.detach().mean().item()))
+        return merged
+
     def process_sensory_input(self, sensory_input):
         self.sensory_buffer.update(sensory_input)
         base = self.sensory_buffer.attention_filter(sensory_input)
@@ -383,7 +648,15 @@ class EnhancedMnemonicCortex(nn.Module):
             self.long_term_memory.curved(cue, operation='write')
         return idx
 
-    def retrieve_memory(self, cue, context, strategy='associative', fire_mask=None, recall_boost: float = 0.3):
+    def retrieve_memory(
+        self,
+        cue,
+        context,
+        strategy='associative',
+        fire_mask=None,
+        recall_boost: float = 0.3,
+        query_token_ids=None,
+    ):
         """Retrieve memories with optional explosive recall (fire_mask)."""
         B,S,d = cue.shape
         ctx = self._tile_context(context, S)
@@ -395,6 +668,21 @@ class EnhancedMnemonicCortex(nn.Module):
             query = c.mean(dim=1)
             bdiag = self.consolidation_broker.route_read(query, intent="auto", k=8)
             xdiag = self.consolidation_broker.cross_store_diagnostics(query, k=8)
+            if query_token_ids is not None:
+                if query_token_ids.dim() > 1:
+                    flat_ids = query_token_ids.reshape(-1).tolist()
+                else:
+                    flat_ids = query_token_ids.tolist()
+                cps_keys = [f"token:{int(t)}" for t in flat_ids]
+                cps_sig = self.cps.confidence_signals_for_keys(cps_keys)
+                # Fuse CPS confidence into broker diagnostics for AHG decision.
+                bdiag["signals"]["fisher_uncertainty"] = max(
+                    float(bdiag["signals"].get("fisher_uncertainty", 0.0)),
+                    float(cps_sig.get("fisher_uncertainty", 0.0)),
+                )
+                bdiag["signals"]["phase_agreement"] = 0.5 * float(
+                    bdiag["signals"].get("phase_agreement", 0.0)
+                ) + 0.5 * float(cps_sig.get("phase_agreement", 0.0))
             decision = self.ahg.decide(bdiag, xdiag)
             self.last_ahg_decision = {
                 "action": decision.action,
@@ -429,6 +717,13 @@ class EnhancedMnemonicCortex(nn.Module):
             # Reconstructive via HG
             r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
 
+        # Bidirectional bridge: retrieved LTM context exchanges with WM readout.
+        wm_r = self.working_memory(c, operation='read')
+        r = self._bridge_wm_ltm(wm_r, r, phase="retrieve")
+        inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
+        if isinstance(inter, dict) and inter:
+            self.diagnostics.log("ltm_inter_memory_exchange", inter)
+
         cue_vec = self.r_proj(r.mean(dim=1))
         self.diagnostics.record_scalar("recall_boost", float(recall_boost))
         self.diagnostics.log("retrieve_path", {"strategy": strategy})
@@ -443,9 +738,13 @@ class EnhancedMnemonicCortex(nn.Module):
         self.diagnostics.log("consolidate_memories", {"threshold": th})
         if self.consolidation_broker is not None:
             try:
-                hg = self.long_term_memory.hg.output_projection(self.long_term_memory.hg.values.detach())
-                cg = self.long_term_memory.cgmn.output_projection(self.long_term_memory.cgmn.memory_slots.detach())
-                cv = self.long_term_memory.curved.decoder(self.long_term_memory.curved.memory_slots.detach())
+                hg_vals = self.long_term_memory.hg.values.detach().unsqueeze(0)
+                hg = self.long_term_memory.hg.output_projection(hg_vals).squeeze(0)
+                cg_slots = self.long_term_memory.cgmn.memory_slots.detach().unsqueeze(0)
+                cg = self.long_term_memory.cgmn.output_projection(cg_slots).squeeze(0)
+                cv = self.long_term_memory.curved.decoder(
+                    self.long_term_memory.curved.memory_slots.detach()
+                )
                 items = torch.cat([hg, cg, cv], dim=0)
                 metas = (
                     [{"domain": "reasoning", "tags": ["hg"]}] * hg.size(0)
@@ -464,12 +763,35 @@ class EnhancedMnemonicCortex(nn.Module):
         """Collect diagnostic metrics from all components."""
         metrics = {}
         # Lightbulb metrics
-        metrics.update(self.lightbulb.get_metrics())
+        try:
+            metrics.update(self.lightbulb.get_metrics())
+        except Exception as exc:
+            metrics["lightbulb_metrics_error"] = str(exc)
         # Memory module metrics
-        metrics.update(self.long_term_memory.hg.get_metrics())
-        metrics.update(self.long_term_memory.cgmn.get_metrics())
-        metrics.update(self.long_term_memory.curved.get_metrics())
-        metrics.update(self.working_memory.get_metrics())
+        try:
+            metrics.update(self.long_term_memory.hg.get_metrics())
+        except Exception as exc:
+            metrics["hg_metrics_error"] = str(exc)
+        try:
+            metrics.update(self.long_term_memory.cgmn.get_metrics())
+        except Exception as exc:
+            metrics["cgmn_metrics_error"] = str(exc)
+        try:
+            metrics.update(self.long_term_memory.curved.get_metrics())
+        except Exception as exc:
+            metrics["ltm_curved_metrics_error"] = str(exc)
+        try:
+            metrics.update(self.working_memory.get_metrics())
+        except Exception as exc:
+            metrics["wm_metrics_error"] = str(exc)
+        inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
+        if isinstance(inter, dict):
+            for k, v in inter.items():
+                metrics[f"ltm_inter_{k}"] = float(v)
+        rstats = getattr(self.long_term_memory, "last_router_stats", None)
+        if isinstance(rstats, dict):
+            for k, v in rstats.items():
+                metrics[f"ltm_router_{k}"] = float(v)
         if self.consolidation_broker is not None:
             b = self.consolidation_broker.get_metrics()
             for k, v in b.items():
@@ -477,6 +799,38 @@ class EnhancedMnemonicCortex(nn.Module):
                     metrics[f"broker_{k}_{kk}"] = vv
         if self.last_ahg_decision is not None:
             metrics["ahg_last_action"] = self.last_ahg_decision.get("action", "none")
+        # Advanced router + routed CPS diagnostics.
+        if isinstance(self.last_router_decision, dict):
+            probs = self.last_router_decision.get("probs_mean", [])
+            domains = self.last_router_decision.get("domains", [])
+            feat_mean = self.last_router_decision.get("ltm_stats_mean", [])
+            for i, dom in enumerate(domains):
+                if i < len(probs):
+                    metrics[f"router_prob_{dom}"] = float(probs[i])
+            feat_names = [
+                "hg_omega_mean", "hg_curv_mean", "hg_dist_mean", "hg_entropy",
+                "cgmn_omega_mean", "cgmn_curv_mean", "cgmn_dist_mean", "cgmn_entropy",
+                "curved_omega_mean", "curved_curv_mean", "curved_dist_mean", "curved_entropy",
+            ]
+            for i, name in enumerate(feat_names):
+                if i < len(feat_mean):
+                    metrics[f"router_feat_{name}"] = float(feat_mean[i])
+        if isinstance(self.last_cps_aux, dict):
+            if "router_reg" in self.last_cps_aux:
+                rr = self.last_cps_aux["router_reg"]
+                try:
+                    metrics["router_reg"] = float(rr.detach().item())
+                except Exception:
+                    metrics["router_reg"] = float(rr)
+            router_aux = self.last_cps_aux.get("router_aux", {})
+            if isinstance(router_aux, dict):
+                for k in ("entropy", "H_target", "balance_loss", "sparsity_mass"):
+                    if k in router_aux:
+                        metrics[f"router_{k}"] = float(router_aux[k])
+            rcounts = self.last_cps_aux.get("router_domain_counts", {})
+            if isinstance(rcounts, dict):
+                for dom, cnt in rcounts.items():
+                    metrics[f"router_count_{dom}"] = float(cnt)
         dsum = self.diagnostics.summary()
         metrics["diag_enabled"] = float(1.0 if dsum.get("enabled") else 0.0)
         metrics["diag_events_buffered"] = float(dsum.get("events_buffered", 0))
@@ -621,12 +975,22 @@ class EnhancedMnemonicCortex(nn.Module):
 
             # --- Working-memory read phase -----------------------------------
             wm_out = self.working_memory(filtered, operation='read')      # (B,S,d)
+            ltm_ctx = self.long_term_memory(
+                wm_out,
+                operation='read',
+                fire_mask=fire,
+                recall_boost=0.2,
+            )
+            bridged = self._bridge_wm_ltm(wm_out, ltm_ctx, phase="process")
+            inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
+            if isinstance(inter, dict) and inter:
+                self.diagnostics.log("ltm_inter_memory_exchange", inter)
 
             # --- Consolidation into long-term memory ------------------------
             if self.training:  # consolidate only during training
                 # Learned write gate with STE
                 gate, gate_prob = self._ste_write_gate(filtered)  # (B,1)
-                scaled = wm_out * imp.unsqueeze(-1)  # (B,S,d)
+                scaled = bridged * imp.unsqueeze(-1)  # (B,S,d)
                 self.diagnostics.record_scalar("write_gate_prob", float(gate_prob.mean().item()))
                 
                 # Only encode if gate=1 (batched conditional write)
@@ -643,12 +1007,19 @@ class EnhancedMnemonicCortex(nn.Module):
                 self.diagnostics.record_scalar("recall_loss", float(recall_loss.detach().item()))
                 return wm_out, {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
             
-            return wm_out
+            return bridged
 
         elif operation == 'retrieve':
             # Route fire to LTM for sharper readout on the cue as well
             fire_ret = self.lightbulb(sensory_input)  # (B,)
-            return self.retrieve_memory(sensory_input, context, strategy='direct', fire_mask=fire_ret, recall_boost=0.3)
+            return self.retrieve_memory(
+                sensory_input,
+                context,
+                strategy='direct',
+                fire_mask=fire_ret,
+                recall_boost=0.3,
+                query_token_ids=token_ids,
+            )
 
         else:
             self.consolidate_memories()
