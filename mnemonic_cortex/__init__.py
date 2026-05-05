@@ -1,123 +1,300 @@
-from .config import CortexConfig
-from .utils import enable_tensor_cores, optimize_memory_access, distributed_setup, seed_everything
-from .lightbulb import LightbulbDetector, ExplosiveRecallScaler
-from .memory_hg import EnhancedHyperGeometricMemory
-from .memory_cgmn import EnhancedCGMNMemory
-from .memory_curved import EnhancedCurvedMemory
-from .geometry_merger import GeometryMerger
-from .holo_head import HoloHead
-from .lightbulb_controller import LightbulbController
-from .consolidated_lexicon import ConsolidatedLexicon
-from .consolidation_broker import ConsolidationBroker, StoreConfig
-from .ahg import AntiHallucinationGuard, AHGConfig, AHGDecision as BrokerAHGDecision
-from .config_loader import GlobalConfig, apply_config_to_broker, load_yaml_config
-from .cps import ConsolidatedParamStore, UnifiedParam, UnifiedParamCfg, PolyOptim
-from .cps_fuser import CPSFuser, FuserCfg
-from .cps_vocab_bridge import key_token, key_skill, key_entity, ensure_tokens, ensure_skills, ensure_entities
-from .consolidated_memory import ConsolidatedMemoryCfg, ConsolidatedMemoryStore, ConsolidatedMemoryUnit
-from .consolidation_broker_v2 import BrokerCfg, ConsolidationBrokerV2
-from .consolidation_scheduler import SchedCfg, ConsolidationScheduler
-from .candidate_view_builder import MemoryToViewAdapter, build_candidate_view
-from .cms_index import CMSIndex
-from .conflict_resolver import ConflictCfg, ConflictResolver
-from .multi_cps import MultiCPSManager
-from .router_advanced import AdvancedDomainRouter
-from .router_losses import router_regularizer, symmetric_kl
-from .distillation import CrossDomainDistiller
-from .quantization import QuantPolicy, CPSQuantizer, quantize_int8_sym, dequant_int8_sym
-from .quant_fuser import QuantAwareCPSFuser
-from .parameter_audit import ParameterAuditLogger
-from .diagnostics import ModelDiagnostics
-from .cms_ops import (
-    CMSRecordLogger,
-    run_cms_consolidation_ema,
-    ConsolidationEMAJob,
-    cms_safety_clamp,
-    dump_cpg_shards,
-    load_cpg_shards_into_lexicon,
-)
-from .anti_hallucination import HallucinationGuard, AHGDecision, AHGThresholds
-from .topology_manager import TopologyManagerV3
-from .topology_manager_v2 import TopologyManagerV2
-from .geometry_utils import HolonomyProbe
-from .sensory_buffer import EnhancedSensoryBuffer
-from .triple_hybrid import EnhancedTripleHybridMemory
-from .cortex import EnhancedMnemonicCortex
-from .optimizer import MemoryOptimizer
+"""QDT-WM-MAAE working-memory package.
+
+Exports are intentionally explicit for preservation tests. Optional modules are
+imported independently so one later-stage import issue cannot hide core WM
+classes.
+"""
+
+from .legacy_enhanced_curved_memory import EnhancedCurvedMemory
+from .wm_curved_core import WMCurvedAssociativeCore
+
+# Optional architecture-lock exports.
+try:
+    from .wm_config import QDTWorkingMemoryConfig
+except Exception:
+    QDTWorkingMemoryConfig = None
+
+try:
+    from .wm_trace import WMTrace, TraceItem
+except Exception:
+    WMTrace = None
+    TraceItem = None
+
+try:
+    from .wm_triplet_state import WMTripletState, WMTripletProjector
+except Exception:
+    WMTripletState = None
+    WMTripletProjector = None
+
+try:
+    from .wm_quaternion_depth import QuaternionDepthConfig, QuaternionDepthTrace, QuaternionDepthReplicator, normalize_quaternion, quaternion_conjugate, quaternion_multiply, rotate_vectors_by_quaternion
+except Exception:
+    QuaternionDepthReplicator = None
+    normalize_quaternion = None
+
+try:
+    from .wm_intra_depth_transformer import WMIntraDepthTransformer
+    from .wm_cross_depth_transformer import WMCrossDepthTransformer
+    from .wm_depth_adapters import WMDepthAdapters
+    from .wm_depth_fusion import WMDepthFusion
+except Exception:
+    WMIntraDepthTransformer = None
+    WMCrossDepthTransformer = None
+    WMDepthAdapters = None
+    WMDepthFusion = None
+
+try:
+    from .context_geometry_maps import ContextGeometryMap, build_default_context_geometry_maps, validate_context_geometry_map
+    from .context_map_selector import ContextMapSelector, ContextSelectionTrace
+    from .context_triplet_projector import ContextTripletProjector
+    from .context_depth_adapter import ContextDepthAdapter
+    from .context_stability_guard import ContextStabilityGuard, ContextStabilityReport
+    from .context_trace import ContextMountTrace
+    from .context_to_wm_bridge import ContextToWMBridge
+    from .wm_context_mount import GeometryMountedContextBuffer, ContextMapMount
+except Exception:
+    ContextGeometryMap = None
+    build_default_context_geometry_maps = None
+    validate_context_geometry_map = None
+    ContextMapSelector = None
+    ContextSelectionTrace = None
+    ContextTripletProjector = None
+    ContextDepthAdapter = None
+    ContextStabilityGuard = None
+    ContextStabilityReport = None
+    ContextMountTrace = None
+    ContextToWMBridge = None
+    GeometryMountedContextBuffer = None
+    ContextMapMount = None
+
+try:
+    from .wm_geometry_linker import WMGeometryLinker
+    from .wm_retrieval_lanes import RetrievalLane, RetrievalLaneOutput, WMRetrievalLanes
+    from .wm_geometry_scoring import WMGeometryScoring
+    from .wm_memory_augmented_attention import WMMemoryAugmentedAttention
+    from .wm_evidence_attention import WMEvidenceAttention
+    from .wm_trace_attention import WMTraceAttention
+    from .wm_dual_fusion import WMDualFusionController
+    from .wm_counterfactual_attention import WMCounterfactualAttentionProbe
+    from .wm_conflict_attention import WMConflictAttention
+    from .wm_novelty_attention import WMNoveltyAttention
+    from .wm_stability_attention import WMStabilityAttention
+    from .wm_shadow_write_buffer import WMShadowWriteBuffer
+    from .wm_stability import WMStabilityManager
+except Exception:
+    WMGeometryLinker = None
+    RetrievalLane = None
+    RetrievalLaneOutput = None
+    WMRetrievalLanes = None
+    WMGeometryScoring = None
+    WMMemoryAugmentedAttention = None
+    WMEvidenceAttention = None
+    WMTraceAttention = None
+    WMDualFusionController = None
+    WMCounterfactualAttentionProbe = None
+    WMConflictAttention = None
+    WMNoveltyAttention = None
+    WMStabilityAttention = None
+    WMShadowWriteBuffer = None
+    WMStabilityManager = None
+
+try:
+    from .qdt_working_memory import QDTWorkingMemory
+except Exception:
+    QDTWorkingMemory = None
 
 __all__ = [
-    "CortexConfig",
-    "enable_tensor_cores",
-    "optimize_memory_access",
-    "distributed_setup",
-    "seed_everything",
-    "LightbulbDetector",
-    "ExplosiveRecallScaler",
-    "EnhancedHyperGeometricMemory",
-    "EnhancedCGMNMemory",
     "EnhancedCurvedMemory",
-    "GeometryMerger",
-    "HoloHead",
-    "LightbulbController",
-    "ConsolidatedLexicon",
-    "ConsolidationBroker",
-    "StoreConfig",
-    "AntiHallucinationGuard",
-    "AHGConfig",
-    "BrokerAHGDecision",
-    "GlobalConfig",
-    "apply_config_to_broker",
-    "load_yaml_config",
-    "ConsolidatedParamStore",
-    "UnifiedParam",
-    "UnifiedParamCfg",
-    "PolyOptim",
-    "CPSFuser",
-    "FuserCfg",
-    "key_token",
-    "key_skill",
-    "key_entity",
-    "ensure_tokens",
-    "ensure_skills",
-    "ensure_entities",
-    "ConsolidatedMemoryCfg",
-    "ConsolidatedMemoryStore",
-    "ConsolidatedMemoryUnit",
-    "BrokerCfg",
-    "ConsolidationBrokerV2",
-    "SchedCfg",
-    "ConsolidationScheduler",
-    "MemoryToViewAdapter",
-    "build_candidate_view",
-    "CMSIndex",
-    "ConflictCfg",
-    "ConflictResolver",
-    "MultiCPSManager",
-    "AdvancedDomainRouter",
-    "router_regularizer",
-    "symmetric_kl",
-    "CrossDomainDistiller",
-    "QuantPolicy",
-    "CPSQuantizer",
-    "quantize_int8_sym",
-    "dequant_int8_sym",
-    "QuantAwareCPSFuser",
-    "ParameterAuditLogger",
-    "ModelDiagnostics",
-    "CMSRecordLogger",
-    "run_cms_consolidation_ema",
-    "ConsolidationEMAJob",
-    "cms_safety_clamp",
-    "dump_cpg_shards",
-    "load_cpg_shards_into_lexicon",
-    "HallucinationGuard",
-    "AHGDecision",
-    "AHGThresholds",
-    "TopologyManagerV2",
-    "TopologyManagerV3",
-    "HolonomyProbe",
-    "EnhancedSensoryBuffer",
-    "EnhancedTripleHybridMemory",
-    "EnhancedMnemonicCortex",
-    "MemoryOptimizer",
+    "WMCurvedAssociativeCore",
+    "QDTWorkingMemoryConfig",
+    "WMTrace",
+    "TraceItem",
+    "WMTripletState",
+    "WMTripletProjector",
+    "QuaternionDepthReplicator",
+    "normalize_quaternion",
+    "WMIntraDepthTransformer",
+    "WMCrossDepthTransformer",
+    "WMDepthAdapters",
+    "WMDepthFusion",
+    "ContextGeometryMap",
+    "build_default_context_geometry_maps",
+    "validate_context_geometry_map",
+    "ContextMapSelector",
+    "ContextSelectionTrace",
+    "ContextTripletProjector",
+    "ContextDepthAdapter",
+    "ContextStabilityGuard",
+    "ContextStabilityReport",
+    "ContextMountTrace",
+    "ContextToWMBridge",
+    "GeometryMountedContextBuffer",
+    "ContextMapMount",
+    "WMGeometryLinker",
+    "RetrievalLane",
+    "RetrievalLaneOutput",
+    "WMRetrievalLanes",
+    "WMGeometryScoring",
+    "WMMemoryAugmentedAttention",
+    "WMEvidenceAttention",
+    "WMTraceAttention",
+    "WMDualFusionController",
+    "WMCounterfactualAttentionProbe",
+    "WMConflictAttention",
+    "WMNoveltyAttention",
+    "WMStabilityAttention",
+    "WMShadowWriteBuffer",
+    "WMStabilityManager",
+    "QDTWorkingMemory",
+    "CurvedResonanceConfig",
+    "CurvedResonantWMCore",
+    "CurvedResonanceTrace",
+    "ResonanceStepTrace",
+    "CurvedSlotStateConfig",
+    "CurvedSlotSnapshot",
+    "CurvedSlotStateTrace",
+    "CurvedSlotStateBank",
+    "CurvatureMetricPolicyConfig",
+    "CurvatureMetricPolicyOutput",
+    "CurvatureMetricPolicy",
+    "GeometryAwareAddressingConfig",
+    "GeometryAwareAddressingTrace",
+    "GeometryAwareAddressingOutput",
+    "GeometryAwareAddressing",
+    "BoundedAssociativeSpreadConfig",
+    "BoundedSpreadTrace",
+    "BoundedAssociativeSpread",
+    "CurvedTraceEvent",
+    "CurvedLocalTrace",
+    "CurvedLocalTraceBuilder",
+    "CurvedShadowWriteConfig",
+    "ShadowWriteProposal",
+    "ShadowWriteDecision",
+    "CurvedShadowWriteBuffer",
+    "QuaternionDepthConfig",
+    "QuaternionDepthTrace",
+    "quaternion_conjugate",
+    "quaternion_multiply",
+    "rotate_vectors_by_quaternion",
+    "WMIntraDepthTransformerConfig",
+    "WMIntraDepthTransformerTrace",
+    "WMCrossDepthTransformerConfig",
+    "WMCrossDepthTransformerTrace",
+    "DepthSpecificAddressingConfig",
+    "DepthSpecificAddressingTrace",
+    "DepthSpecificAddressingOutput",
+    "DepthSpecificAddressing",
+    "WMTraceEmitter",
+    "WMTripletStateConfig",
+    "WMDepthAdaptersConfig",
+    "WMDepthAdaptersTrace",
+    "WMDepthFusionConfig",
+    "WMDepthFusionTrace",
+    "RetrievalLaneConfig",
+    "WMRetrievalLanesOutput",
+    "WMGeometryScoringConfig",
+    "WMGeometryScoringOutput",
+    "GeometryLink",
+    "WMGeometryLinkerConfig",
+    "WMMemoryAugmentedAttentionConfig",
+    "WMMemoryAugmentedAttentionOutput",
+    "WMEvidenceAttentionConfig",
+    "WMEvidenceAttentionOutput",
+    "WMTraceAttentionConfig",
+    "WMTraceAttentionOutput",
+    "WMCounterfactualAttentionConfig",
+    "WMCounterfactualAttentionOutput",
+    "WMCounterfactualAttention",
+    "WMConflictAttentionConfig",
+    "WMConflictAttentionOutput",
+    "WMNoveltyAttentionConfig",
+    "WMNoveltyAttentionOutput",
+    "WMStabilityAttentionConfig",
+    "WMStabilityAttentionOutput",
+    "ExternalMemoryQuery",
+    "ExternalMemoryResponse",
+    "SyntheticExternalMemoryBank",
+    "WMLTMCrossAttentionConfig",
+    "WMLTMCrossAttentionOutput",
+    "WMLTMCrossAttention",
+    "WMMANNCrossAttentionConfig",
+    "WMMANNTraceVisibility",
+    "WMMANNCrossAttentionOutput",
+    "WMMANNCrossAttention",
+    "WMSPCPCrossAttentionConfig",
+    "WMSPCPCrossAttentionOutput",
+    "WMSPCPCrossAttention",
+    "WMDualFusionConfig",
+    "WMDualFusionOutput",
+    "canonical_slot_id",
+    "SharedSlotMirrorRef",
+    "SharedSlotRecord",
+    "SharedSlotRegistry",
+    "tensor_fingerprint",
+    "MirroredContentRule",
+    "SharedSlotStoreConfig",
+    "SharedSlotWriteResult",
+    "SharedSlotStore",
+    "GEOMETRY_CODEBOOK",
+    "MEMORY_TYPE_CODEBOOK",
+    "TASK_MODE_CODEBOOK",
+    "QHCodeSchema",
+    "build_qh_code_schema",
+    "QHInterferenceReport",
+    "QHStorageRecord",
+    "QuantumHolographicStorageConfig",
+    "QuantumHolographicStorage",
+    "SystemWriteProposal",
+    "CommitGateDecision",
+    "CommitGateEvaluation",
+    "SystemCommitGate",
+    "QDTWMCompatibilityConfig",
+    "QDTWMCompatibilityTrace",
+    "QDTWMCompatibilityWrapper",
+    "CortexWorkingMemoryIntegrationConfig",
+    "CortexWorkingMemoryMigrationResult",
+    "EnhancedMnemonicCortexQDTAdapter",
+    "build_qdt_working_memory_for_cortex",
+    "replace_cortex_working_memory",
+    "migration_patch_template",
 ]
+
+from .curved_resonant_wm_core import CurvedResonanceConfig, CurvedResonantWMCore, CurvedResonanceTrace, ResonanceStepTrace
+
+from .curved_slot_state import CurvedSlotStateConfig, CurvedSlotSnapshot, CurvedSlotStateTrace, CurvedSlotStateBank
+from .curvature_metric_policy import CurvatureMetricPolicyConfig, CurvatureMetricPolicyOutput, CurvatureMetricPolicy
+
+from .geometry_aware_addressing import GeometryAwareAddressingConfig, GeometryAwareAddressingTrace, GeometryAwareAddressingOutput, GeometryAwareAddressing
+from .bounded_associative_spread import BoundedAssociativeSpreadConfig, BoundedSpreadTrace, BoundedAssociativeSpread
+
+from .curved_local_trace import CurvedTraceEvent, CurvedLocalTrace, CurvedLocalTraceBuilder
+from .curved_shadow_write import CurvedShadowWriteConfig, ShadowWriteProposal, ShadowWriteDecision, CurvedShadowWriteBuffer
+
+from .wm_intra_depth_transformer import WMIntraDepthTransformerConfig, WMIntraDepthTransformerTrace, WMIntraDepthTransformer
+from .wm_cross_depth_transformer import WMCrossDepthTransformerConfig, WMCrossDepthTransformerTrace, WMCrossDepthTransformer
+from .depth_specific_addressing import DepthSpecificAddressingConfig, DepthSpecificAddressingTrace, DepthSpecificAddressingOutput, DepthSpecificAddressing
+from .wm_trace import WMTrace, TraceItem, WMTraceEmitter
+from .wm_triplet_state import WMTripletStateConfig, WMTripletState, WMTripletProjector
+from .wm_depth_adapters import WMDepthAdaptersConfig, WMDepthAdaptersTrace, WMDepthAdapters
+from .wm_depth_fusion import WMDepthFusionConfig, WMDepthFusionTrace, WMDepthFusion
+from .wm_retrieval_lanes import RetrievalLaneConfig, RetrievalLaneOutput, WMRetrievalLanesOutput, WMRetrievalLanes
+from .wm_geometry_scoring import WMGeometryScoringConfig, WMGeometryScoringOutput, WMGeometryScoring
+from .wm_geometry_linker import GeometryLink, WMGeometryLinkerConfig, WMGeometryLinker
+from .wm_memory_augmented_attention import WMMemoryAugmentedAttentionConfig, WMMemoryAugmentedAttentionOutput, WMMemoryAugmentedAttention
+from .wm_evidence_attention import WMEvidenceAttentionConfig, WMEvidenceAttentionOutput, WMEvidenceAttention
+from .wm_trace_attention import WMTraceAttentionConfig, WMTraceAttentionOutput, WMTraceAttention
+from .wm_counterfactual_attention import WMCounterfactualAttentionConfig, WMCounterfactualAttentionOutput, WMCounterfactualAttention
+from .wm_conflict_attention import WMConflictAttentionConfig, WMConflictAttentionOutput, WMConflictAttention
+from .wm_novelty_attention import WMNoveltyAttentionConfig, WMNoveltyAttentionOutput, WMNoveltyAttention
+from .wm_stability_attention import WMStabilityAttentionConfig, WMStabilityAttentionOutput, WMStabilityAttention
+from .wm_external_memory_interfaces import ExternalMemoryQuery, ExternalMemoryResponse, SyntheticExternalMemoryBank
+from .wm_ltm_cross_attention import WMLTMCrossAttentionConfig, WMLTMCrossAttentionOutput, WMLTMCrossAttention
+from .wm_mann_cross_attention import WMMANNCrossAttentionConfig, WMMANNTraceVisibility, WMMANNCrossAttentionOutput, WMMANNCrossAttention
+from .wm_spcp_cross_attention import WMSPCPCrossAttentionConfig, WMSPCPCrossAttentionOutput, WMSPCPCrossAttention
+from .wm_dual_fusion import WMDualFusionConfig, WMDualFusionOutput, WMDualFusionController
+from .wm_shared_slot_registry import canonical_slot_id, SharedSlotMirrorRef, SharedSlotRecord, SharedSlotRegistry
+from .wm_shared_slot_store import tensor_fingerprint, MirroredContentRule, SharedSlotStoreConfig, SharedSlotWriteResult, SharedSlotStore
+from .wm_quantum_holographic_storage import GEOMETRY_CODEBOOK, MEMORY_TYPE_CODEBOOK, TASK_MODE_CODEBOOK, QHCodeSchema, build_qh_code_schema, QHInterferenceReport, QHStorageRecord, QuantumHolographicStorageConfig, QuantumHolographicStorage
+from .wm_system_commit_gate import SystemWriteProposal, CommitGateDecision, CommitGateEvaluation, SystemCommitGate
+from .wm_compatibility_wrapper import QDTWMCompatibilityConfig, QDTWMCompatibilityTrace, QDTWMCompatibilityWrapper
+from .wm_cortex_integration import CortexWorkingMemoryIntegrationConfig, CortexWorkingMemoryMigrationResult, EnhancedMnemonicCortexQDTAdapter, build_qdt_working_memory_for_cortex, replace_cortex_working_memory, migration_patch_template
