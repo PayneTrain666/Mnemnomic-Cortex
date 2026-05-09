@@ -1,0 +1,163 @@
+# WM-1D Acceptance, Patch Phase, and Ship-Check
+
+## Token budget figures
+
+Estimated generated artifact text:
+- geometry_aware_addressing.py: ~6,500-8,000 tokens
+- bounded_associative_spread.py: ~4,500-5,800 tokens
+- CurvedResonantWMCore integration patch: ~800-1,200 tokens
+- tests/test_wm1d_geometry_addressing_spread.py: ~2,200-3,000 tokens
+- docs/tracker/continuation: ~2,000-2,800 tokens
+
+Total generated artifact text:
+~16,000-20,800 tokens
+
+Practical response print budget:
+~7,000-9,000 tokens
+
+Selected strategy:
+- Create all files.
+- Run full tests.
+- Print summary and continuation command in response.
+- Provide ZIP with all files.
+
+## Pytest output
+
+```text
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/generated/interface/models.py", line 48821, in hydrate_crdt_from_proto
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/remote.py", line 747, in __call__
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[31m                                            [100%][0m
+=================================== FAILURES ===================================
+[31m[1m_________ test_curved_resonant_core_accepts_wm1d_addressing_and_spread _________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_curved_resonant_core_accepts_wm1d_addressing_and_spread[39;49;00m():[90m[39;49;00m
+        bank = make_bank(dim=[94m32[39;49;00m, slots=[94m8[39;49;00m)[90m[39;49;00m
+        addressing = GeometryAwareAddressing([90m[39;49;00m
+            GeometryAwareAddressingConfig(dim=[94m32[39;49;00m, num_slots=[94m8[39;49;00m),[90m[39;49;00m
+            slot_bank=bank,[90m[39;49;00m
+        )[90m[39;49;00m
+        spread = BoundedAssociativeSpread(BoundedAssociativeSpreadConfig(num_slots=[94m8[39;49;00m))[90m[39;49;00m
+        core = CurvedResonantWMCore([90m[39;49;00m
+            CurvedResonanceConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, resonance_slots=[94m8[39;49;00m),[90m[39;49;00m
+            geometry_aware_addressing=addressing,[90m[39;49;00m
+            bounded_spread=spread,[90m[39;49;00m
+        )[90m[39;49;00m
+    [90m[39;49;00m
+        x = torch.randn([94m2[39;49;00m, [94m5[39;49;00m, [94m32[39;49;00m)[90m[39;49;00m
+>       y, trace = core(x, return_trace=[94mTrue[39;49;00m)[90m[39;49;00m
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm1d_geometry_addressing_spread.py[0m:124: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1776: in _wrapped_call_impl
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m._call_impl(*args, **kwargs)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1787: in _call_impl
+    [0m[94mreturn[39;49;00m forward_call(*args, **kwargs)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/curved_resonant_wm_core.py[0m:266: in forward
+    [0maddr_out = [96mself[39;49;00m.geometry_aware_addressing(seed)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1776: in _wrapped_call_impl
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m._call_impl(*args, **kwargs)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1787: in _call_impl
+    [0m[94mreturn[39;49;00m forward_call(*args, **kwargs)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = GeometryAwareAddressing(
+  (slot_bank): CurvedSlotStateBank()
+  (query_projection): Sequential(
+    (0): LayerNorm((32...es=32, out_features=32, bias=True)
+  )
+  (context_bias_projection): Linear(in_features=32, out_features=8, bias=True)
+)
+query = tensor([[ 6.2924e-01,  2.0201e+00, -2.7736e-02,  2.1110e-01,  1.4752e-01,
+          9.5288e-01,  2.1294e+00, -1.0750e-...8.5985e-01,  4.2869e-01,
+         -1.2768e-01,  6.9059e-01,  4.5963e-01, -4.4348e-02]],
+       grad_fn=<MeanBackward1>)
+context = None, context_geometry_bias = None, curvature_output = None
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mforward[39;49;00m([90m[39;49;00m
+        [96mself[39;49;00m,[90m[39;49;00m
+        query: torch.Tensor,[90m[39;49;00m
+        context: Optional[torch.Tensor] = [94mNone[39;49;00m,[90m[39;49;00m
+        context_geometry_bias: Optional[torch.Tensor] = [94mNone[39;49;00m,[90m[39;49;00m
+        curvature_output: Optional[CurvatureMetricPolicyOutput] = [94mNone[39;49;00m,[90m[39;49;00m
+    ) -> GeometryAwareAddressingOutput:[90m[39;49;00m
+        [94mif[39;49;00m query.dim() != [94m2[39;49;00m [95mor[39;49;00m query.size(-[94m1[39;49;00m) != [96mself[39;49;00m.config.dim:[90m[39;49;00m
+>           [94mraise[39;49;00m [96mValueError[39;49;00m([33mf[39;49;00m[33m"[39;49;00m[33mExpected query [B,[39;49;00m[33m{[39;49;00m[96mself[39;49;00m.config.dim[33m}[39;49;00m[33m], got [39;49;00m[33m{[39;49;00m[96mtuple[39;49;00m(query.shape)[33m}[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[1m[31mE           ValueError: Expected query [B,32], got (2, 64)[0m
+
+[1m[31mmnemonic_cortex/working_memory/geometry_aware_addressing.py[0m:183: ValueError
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/test_wm1d_geometry_addressing_spread.py::[1mtest_curved_resonant_core_accepts_wm1d_addressing_and_spread[0m - ValueError: Expected query [B,32], got (2, 64)
+[31m[31m[1m1 failed[0m, [32m28 passed[0m[31m in 26.37s[0m[0m
+
+```
+
+## DEV-FLOW PATCH PHASE summary
+
+Patched now:
+- Added GeometryAwareAddressing.
+- Added content/curved-distance/phase/importance/confidence/trace/context/curvature scoring.
+- Added BoundedAssociativeSpread.
+- Added row-stochastic normalization, sparsity, spectral clamp, decay, entropy floor, and bounded steps.
+- Added bounded Hebbian update.
+- Patched CurvedResonantWMCore to accept optional addressing/spread hooks.
+- Added tests.
+
+Deferred:
+- Curved local trace + curved shadow writes to WM-1E.
+- Depth-specific addressing to WM-2B.
+- Full topology-manager routing to later stages.
+
+REDO required:
+- Yes
+
+## Ship-check
+WM-1D status:
+- incomplete
+
+## Full-Depth Adequacy Gate
+Selected scope depth:
+- Adequate for geometry-aware addressing and bounded spread stage.
+
+Tests present:
+- tests/test_wm1d_geometry_addressing_spread.py
+
+Tracker blockers:
+- Test failure remains
+
+Stage complete:
+- No
+
+
+## WM-1D patch rerun result
+
+```text
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/generated/interface/models.py", line 48821, in hydrate_crdt_from_proto
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/remote.py", line 747, in __call__
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                            [100%][0m
+[32m[32m[1m29 passed[0m[32m in 26.99s[0m[0m
+
+```
+
+WM-1D final patched test status: passed.

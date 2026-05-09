@@ -1,0 +1,601 @@
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/generated/interface/models.py", line 48821, in hydrate_crdt_from_proto
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/remote.py", line 747, in __call__
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[31mF[0m[31mF[0m[31mF[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[31m [ 64%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[31mF[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[31mF[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[31mF[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31m                                  [100%][0m
+=================================== FAILURES ===================================
+[31m[1m_____________ test_qdt_working_memory_read_shape_trace_and_finite ______________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_read_shape_trace_and_finite[39;49;00m():[90m[39;49;00m
+>       wm = make_wm()[90m[39;49;00m
+             ^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:19: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:15: in make_wm
+    [0m[94mreturn[39;49;00m QDTWorkingMemory(cfg)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m____________________ test_qdt_working_memory_process_shape _____________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_process_shape[39;49;00m():[90m[39;49;00m
+>       wm = make_wm()[90m[39;49;00m
+             ^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:38: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:15: in make_wm
+    [0m[94mreturn[39;49;00m QDTWorkingMemory(cfg)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m_______________ test_qdt_working_memory_write_uses_shadow_trace ________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_write_uses_shadow_trace[39;49;00m():[90m[39;49;00m
+>       wm = make_wm()[90m[39;49;00m
+             ^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:15: in make_wm
+    [0m[94mreturn[39;49;00m QDTWorkingMemory(cfg)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m___________________ test_qdt_working_memory_stability_report ___________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_stability_report[39;49;00m():[90m[39;49;00m
+>       wm = make_wm()[90m[39;49;00m
+             ^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:15: in make_wm
+    [0m[94mreturn[39;49;00m QDTWorkingMemory(cfg)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m________________ test_qdt_working_memory_rejects_bad_operation _________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_rejects_bad_operation[39;49;00m():[90m[39;49;00m
+>       wm = make_wm()[90m[39;49;00m
+             ^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:68: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mtests/test_wm2c_qdt_working_memory_assembly.py[0m:15: in make_wm
+    [0m[94mreturn[39;49;00m QDTWorkingMemory(cfg)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m____ test_qdt_working_memory_read_includes_memory_augmented_attention_trace ____[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_read_includes_memory_augmented_attention_trace[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm3a_memory_augmented_attention.py[0m:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m______ test_qdt_working_memory_trace_contains_advanced_attention_metadata ______[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_trace_contains_advanced_attention_metadata[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm3b_advanced_attention_integration.py[0m:38: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m___________ test_qdt_working_memory_read_includes_dual_fusion_trace ____________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_read_includes_dual_fusion_trace[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm4a_qdt_integration.py[0m:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m_________ test_qdt_working_memory_process_is_finite_after_dual_fusion __________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_process_is_finite_after_dual_fusion[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm4a_qdt_integration.py[0m:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m____ test_qdt_working_memory_dual_fusion_updates_shared_slot_registry_trace ____[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_dual_fusion_updates_shared_slot_registry_trace[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm4b_external_memory_shared_refs.py[0m:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m___________ test_qdt_working_memory_read_creates_qh_trace_and_record ___________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_read_creates_qh_trace_and_record[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm4c_qdt_integration.py[0m:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m______________ test_qdt_shared_slot_store_has_qh_refs_after_read _______________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_shared_slot_store_has_qh_refs_after_read[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm4c_qdt_integration.py[0m:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m____________ test_qdt_process_still_finite_with_qh_storage_enabled _____________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_process_still_finite_with_qh_storage_enabled[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm4c_qdt_integration.py[0m:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m____________ test_qdt_working_memory_write_uses_system_commit_gate _____________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_write_uses_system_commit_gate[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm5a_qdt_commit_gate_integration.py[0m:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m___________ test_qdt_working_memory_read_exposes_commit_gate_summary ___________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_read_exposes_commit_gate_summary[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm5a_qdt_commit_gate_integration.py[0m:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[31m[1m_____ test_qdt_working_memory_process_still_finite_after_commit_gate_patch _____[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_qdt_working_memory_process_still_finite_after_commit_gate_patch[39;49;00m():[90m[39;49;00m
+        cfg = QDTWorkingMemoryConfig(input_dim=[94m32[39;49;00m, hidden_dim=[94m64[39;49;00m, num_depths=[94m8[39;49;00m, num_slots=[94m8[39;49;00m, num_heads=[94m4[39;49;00m)[90m[39;49;00m
+>       wm = QDTWorkingMemory(cfg)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_wm5a_qdt_commit_gate_integration.py[0m:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/qdt_working_memory.py[0m:55: in __init__
+    [0mshadow_buffer=[96mself[39;49;00m.shadow_write_buffer,[90m[39;49;00m
+                  ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = QDTWorkingMemory(), name = 'shadow_write_buffer'
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m__getattr__[39;49;00m([96mself[39;49;00m, name: [96mstr[39;49;00m) -> Union[Tensor, [33m"[39;49;00m[33mModule[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _parameters = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_parameters[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _parameters:[90m[39;49;00m
+                [94mreturn[39;49;00m _parameters[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            _buffers = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_buffers[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m _buffers:[90m[39;49;00m
+                [94mreturn[39;49;00m _buffers[name][90m[39;49;00m
+        [94mif[39;49;00m [33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m [95min[39;49;00m [96mself[39;49;00m.[91m__dict__[39;49;00m:[90m[39;49;00m
+            modules = [96mself[39;49;00m.[91m__dict__[39;49;00m[[33m"[39;49;00m[33m_modules[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            [94mif[39;49;00m name [95min[39;49;00m modules:[90m[39;49;00m
+                [94mreturn[39;49;00m modules[name][90m[39;49;00m
+>       [94mraise[39;49;00m [96mAttributeError[39;49;00m([90m[39;49;00m
+            [33mf[39;49;00m[33m"[39;49;00m[33m'[39;49;00m[33m{[39;49;00m[96mtype[39;49;00m([96mself[39;49;00m).[91m__name__[39;49;00m[33m}[39;49;00m[33m'[39;49;00m[33m object has no attribute [39;49;00m[33m'[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m'[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+[1m[31mE       AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'[0m
+
+[1m[31m/opt/pyvenv/lib/python3.13/site-packages/torch/nn/modules/module.py[0m:1965: AttributeError
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/test_wm2c_qdt_working_memory_assembly.py::[1mtest_qdt_working_memory_read_shape_trace_and_finite[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm2c_qdt_working_memory_assembly.py::[1mtest_qdt_working_memory_process_shape[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm2c_qdt_working_memory_assembly.py::[1mtest_qdt_working_memory_write_uses_shadow_trace[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm2c_qdt_working_memory_assembly.py::[1mtest_qdt_working_memory_stability_report[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm2c_qdt_working_memory_assembly.py::[1mtest_qdt_working_memory_rejects_bad_operation[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm3a_memory_augmented_attention.py::[1mtest_qdt_working_memory_read_includes_memory_augmented_attention_trace[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm3b_advanced_attention_integration.py::[1mtest_qdt_working_memory_trace_contains_advanced_attention_metadata[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm4a_qdt_integration.py::[1mtest_qdt_working_memory_read_includes_dual_fusion_trace[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm4a_qdt_integration.py::[1mtest_qdt_working_memory_process_is_finite_after_dual_fusion[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm4b_external_memory_shared_refs.py::[1mtest_qdt_working_memory_dual_fusion_updates_shared_slot_registry_trace[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm4c_qdt_integration.py::[1mtest_qdt_working_memory_read_creates_qh_trace_and_record[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm4c_qdt_integration.py::[1mtest_qdt_shared_slot_store_has_qh_refs_after_read[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm4c_qdt_integration.py::[1mtest_qdt_process_still_finite_with_qh_storage_enabled[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm5a_qdt_commit_gate_integration.py::[1mtest_qdt_working_memory_write_uses_system_commit_gate[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm5a_qdt_commit_gate_integration.py::[1mtest_qdt_working_memory_read_exposes_commit_gate_summary[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31mFAILED[0m tests/test_wm5a_qdt_commit_gate_integration.py::[1mtest_qdt_working_memory_process_still_finite_after_commit_gate_patch[0m - AttributeError: 'QDTWorkingMemory' object has no attribute 'shadow_write_buffer'
+[31m[31m[1m16 failed[0m, [32m95 passed[0m[31m in 2.10s[0m[0m

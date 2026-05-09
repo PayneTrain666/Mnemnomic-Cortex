@@ -1,0 +1,49 @@
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/generated/interface/models.py", line 48821, in hydrate_crdt_from_proto
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/remote.py", line 747, in __call__
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m [ 48%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31m [ 97%]
+[0m[32m.[0m[32m.[0m[32m.[0m[31m                                                                      [100%][0m
+=================================== FAILURES ===================================
+[31m[1m______________________ test_depth_state_rejects_nonfinite ______________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_depth_state_rejects_nonfinite[39;49;00m():[90m[39;49;00m
+        depth = torch.randn([94m2[39;49;00m, [94m8[39;49;00m, [94m5[39;49;00m, [94m3[39;49;00m, [94m32[39;49;00m)[90m[39;49;00m
+        depth[[94m0[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m] = [96mfloat[39;49;00m([33m"[39;49;00m[33mnan[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [94mwith[39;49;00m pytest.raises(WMDepthValidationError):[90m[39;49;00m
+>           ensure_depth_state([33m"[39;49;00m[33mdepth[39;49;00m[33m"[39;49;00m, depth)[90m[39;49;00m
+
+[1m[31mtests/test_wm_qd2a_depth_guards.py[0m:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/wm_depth_guards.py[0m:42: in ensure_depth_state
+    [0mensure_rank(name, tensor, [94m5[39;49;00m)[90m[39;49;00m
+[1m[31mmnemonic_cortex/working_memory/wm_foundation_guards.py[0m:24: in ensure_rank
+    [0mensure_finite_tensor(name, tensor)[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'depth'
+tensor = tensor([[[[[        nan,  1.3581e-02,  1.6598e+00,  ...,  1.1850e+00,
+             2.4033e+00,  1.1484e+00],
+         ...e+00],
+           [-1.9932e-01,  2.0421e+00, -7.9244e-01,  ...,  6.2984e-02,
+            -2.7571e-01, -8.0890e-01]]]]])
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mensure_finite_tensor[39;49;00m(name: [96mstr[39;49;00m, tensor: torch.Tensor) -> torch.Tensor:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Validate that a tensor contains no NaN/Inf values."""[39;49;00m[90m[39;49;00m
+        [94mif[39;49;00m [95mnot[39;49;00m [96misinstance[39;49;00m(tensor, torch.Tensor):[90m[39;49;00m
+            [94mraise[39;49;00m WMFoundationValidationError([33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m must be a torch.Tensor[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [94mif[39;49;00m [95mnot[39;49;00m torch.isfinite(tensor).all():[90m[39;49;00m
+>           [94mraise[39;49;00m WMFoundationValidationError([33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m contains NaN or Inf[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[1m[31mE           mnemonic_cortex.working_memory.wm_foundation_guards.WMFoundationValidationError: depth contains NaN or Inf[0m
+
+[1m[31mmnemonic_cortex/working_memory/wm_foundation_guards.py[0m:19: WMFoundationValidationError
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/test_wm_qd2a_depth_guards.py::[1mtest_depth_state_rejects_nonfinite[0m - mnemonic_cortex.working_memory.wm_foundation_guards.WMFoundationValidationError: depth contains NaN or Inf
+[31m[31m[1m1 failed[0m, [32m146 passed[0m[31m in 2.99s[0m[0m

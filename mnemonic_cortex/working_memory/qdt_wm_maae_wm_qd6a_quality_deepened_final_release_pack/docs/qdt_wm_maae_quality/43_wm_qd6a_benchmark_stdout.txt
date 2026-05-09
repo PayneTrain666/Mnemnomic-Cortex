@@ -1,0 +1,101 @@
+{
+  "benchmark_name": "qdt_wm_maae_quality_deepened_smoke",
+  "config": {
+    "input_dim": 32,
+    "hidden_dim": 64,
+    "num_depths": 8,
+    "num_slots": 8,
+    "num_heads": 4,
+    "batch": 2,
+    "tokens": 5,
+    "iterations": 2
+  },
+  "latency_smoke": {
+    "read": {
+      "iterations": 2,
+      "mean_ms": 295.9724134998396,
+      "min_ms": 284.1397379997943,
+      "max_ms": 307.8050889998849
+    },
+    "process": {
+      "iterations": 2,
+      "mean_ms": 246.1262194997289,
+      "min_ms": 202.09921399964514,
+      "max_ms": 290.15322499981266
+    },
+    "write": {
+      "iterations": 2,
+      "mean_ms": 5.007602000205225,
+      "min_ms": 4.743423000036273,
+      "max_ms": 5.271781000374176
+    }
+  },
+  "trace_size_smoke": {
+    "read": {
+      "json_bytes": 29699,
+      "trace_items": 15,
+      "output_shape": [
+        2,
+        5,
+        32
+      ],
+      "finite": true
+    },
+    "process": {
+      "json_bytes": 29956,
+      "trace_items": 15,
+      "output_shape": [
+        2,
+        5,
+        32
+      ],
+      "finite": true
+    },
+    "write": {
+      "json_bytes": 10327,
+      "trace_items": 6,
+      "output_shape": [
+        2,
+        5,
+        32
+      ],
+      "finite": true
+    }
+  },
+  "compatibility_wrapper_latency_smoke": {
+    "iterations": 2,
+    "mean_ms": 156.26102150008592,
+    "min_ms": 111.82176999955118,
+    "max_ms": 200.70027300062065
+  },
+  "compatibility_wrapper_trace": {
+    "output_shape": [
+      2,
+      5,
+      32
+    ],
+    "finite": true,
+    "operation": "process"
+  },
+  "slot_qh_commit_growth_smoke": [
+    {
+      "step": 0,
+      "finite": true,
+      "shared_slot_records": 15,
+      "qh_records": 5,
+      "commit_decisions": 3
+    },
+    {
+      "step": 1,
+      "finite": true,
+      "shared_slot_records": 16,
+      "qh_records": 5,
+      "commit_decisions": 4
+    }
+  ],
+  "contract_smoke": {
+    "qdt_commit_contract_trace_type": "wm_qd5a_commit_cortex_trace",
+    "trace_governance": true
+  },
+  "pass": true
+}

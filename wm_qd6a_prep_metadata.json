@@ -1,0 +1,43 @@
+{
+  "base": "/mnt/data/qdt_wm_maae_wm_qd6a",
+  "source_pack": "/mnt/data/qdt_wm_maae_wm_qd5a_commit_cortex_quality_pack_patched.zip",
+  "token_budget": {
+    "stage": "WM-QD-6A",
+    "target": "Final quality-deepened release/readiness pack, audit, benchmarks, production readiness, deferred hardening plan, and campaign closure.",
+    "minimum_complete_version": [
+      "API/source audit",
+      "module dependency audit",
+      "full pytest rerun",
+      "smoke benchmark rerun",
+      "contract verification across WM-QD-1A through WM-QD-5A",
+      "release manifest",
+      "production readiness document",
+      "deferred hardening plan",
+      "quality tracker/deferred updates",
+      "final ZIP package"
+    ],
+    "deep_implementation_version": [
+      "AST-based public API inventory",
+      "AST-based import/dependency inventory",
+      "contract invocation audit for all WM-QD contracts",
+      "runtime benchmark harness for QDT read/process/write, wrapper, shared/QH growth",
+      "full source/test/doc/release manifest",
+      "honest production caveats",
+      "remaining real-source integration requirements",
+      "final campaign closure gate"
+    ],
+    "estimated_source_module_count": 55,
+    "estimated_test_count": 51,
+    "expected_doc_count": "10+ final WM-QD-6A docs/outputs",
+    "benchmark_count": 4,
+    "split_decision": "No sub-split required; generated full artifacts in files and summarized in final response.",
+    "explicit_out_of_scope": [
+      "Patching real EnhancedMnemonicCortex source because the real source file is not present",
+      "Persistent database/backend implementation",
+      "Real external LTM/MANN/SPCP adapter implementation",
+      "Real quantum/holographic hardware backend",
+      "Distributed/concurrent transaction semantics",
+      "Long-running hardware benchmark suite"
+    ]
+  }
+}
