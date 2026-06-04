@@ -276,6 +276,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
     def get_metrics(self):
         """Return dict of diagnostic metrics."""
+        self.flush_hologram_updates()
         M = self.active_slots
         holo_rms = self.holograms_fft[:M].abs().mean(dim=-1)  # (M,)
         m = {
@@ -492,6 +493,11 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.holograms_fft[:M].mul_(scale)
         self._sync_buffers_ddp()
 
+    @torch.no_grad()
+    def flush_hologram_updates(self, lr_mult: float = 1.0):
+        """Force-apply buffered hologram writes."""
+        self._flush_pending_updates(lr_mult=lr_mult)
+
     def _holo_read(self, x: torch.Tensor, indices: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
         """Unbind with conj(key) from selected holograms; weight and sum.
         Returns a (B,S,2*holo_dim) real feature (real||imag of time-domain retrieval).
@@ -606,6 +612,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
             self._update_spin_slots(q_query, itop)
             return x
 
+        self.flush_hologram_updates()
         holo_feat = self._holo_read(x, itop, w)                 # (B,S,2H)
         triplet = self.readout(holo_feat)                       # (B,S,3D)
         out = self.output_projection(triplet)                   # (B,S,input_dim)

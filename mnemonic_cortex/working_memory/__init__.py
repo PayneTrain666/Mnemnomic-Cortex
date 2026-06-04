@@ -5,8 +5,15 @@ imported independently so one later-stage import issue cannot hide core WM
 classes.
 """
 
-from .legacy_enhanced_curved_memory import EnhancedCurvedMemory
-from .wm_curved_core import WMCurvedAssociativeCore
+try:
+    from .legacy_enhanced_curved_memory import EnhancedCurvedMemory
+except Exception:
+    EnhancedCurvedMemory = None
+
+try:
+    from .wm_curved_core import WMCurvedAssociativeCore
+except Exception:
+    WMCurvedAssociativeCore = None
 
 # Optional architecture-lock exports.
 try:

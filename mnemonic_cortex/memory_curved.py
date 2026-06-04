@@ -7,6 +7,7 @@ from .geometry_merger import GeometryMergerV3
 from .geometry_utils import qexp, qmul, qnormalize
 from .holo_head import HoloHead
 from .lightbulb_controller import LightbulbController
+from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 from .memory.conformal import ConformalMLP, warp_knn_with_stats
 from geometry.blend import GeometryBlender
 from geometry.manifold_utils import product_et_distance, symplectic_leapfrog, wrap_angles
@@ -107,6 +108,19 @@ class EnhancedCurvedMemory(nn.Module):
         # Usage + active slots
         self.register_buffer("usage_counts", torch.zeros(self.M, dtype=torch.float32))
         self.active_slots = self.M
+        self.register_buffer("lb_top1_avg", torch.tensor(1.0))
+        self.lb_momentum = 0.99
+        self.lb_drop_ratio = 0.7
+        self.qh_config = QuantumHologramConfig(
+            enabled=True,
+            hrr_dim=self.H,
+            num_slots=self.M,
+            num_depths=8,
+            bank_name="wm_curved",
+            interference_threshold=0.90,
+            max_triplets_per_slot=8,
+        )
+        self.qh_slot_bank = QuantumHologramSlotBank(self.qh_config, bank_names=["wm_curved", "ltm_curved"])
 
     # Controls
     def set_temperature(self, t: torch.Tensor):
@@ -178,6 +192,7 @@ class EnhancedCurvedMemory(nn.Module):
             "curved_usage_mean": self.usage_counts[:m].mean().item(),
             "curved_usage_max": self.usage_counts[:m].max().item(),
             "curved_importance_mean": self.memory_importance[:m].mean().item(),
+            "curved_lb_top1_avg": self.lb_top1_avg.item(),
             "curved_conformal_b": float(self.conformal_b),
             "curved_topology_fitness_ema": float(self.topology_v3.fitness_ema or 0.0),
         }
@@ -188,18 +203,44 @@ class EnhancedCurvedMemory(nn.Module):
             for k in ("hyperbolic", "spherical", "euclidean", "fractal", "torus", "cp"):
                 if k in self.last_geom_weights:
                     out[f"curved_geom_w_{k}"] = float(self.last_geom_weights[k])
+        if self.qh_slot_bank is not None:
+            for k, v in self.qh_slot_bank.trace_summary().items():
+                out[f"curved_qh_{k}"] = float(v)
         return out
 
     # Core ops
-    def content_based_addressing(self, query, return_dist: bool = False):  # query: (B,H)
+    def content_based_addressing(
+        self,
+        query,
+        return_dist: bool = False,
+        fire_mask=None,
+        recall_boost: float = 0.3,
+    ):  # query: (B,H)
         m = self.active_slots
         qn = F.normalize(query, dim=-1)
         mem_n = F.normalize(self.memory_slots[:m], dim=-1)
         sim = torch.einsum("bd,md->bm", qn, mem_n)                        # (B,M)
         gate = torch.sigmoid(self.curv_proj(query))                       # (B,1)
         sim = sim * (0.5 + gate)                                          # scalar gating
-        dist = (1.0 - sim) / self.temperature.clamp_min(1e-6)
+        dist = 1.0 - sim
+        if isinstance(fire_mask, torch.Tensor) and fire_mask.numel() > 0:
+            fire_f = fire_mask.float().view(-1, 1).to(device=dist.device, dtype=dist.dtype)
+            t_eff = self.temperature / (1.0 + float(recall_boost) * fire_f)
+            dist = dist / t_eff.clamp_min(1e-6)
+            any_ext_fire = bool(fire_mask.any().item())
+        elif isinstance(fire_mask, bool) and fire_mask:
+            dist = dist / (self.temperature / (1.0 + float(recall_boost))).clamp_min(1e-6)
+            any_ext_fire = True
+        else:
+            dist = dist / self.temperature.clamp_min(1e-6)
+            any_ext_fire = False
         k = min(self.K_base, m)
+        with torch.no_grad():
+            top1 = dist.min(dim=-1).values.mean()
+            self.lb_top1_avg = self.lb_momentum * self.lb_top1_avg + (1 - self.lb_momentum) * top1.detach()
+            internal_fire = bool(top1 < self.lb_drop_ratio * self.lb_top1_avg)
+        if internal_fire or any_ext_fire:
+            k = min(m, max(k, int(self.K_base * 1.5)))
         vals, idx = torch.topk(dist, k, dim=-1, largest=False)
         if not return_dist:
             return vals, idx
@@ -285,7 +326,7 @@ class EnhancedCurvedMemory(nn.Module):
             act = torch.einsum("bm,mn->bn", act, self.associative_weights[:m, :m])
         return act
 
-    def forward(self, x, operation="read", importance=None):
+    def forward(self, x, operation="read", importance=None, fire_mask=None, recall_boost: float = 0.3):
         enc = self.encoder(x)                                            # (B,S,H)
         if self.enable_symplectic:
             q_dyn = enc
@@ -299,12 +340,26 @@ class EnhancedCurvedMemory(nn.Module):
         q_query = self._query_quat_from_hidden(query)
         q_query = self._parallel_transport_spin(q_query, query)
         if operation == "write":
-            _, idx = self.content_based_addressing(query)
+            _, idx = self.content_based_addressing(query, fire_mask=fire_mask, recall_boost=recall_boost)
             self._record_usage(idx)
             self.update_memory(x, importance, idx)
             self._update_spin_slots(q_query, idx)
+            if self.qh_slot_bank is not None:
+                self.qh_slot_bank.store_batch(
+                    slot_indices=idx,
+                    anchor=query.detach(),
+                    direction=enc.mean(dim=1).detach(),
+                    phase=torch.sin(query.detach()),
+                    depth_index=0,
+                    bank_name="wm_curved",
+                )
             return x
-        vals, idx, dist_top = self.content_based_addressing(query, return_dist=True)  # (B,K)
+        vals, idx, dist_top = self.content_based_addressing(
+            query,
+            return_dist=True,
+            fire_mask=fire_mask,
+            recall_boost=recall_boost,
+        )  # (B,K)
         curv_eff, _, mode_wext = self.geom_blender(query)
         self.last_geom_weights = mode_wext
         torus_w = float(mode_wext.get("torus", 0.0))

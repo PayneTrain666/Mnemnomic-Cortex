@@ -249,6 +249,19 @@ class QuantumHolographicStorage:
         if not torch.isfinite(vector).all():
             raise ValueError("vector contains NaN or Inf")
 
+    def _validate_canonical_slot_id(self, canonical_slot_id: str) -> None:
+        ensure_shared_slot_id("canonical_slot_id", canonical_slot_id)
+        registry = getattr(self.shared_slot_store, "registry", None)
+        records = getattr(registry, "records", None)
+        if isinstance(records, dict) and canonical_slot_id not in records:
+            raise KeyError(f"canonical slot not found in shared-slot registry: {canonical_slot_id}")
+
+    def _resolve_write_permission(self, write_permission: bool) -> bool:
+        granted = bool(write_permission) if self.config.require_write_permission else True
+        if self.config.require_write_permission and not granted:
+            raise PermissionError("write_permission=True is required for QH storage writes")
+        return granted
+
     def check_interference(self, record_id: str, vector: torch.Tensor) -> QHInterferenceReport:
         self._validate_vector(vector)
         if not self.records:
@@ -266,8 +279,7 @@ class QuantumHolographicStorage:
         for other_id, other in self.vectors.items():
             if other_id == record_id:
                 continue
-            ov = F.normalize(other.detach().float(), dim=0, eps=self.config.eps)
-            sim = float(torch.abs(torch.dot(v, ov)).detach().cpu())
+            sim = float(interference_score(v, other.detach().float(), eps=self.config.eps))
             max_similarity = max(max_similarity, sim)
             if sim >= self.config.interference_threshold:
                 conflicts.append(other_id)
@@ -296,6 +308,8 @@ class QuantumHolographicStorage:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> QHStorageRecord:
         self._validate_vector(vector)
+        self._validate_canonical_slot_id(canonical_slot_id)
+        permission_granted = self._resolve_write_permission(write_permission)
         schema = build_qh_code_schema(
             depth_index=depth_index,
             bank_name=bank_name,
@@ -315,18 +329,26 @@ class QuantumHolographicStorage:
             vector_norm=float(vector.detach().float().norm().cpu()),
             confidence=float(confidence),
             write_permission_required=self.config.require_write_permission,
-            write_permission_granted=bool(write_permission) if self.config.require_write_permission else True,
+            write_permission_granted=permission_granted,
             interference=interference,
             metadata=metadata or {},
         )
         record.validate()
+        ensure_qh_code_schema("qh_record.code_schema", schema.to_dict())
+        ensure_qh_storage_record("qh_record", record.to_dict())
         self.records[record_id] = record
         self.vectors[record_id] = vector.detach().clone()
 
         # Attach QH reference to shared slot store when the store supports it.
         attach = getattr(self.shared_slot_store, "attach_qh_record", None)
         if callable(attach):
-            attach(canonical_slot_id, record_id, schema.composite_code(), interference.interference_detected)
+            try:
+                attach(canonical_slot_id, record_id, schema.composite_code(), interference.interference_detected)
+            except Exception:
+                # Keep QH storage atomic with shared-slot linkage semantics.
+                self.records.pop(record_id, None)
+                self.vectors.pop(record_id, None)
+                raise
         return record
 
     def create_from_shared_slot(

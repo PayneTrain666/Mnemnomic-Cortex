@@ -6,15 +6,52 @@ state mutation.
 """
 from __future__ import annotations
 import json, os, sys
+import importlib.util
+import types
 from pathlib import Path
 
-from mnemonic_cortex.working_memory.qspin_trace_corpus import DeterministicTraceCorpusBuilder
-from mnemonic_cortex.working_memory.qspin_shadow_stress_replay import ShadowStressReplayEngine, StressReplayInput
-from mnemonic_cortex.working_memory.qspin_ci_matrix_hardening import CIMatrixRunner
-from mnemonic_cortex.working_memory.qspin_extended_safety_regression import ExtendedSafetyRegressionRunner
-from mnemonic_cortex.working_memory.qspin_remediation_closure import RemediationClosureWorkflow
-from mnemonic_cortex.working_memory.qspin_prod6_observability import build_default_prod6_observability_collector, Prod6MetricEvent, Prod6MetricName, Prod6AuditEvent, Prod6SpanEvent
-from mnemonic_cortex.working_memory.qspin_prod6_source_matrix import build_prod6_source_matrix, export_prod6_source_matrix_markdown, export_prod6_source_matrix_json
+def _load_qspin_module(short_name: str):
+    root = Path(__file__).resolve().parent
+    wm_dir = root / "mnemonic_cortex" / "working_memory"
+    full = f"mnemonic_cortex.working_memory.{short_name}"
+    sys.modules.setdefault("mnemonic_cortex", types.ModuleType("mnemonic_cortex"))
+    pkg = sys.modules.get("mnemonic_cortex.working_memory")
+    if pkg is None:
+        pkg = types.ModuleType("mnemonic_cortex.working_memory")
+        pkg.__path__ = [str(wm_dir)]
+        sys.modules["mnemonic_cortex.working_memory"] = pkg
+    if full not in sys.modules:
+        spec = importlib.util.spec_from_file_location(full, wm_dir / f"{short_name}.py")
+        if spec is None or spec.loader is None:
+            raise FileNotFoundError(f"missing module {short_name} under {wm_dir}")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[full] = mod
+        spec.loader.exec_module(mod)
+    return sys.modules[full]
+
+
+_trace = _load_qspin_module("qspin_trace_corpus")
+_stress = _load_qspin_module("qspin_shadow_stress_replay")
+_ci = _load_qspin_module("qspin_ci_matrix_hardening")
+_safety = _load_qspin_module("qspin_extended_safety_regression")
+_remed = _load_qspin_module("qspin_remediation_closure")
+_obs = _load_qspin_module("qspin_prod6_observability")
+_matrix = _load_qspin_module("qspin_prod6_source_matrix")
+
+DeterministicTraceCorpusBuilder = _trace.DeterministicTraceCorpusBuilder
+ShadowStressReplayEngine = _stress.ShadowStressReplayEngine
+StressReplayInput = _stress.StressReplayInput
+CIMatrixRunner = _ci.CIMatrixRunner
+ExtendedSafetyRegressionRunner = _safety.ExtendedSafetyRegressionRunner
+RemediationClosureWorkflow = _remed.RemediationClosureWorkflow
+build_default_prod6_observability_collector = _obs.build_default_prod6_observability_collector
+Prod6MetricEvent = _obs.Prod6MetricEvent
+Prod6MetricName = _obs.Prod6MetricName
+Prod6AuditEvent = _obs.Prod6AuditEvent
+Prod6SpanEvent = _obs.Prod6SpanEvent
+build_prod6_source_matrix = _matrix.build_prod6_source_matrix
+export_prod6_source_matrix_markdown = _matrix.export_prod6_source_matrix_markdown
+export_prod6_source_matrix_json = _matrix.export_prod6_source_matrix_json
 
 OUT = Path("prod6_outputs")
 OUT.mkdir(exist_ok=True)

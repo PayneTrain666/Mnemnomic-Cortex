@@ -3,6 +3,7 @@ import torch.nn as nn
 from .memory_hg import EnhancedHyperGeometricMemory
 from .memory_cgmn import EnhancedCGMNMemory
 from .memory_curved import EnhancedCurvedMemory
+from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 from .topology_manager import TopologyManagerV3
 
 class EnhancedTripleHybridMemory(nn.Module):
@@ -56,6 +57,46 @@ class EnhancedTripleHybridMemory(nn.Module):
         )
         self.refiner_norm = nn.LayerNorm(input_dim)
         self.proj = nn.Sequential(nn.Linear(input_dim, output_dim), nn.LayerNorm(output_dim))
+        self.qh_banks = nn.ModuleDict(
+            {
+                "hg": QuantumHologramSlotBank(
+                    QuantumHologramConfig(
+                        enabled=True,
+                        hrr_dim=input_dim,
+                        num_slots=int(hg_slots),
+                        num_depths=8,
+                        bank_name="ltm_hg",
+                        interference_threshold=0.90,
+                        max_triplets_per_slot=8,
+                    ),
+                    bank_names=["ltm_hg"],
+                ),
+                "cgmn": QuantumHologramSlotBank(
+                    QuantumHologramConfig(
+                        enabled=True,
+                        hrr_dim=input_dim,
+                        num_slots=int(cgmn_slots),
+                        num_depths=8,
+                        bank_name="ltm_cgmn",
+                        interference_threshold=0.90,
+                        max_triplets_per_slot=8,
+                    ),
+                    bank_names=["ltm_cgmn"],
+                ),
+                "curved": QuantumHologramSlotBank(
+                    QuantumHologramConfig(
+                        enabled=True,
+                        hrr_dim=input_dim,
+                        num_slots=int(curved_slots),
+                        num_depths=8,
+                        bank_name="ltm_curved",
+                        interference_threshold=0.90,
+                        max_triplets_per_slot=8,
+                    ),
+                    bank_names=["ltm_curved"],
+                ),
+            }
+        )
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -216,6 +257,20 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.hg(x, operation='write', fire_mask=fire_mask, recall_boost=recall_boost)
             self.cgmn(x, operation='write', fire_mask=fire_mask, recall_boost=recall_boost)
             self.curved(x, operation='write', importance=None)
+            with torch.no_grad():
+                anchor = x.mean(dim=1).detach()
+                direction = torch.roll(anchor, shifts=1, dims=0)
+                phase = torch.sin(anchor)
+                for name, bank in self.qh_banks.items():
+                    slots = torch.arange(anchor.size(0), device=anchor.device, dtype=torch.long) % int(bank.cfg.num_slots)
+                    bank.store_batch(
+                        slot_indices=slots,
+                        anchor=anchor,
+                        direction=direction,
+                        phase=phase,
+                        depth_index=0,
+                        bank_name=f"ltm_{name}",
+                    )
             return x
         rhg = self.hg(x, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)       # (B,S,d)
         rcg = self.cgmn(x, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)     # (B,S,d)

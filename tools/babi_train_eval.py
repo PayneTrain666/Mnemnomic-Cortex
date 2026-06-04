@@ -20,6 +20,11 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 
 from benchmark.models import CortexSeqModel
+from mnemonic_cortex.optimizer import (
+    OptimizerConfig,
+    build_optimizer,
+    build_warmup_cosine_scheduler,
+)
 from mnemonic_cortex.parameter_audit import ParameterAuditLogger
 
 
@@ -111,28 +116,6 @@ def evaluate(model, loader, device):
             correct += (pred == y).sum().item()
             n += src.size(0)
     return total_loss / max(1, n), correct / max(1, n)
-
-
-def _build_warmup_cosine_scheduler(
-    optimizer: torch.optim.Optimizer,
-    total_steps: int,
-    warmup_ratio: float = 0.1,
-    min_lr_ratio: float = 0.1,
-):
-    total_steps = max(1, int(total_steps))
-    warmup_steps = int(max(1, round(total_steps * float(warmup_ratio))))
-    min_lr_ratio = float(min(max(min_lr_ratio, 0.99), 0.0))
-
-    def lr_lambda(step: int):
-        s = int(step)
-        if s < warmup_steps:
-            return float(s + 1) / float(max(1, warmup_steps))
-        prog = float(s - warmup_steps) / float(max(1, total_steps - warmup_steps))
-        prog = min(max(prog, 0.0), 1.0)
-        cosine = 0.5 * (1.0 + math.cos(math.pi * prog))
-        return min_lr_ratio + (1.0 - min_lr_ratio) * cosine
-
-    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
 
 
 def _print_metric_legend():
@@ -325,7 +308,17 @@ def main():
             flush_every=200,
         )
 
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    opt = build_optimizer(
+        model.parameters(),
+        OptimizerConfig(
+            name="adamw",
+            lr=float(args.lr),
+            weight_decay=float(args.weight_decay),
+            grad_clip=float(args.grad_clip),
+            warmup_ratio=float(args.warmup_ratio),
+            min_lr_ratio=float(args.min_lr_ratio),
+        ),
+    )
     total_steps = max(1, args.epochs * len(train_loader))
     scheduler = _build_warmup_cosine_scheduler(
         opt,

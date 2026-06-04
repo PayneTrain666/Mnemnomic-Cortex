@@ -1,6 +1,7 @@
 import torch
 
 from benchmark.models import CortexSeqModel, get_model
+from mnemonic_cortex.config import CortexConfig
 from mnemonic_cortex.cortex import EnhancedMnemonicCortex
 
 
@@ -45,3 +46,16 @@ def test_cortex_seq_model_cms_enabled_populates_cms_aux():
     src = torch.randint(low=0, high=64, size=(2, 5))
     _ = model(src, return_aux_losses=False)
     assert model.cortex.last_cms_aux is not None
+
+
+def test_cortex_config_maps_fusion_and_hgm_enabled():
+    cfg = CortexConfig(fusion="cross_attn", hgm_enabled=True)
+    kwargs = cfg.to_cortex_kwargs()
+    assert kwargs["fusion"] == "cross_attn"
+    assert kwargs["hgm_enabled"] is True
+
+
+def test_get_model_cortex_forwards_hgm_enabled():
+    model = get_model("cortex", vocab_size=64, d_model=32, cms_enabled=False, hgm_enabled=True)
+    assert isinstance(model, CortexSeqModel)
+    assert model.cortex.hgm_enabled is True

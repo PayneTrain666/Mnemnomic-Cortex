@@ -28,6 +28,7 @@ from .wm_dual_fusion import WMDualFusionController, WMDualFusionConfig
 from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 from .wm_quantum_holographic_storage import QuantumHolographicStorage, QuantumHolographicStorageConfig
 from .wm_system_commit_gate import SystemCommitGate, SystemWriteProposal
+from .wm_context_mount import GeometryMountedContextBuffer
 
 
 class QDTWorkingMemory(nn.Module):
@@ -118,6 +119,7 @@ class QDTWorkingMemory(nn.Module):
             WMMemoryAugmentedAttentionConfig(dim=config.input_dim, top_k=min(4, config.num_slots)),
             slot_bank=self.slot_bank,
         )
+        self.context_buffer = GeometryMountedContextBuffer(dim=config.input_dim, num_depths=config.num_depths)
 
         self.dual_fusion = WMDualFusionController(
             WMDualFusionConfig(dim=config.input_dim, top_k=min(4, config.num_slots))
@@ -204,6 +206,31 @@ class QDTWorkingMemory(nn.Module):
 
         depth_state, q_trace = self.quaternion_depth(triplet_fused, return_trace=True)
         trace.merge_dict("quaternion_depth", q_trace)
+
+        if context is not None:
+            if context.dim() == 2 and context.size(-1) == self.config.input_dim:
+                context_for_mount = context.unsqueeze(1)
+            elif context.dim() == 3 and context.size(-1) == self.config.input_dim:
+                context_for_mount = context
+            else:
+                raise ValueError(
+                    f"context must be [B,D] or [B,C,D={self.config.input_dim}], got {tuple(context.shape)}"
+                )
+            if context_for_mount.size(0) != depth_state.size(0):
+                raise ValueError("context batch must match input batch")
+            depth_state, mounted = self.context_buffer.mount(
+                context_for_mount,
+                depth_state,
+                requested_map=context_map_name,
+            )
+            trace.add(
+                "context_buffer",
+                "context_mounted",
+                selected_map=str(getattr(mounted, "name", "auto")),
+                mount_trace=getattr(mounted, "trace", None).to_dict()
+                if getattr(mounted, "trace", None) is not None and hasattr(getattr(mounted, "trace", None), "to_dict")
+                else None,
+            )
 
         depth_state, intra_trace = self.intra_depth(depth_state, return_trace=True)
         trace.merge_dict("intra_depth", intra_trace)

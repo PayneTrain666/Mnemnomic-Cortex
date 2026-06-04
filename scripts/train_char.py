@@ -3,6 +3,7 @@ import torch, torch.nn as nn
 from torch.utils.data import DataLoader
 from data.text8 import Text8
 from benchmark.models import get_model
+from mnemonic_cortex.optimizer import OptimizerConfig, build_optimizer
 
 
 def main():
@@ -34,7 +35,13 @@ def main():
             )
         )
     model = get_model(args.model, vocab_size, **model_kwargs).to(args.device)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    opt = build_optimizer(
+        model.parameters(),
+        OptimizerConfig(
+            name="adamw",
+            lr=float(args.lr),
+        ),
+    )
     crit = nn.CrossEntropyLoss()
 
     def run_epoch(loader, train=True):

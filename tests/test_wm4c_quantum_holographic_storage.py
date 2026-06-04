@@ -145,3 +145,50 @@ def test_qh_rejects_bad_vector_shape_and_nonfinite():
     except ValueError:
         return
     raise AssertionError("Expected ValueError for nonfinite vector")
+
+
+def test_qh_requires_write_permission_when_config_enforced():
+    store = SharedSlotStore(SharedSlotStoreConfig(namespace="unit_qh_perm", dim=8))
+    content = torch.randn(8)
+    write = store.write_slot(memory_type="ltm", local_slot_id="perm_slot", content=content, write_permission=True)
+    qh = QuantumHolographicStorage(
+        QuantumHolographicStorageConfig(dim=8, require_write_permission=True),
+        shared_slot_store=store,
+    )
+    try:
+        qh.create_record(
+            canonical_slot_id=write.canonical_id,
+            vector=content,
+            depth_index=0,
+            bank_name="bank",
+            geometry_name="holographic_phase",
+            triplet_index=0,
+            memory_type="ltm",
+            write_permission=False,
+        )
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("Expected PermissionError when write_permission=False")
+    assert qh.trace_summary()["record_count"] == 0
+
+
+def test_qh_rejects_unregistered_canonical_slot():
+    store = SharedSlotStore(SharedSlotStoreConfig(namespace="unit_qh_slot", dim=8))
+    qh = QuantumHolographicStorage(QuantumHolographicStorageConfig(dim=8), shared_slot_store=store)
+    try:
+        qh.create_record(
+            canonical_slot_id="css-missing",
+            vector=torch.randn(8),
+            depth_index=0,
+            bank_name="bank",
+            geometry_name="holographic_phase",
+            triplet_index=0,
+            memory_type="ltm",
+            write_permission=True,
+        )
+    except KeyError:
+        pass
+    else:
+        raise AssertionError("Expected KeyError for unknown shared-slot canonical id")
+    assert qh.trace_summary()["record_count"] == 0

@@ -8,6 +8,7 @@ import torch
 from .depth_indexed_slot_lattice import DepthIndexedSlotLattice
 from .depth_lattice_config import DepthLatticeConfig
 from .depth_lattice_types import DepthReadMode, DepthWriteMode, DepthWriteProposal, QHDepthCode
+from ..quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 
 
 class MANNSlotKVDepthBankError(ValueError):
@@ -94,11 +95,25 @@ class MANNSlotKVDepthBank:
 
     config: MANNSlotKVDepthBankConfig
     lattice: Optional[DepthIndexedSlotLattice] = None
+    qh_slot_bank: Optional[QuantumHologramSlotBank] = None
 
     def __post_init__(self) -> None:
         self.config.validate()
         if self.lattice is None:
             self.lattice = DepthIndexedSlotLattice(self.config.to_lattice_config())
+        if self.qh_slot_bank is None:
+            self.qh_slot_bank = QuantumHologramSlotBank(
+                QuantumHologramConfig(
+                    enabled=True,
+                    hrr_dim=int(self.config.value_dim),
+                    num_slots=int(self.config.slot_count),
+                    num_depths=8,
+                    bank_name="mann_depth",
+                    interference_threshold=0.92,
+                    max_triplets_per_slot=16,
+                ),
+                bank_names=["mann_depth"],
+            )
 
     @property
     def keys(self) -> torch.Tensor:
@@ -161,6 +176,12 @@ class MANNSlotKVDepthBank:
             "candidate_hypothesis": 6,
             "scratch_trace": 7,
         }
+        qh_stats = self._record_qh_shadow_holograms(
+            slot_index=int(slot_index),
+            value=value,
+            key=key,
+            depth_routes=routes,
+        )
         proposals = {}
         for name, depth in routes.items():
             proposals[name] = self.lattice.propose_write(
@@ -184,6 +205,8 @@ class MANNSlotKVDepthBank:
                 "bank_id": self.config.bank_id,
                 "no_shared_physical_tensor_with_ltm": True,
                 "no_permanent_mutation_without_permission": True,
+                "qh_shadow_holograms_recorded": True,
+                "qh_shadow_stats": qh_stats,
             },
             "paamax_metadata": {
                 "trace_governance": True,
@@ -212,7 +235,53 @@ class MANNSlotKVDepthBank:
         )
 
     def capacity_metrics(self) -> Dict[str, Any]:
-        return self.lattice.capacity_metrics()
+        out = dict(self.lattice.capacity_metrics())
+        if self.qh_slot_bank is not None:
+            out["qh_shadow"] = self.qh_slot_bank.trace_summary()
+        return out
+
+    @staticmethod
+    def _to_vec(x: torch.Tensor) -> torch.Tensor:
+        if x.dim() == 1:
+            return x
+        if x.dim() == 2:
+            return x.mean(dim=0)
+        return x.reshape(-1, x.size(-1)).mean(dim=0)
+
+    @torch.no_grad()
+    def _record_qh_shadow_holograms(
+        self,
+        *,
+        slot_index: int,
+        value: torch.Tensor,
+        key: Optional[torch.Tensor],
+        depth_routes: Dict[str, int],
+    ) -> Dict[str, float]:
+        if self.qh_slot_bank is None:
+            return {"stored": 0.0, "interference_rate": 0.0, "active_slots": 0.0}
+        v = self._to_vec(value).detach()
+        if key is not None:
+            k = self._to_vec(key).detach()
+        else:
+            k = torch.roll(v, shifts=1, dims=0)
+        total = {"stored": 0.0, "interference_rate": 0.0, "active_slots": 0.0}
+        route_count = 0
+        for _, depth in depth_routes.items():
+            stats = self.qh_slot_bank.store_batch(
+                slot_indices=torch.tensor([int(slot_index)], device=v.device, dtype=torch.long),
+                anchor=v.view(1, -1),
+                direction=k.view(1, -1),
+                phase=torch.sin(v.view(1, -1) * (1.0 + 0.05 * float(depth))),
+                depth_index=int(depth),
+                bank_name="mann_depth",
+            )
+            total["stored"] += float(stats.get("stored", 0.0))
+            total["interference_rate"] += float(stats.get("interference_rate", 0.0))
+            total["active_slots"] = float(stats.get("active_slots", total["active_slots"]))
+            route_count += 1
+        if route_count > 0:
+            total["interference_rate"] /= float(route_count)
+        return total
 
     def _validate_query(self, query: torch.Tensor) -> None:
         if not isinstance(query, torch.Tensor):
@@ -265,6 +334,8 @@ class MANNSlotKVDepthBank:
             "mann_slotkv_depth_bank": True,
             "no_shared_physical_tensor_with_ltm": True,
         })
+        if self.qh_slot_bank is not None:
+            metadata["qh_shadow_summary"] = self.qh_slot_bank.trace_summary()
         return {
             **trace,
             "trace_type": "mann_depth_hop_trace",

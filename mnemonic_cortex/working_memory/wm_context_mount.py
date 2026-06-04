@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 import torch
 import torch.nn as nn
 
-from .context_geometry_maps import ContextGeometryMap, build_default_context_geometry_maps
+from .context_geometry_maps import ContextGeometryMap, build_default_context_geometry_maps, validate_context_geometry_map
 from .context_to_wm_bridge import ContextToWMBridge
 
 
@@ -33,13 +33,21 @@ class GeometryMountedContextBuffer(nn.Module):
         super().__init__()
         self.dim = dim
         self.num_depths = num_depths
-        self.maps = maps or build_default_context_geometry_maps(num_depths)
+        if maps is None:
+            self.maps = build_default_context_geometry_maps(num_depths)
+        else:
+            normalized_maps: Dict[str, ContextGeometryMap] = {}
+            for name, spec in maps.items():
+                normalized = spec.normalized_for_depths(num_depths)
+                validate_context_geometry_map(normalized, num_depths=num_depths)
+                normalized_maps[str(name)] = normalized
+            self.maps = normalized_maps
         self.context_proj = nn.Linear(dim, dim)
         self.bridge = ContextToWMBridge(dim, num_depths)
         if maps is not None:
-            self.bridge.maps = maps
-            self.bridge.selector.maps = maps
-            self.bridge.selector.map_names = list(maps.keys())
+            self.bridge.maps = self.maps
+            self.bridge.selector.maps = self.maps
+            self.bridge.selector.map_names = list(self.maps.keys())
 
     def select_map(self, context: torch.Tensor, requested: Optional[str] = None):
         context_h = self.context_proj(context)
@@ -63,7 +71,8 @@ class GeometryMountedContextBuffer(nn.Module):
             paamax_policy_hint=paamax_policy_hint,
         )
         # Preserve old return style: (mounted, mount-like object).
-        selected = self.bridge.maps[trace.selected_map]
+        # Return a detached map view so trace attachment does not mutate registry state.
+        selected = self.bridge.maps[trace.selected_map].normalized_for_depths(self.num_depths)
         object.__setattr__(selected, "trace", trace)  # frozen dataclass compatibility attachment
         return mounted, selected
 

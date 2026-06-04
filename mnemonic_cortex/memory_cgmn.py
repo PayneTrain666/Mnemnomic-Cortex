@@ -377,7 +377,11 @@ class EnhancedCGMNMemory(nn.Module):
         counts = torch.zeros(self.M, device=accum.device).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype))
         counts = counts.clamp_min_(1.0).unsqueeze(-1)
         avg_upd = accum / counts
-        self.memory_slots.mul_(ema).add_((1 - ema) * avg_upd)
+        touched = torch.unique(flat_idx)
+        # Only update touched slots; avoid global decay of untouched memory.
+        old_touched = self.memory_slots.index_select(0, touched)
+        new_touched = ema * old_touched + (1 - ema) * avg_upd.index_select(0, touched)
+        self.memory_slots.index_copy_(0, touched, new_touched)
         # DDP sync
         self._sync_buffers_ddp()
 

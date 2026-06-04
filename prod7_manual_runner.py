@@ -1,14 +1,57 @@
 from __future__ import annotations
 import json
+import importlib.util
+import sys
+import types
 from pathlib import Path
-from mnemonic_cortex.working_memory.qspin_readonly_runtime_probe import ReadOnlyRuntimeProbeHarness, build_default_readonly_probe_suite
-from mnemonic_cortex.working_memory.qspin_synthetic_real_boundary import SyntheticToRealBoundaryVerifier, build_default_boundary_surface_records
-from mnemonic_cortex.working_memory.qspin_ci_gate_enforcement import CIGateEnforcer, build_default_ci_gate_checks
-from mnemonic_cortex.working_memory.qspin_observability_review import ObservabilityReviewEngine, ObservabilityReviewRequest, build_default_observability_signal_records
-from mnemonic_cortex.working_memory.qspin_prod_readiness_blockers import build_default_readiness_blocker_register
-from mnemonic_cortex.working_memory.qspin_runtime_probe_safety_regression import ProbeSafetyRegressionRunner, build_default_probe_safety_cases
-from mnemonic_cortex.working_memory.qspin_prod7_observability import build_default_prod7_observability_collector, Prod7MetricEvent, Prod7MetricName
-from mnemonic_cortex.working_memory.qspin_prod7_source_matrix import build_prod7_source_matrix, export_prod7_source_matrix_json, export_prod7_source_matrix_markdown
+
+def _load_qspin_module(short_name: str):
+    root = Path(__file__).resolve().parent
+    wm_dir = root / "mnemonic_cortex" / "working_memory"
+    full = f"mnemonic_cortex.working_memory.{short_name}"
+    sys.modules.setdefault("mnemonic_cortex", types.ModuleType("mnemonic_cortex"))
+    pkg = sys.modules.get("mnemonic_cortex.working_memory")
+    if pkg is None:
+        pkg = types.ModuleType("mnemonic_cortex.working_memory")
+        pkg.__path__ = [str(wm_dir)]
+        sys.modules["mnemonic_cortex.working_memory"] = pkg
+    if full not in sys.modules:
+        spec = importlib.util.spec_from_file_location(full, wm_dir / f"{short_name}.py")
+        if spec is None or spec.loader is None:
+            raise FileNotFoundError(f"missing module {short_name} under {wm_dir}")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[full] = mod
+        spec.loader.exec_module(mod)
+    return sys.modules[full]
+
+
+_probe = _load_qspin_module("qspin_readonly_runtime_probe")
+_boundary = _load_qspin_module("qspin_synthetic_real_boundary")
+_ci = _load_qspin_module("qspin_ci_gate_enforcement")
+_obs_review = _load_qspin_module("qspin_observability_review")
+_blockers = _load_qspin_module("qspin_prod_readiness_blockers")
+_safety = _load_qspin_module("qspin_runtime_probe_safety_regression")
+_obs = _load_qspin_module("qspin_prod7_observability")
+_matrix = _load_qspin_module("qspin_prod7_source_matrix")
+
+ReadOnlyRuntimeProbeHarness = _probe.ReadOnlyRuntimeProbeHarness
+build_default_readonly_probe_suite = _probe.build_default_readonly_probe_suite
+SyntheticToRealBoundaryVerifier = _boundary.SyntheticToRealBoundaryVerifier
+build_default_boundary_surface_records = _boundary.build_default_boundary_surface_records
+CIGateEnforcer = _ci.CIGateEnforcer
+build_default_ci_gate_checks = _ci.build_default_ci_gate_checks
+ObservabilityReviewEngine = _obs_review.ObservabilityReviewEngine
+ObservabilityReviewRequest = _obs_review.ObservabilityReviewRequest
+build_default_observability_signal_records = _obs_review.build_default_observability_signal_records
+build_default_readiness_blocker_register = _blockers.build_default_readiness_blocker_register
+ProbeSafetyRegressionRunner = _safety.ProbeSafetyRegressionRunner
+build_default_probe_safety_cases = _safety.build_default_probe_safety_cases
+build_default_prod7_observability_collector = _obs.build_default_prod7_observability_collector
+Prod7MetricEvent = _obs.Prod7MetricEvent
+Prod7MetricName = _obs.Prod7MetricName
+build_prod7_source_matrix = _matrix.build_prod7_source_matrix
+export_prod7_source_matrix_json = _matrix.export_prod7_source_matrix_json
+export_prod7_source_matrix_markdown = _matrix.export_prod7_source_matrix_markdown
 
 out = Path('prod7_outputs')
 out.mkdir(exist_ok=True)

@@ -18,7 +18,12 @@ from .cms_ops import (
 )
 from .consolidation_broker import ConsolidationBroker
 from .ahg import AHGConfig, AntiHallucinationGuard
-from .config_loader import apply_config_to_broker, load_yaml_config
+from .config_loader import (
+    apply_config_to_broker,
+    apply_unified_config_to_cortex,
+    load_unified_yaml_config,
+    load_yaml_config,
+)
 from .cps import ConsolidatedParamStore, UnifiedParamCfg
 from .cps_fuser import CPSFuser, FuserCfg
 from .diagnostics import ModelDiagnostics
@@ -27,10 +32,11 @@ from .consolidation_broker_v2 import BrokerCfg, ConsolidationBrokerV2
 from .consolidation_scheduler import ConsolidationScheduler, SchedCfg
 from .multi_cps import MultiCPSManager
 from .router_advanced import AdvancedDomainRouter
-from .distillation import CrossDomainDistiller
+from .distillation import CrossDomainDistiller, DistillationConfig
 from .quantization import CPSQuantizer, QuantPolicy
 from .quant_fuser import QuantAwareCPSFuser
 from .router_losses import router_regularizer
+from .lightbulb_recall_v2 import LightbulbRecallV2
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -45,7 +51,8 @@ class EnhancedMnemonicCortex(nn.Module):
                  ltm_hg_slots: int = 2048, ltm_cgmn_slots: int = 1024, ltm_curved_slots: int = 512,
                  fusion: str = 'weighted',
                  cms_vocab_size: int = 0,
-                 cms_senses: int = 3):
+                 cms_senses: int = 3,
+                 hgm_enabled: bool = False):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -90,6 +97,12 @@ class EnhancedMnemonicCortex(nn.Module):
         # Lightbulb + temperature scaler
         self.lightbulb = LightbulbDetector(input_dim, thresh=2.0)
         self.temp_scaler = ExplosiveRecallScaler(base_temp=1.0, min_temp=0.5, boost=0.3)
+        self.recall_controller = LightbulbRecallV2(
+            in_dim=4,
+            threshold=0.72,
+            max_hops=2,
+            k_expand_mult=1.6,
+        )
 
         # Importance predictor for consolidation condition
         self.importance_predictor = nn.Sequential(nn.Linear(input_dim,64), nn.ReLU(), nn.Linear(64,1), nn.Sigmoid())
@@ -131,6 +144,7 @@ class EnhancedMnemonicCortex(nn.Module):
         self.advanced_broker = None
         self.advanced_router = None
         self.advanced_distiller = None
+        self.distillation_config = DistillationConfig(enabled=False)
         self.advanced_quantizers = {}
         self.quant_fuser = None
         self.advanced_scheduler = ConsolidationScheduler(SchedCfg(interval_sec=5, max_merges_per_tick=256))
@@ -142,8 +156,28 @@ class EnhancedMnemonicCortex(nn.Module):
         self.shared_memory_subsystem = None
         self.hg_episodic_ltm = None
         self.episodic_write_mode = "legacy"  # legacy | mirror | shared_only
+        self.hgm_enabled = False
+        self.hgm_config = None
+        self.hgm_last_result = None
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
+        if bool(hgm_enabled):
+            self.enable_hypergraph_manifold_bridge(enabled=True)
+
+    @classmethod
+    def from_yaml(cls, path: str):
+        """
+        Convenience constructor: build + configure from one unified YAML file.
+
+        Returns:
+            tuple[EnhancedMnemonicCortex, UnifiedCortexConfig]
+        """
+        from .config_loader import build_cortex_from_yaml
+
+        model, unified = build_cortex_from_yaml(path)
+        if not isinstance(model, cls):
+            raise TypeError(f"Expected build_cortex_from_yaml to return {cls.__name__}, got {type(model).__name__}")
+        return model, unified
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -153,6 +187,96 @@ class EnhancedMnemonicCortex(nn.Module):
         return 1
 
     # ---------------- Helpers ----------------
+    def enable_hypergraph_manifold_bridge(self, enabled: bool = True, *, hgm_config: Any = None):
+        if not bool(enabled):
+            self.hgm_enabled = False
+            self.hgm_last_result = None
+            self.diagnostics.log("hgm_bridge_disabled", {"enabled": False})
+            return self
+        from .hypergraph_manifold import HGMConfig
+
+        if hgm_config is None:
+            cfg = HGMConfig()
+        elif isinstance(hgm_config, HGMConfig):
+            cfg = hgm_config
+        elif isinstance(hgm_config, dict):
+            cfg = HGMConfig(**dict(hgm_config))
+        else:
+            raise ValueError("hgm_config must be None, HGMConfig, or dict")
+        self.hgm_enabled = True
+        self.hgm_config = cfg
+        self.diagnostics.log(
+            "hgm_bridge_enabled",
+            {
+                "enabled": True,
+                "max_depth_layers": int(cfg.max_depth_layers),
+                "max_hyperedge_nodes": int(cfg.max_hyperedge_nodes),
+                "default_normalization": str(cfg.default_normalization.value),
+            },
+        )
+        return self
+
+    def run_hypergraph_manifold(
+        self,
+        mutation_tokens: Any,
+        *,
+        top_k: int = 8,
+        charts: Optional[List[Any]] = None,
+        normalization_mode: str = "mutation_axis",
+    ) -> Dict[str, Any]:
+        if not self.hgm_enabled:
+            return {"enabled": False, "reason": "hgm bridge disabled"}
+        from .hypergraph_manifold import (
+            GeometryType,
+            ManifoldChart,
+            build_hgm1_scenario_graph,
+            build_hgm2_manifold_routing,
+            build_probability_expansion,
+            extract_top_k_scenarios,
+        )
+
+        cfg = self.hgm_config
+        expansion = build_probability_expansion(
+            mutation_tokens,
+            config=cfg,
+            normalization_mode=normalization_mode,
+        )
+        variable_ids = expansion.metadata.get("variable_ids", tuple()) if isinstance(expansion.metadata, dict) else tuple()
+        magnitude_ids = expansion.metadata.get("magnitude_bin_ids", tuple()) if isinstance(expansion.metadata, dict) else tuple()
+        scenarios = extract_top_k_scenarios(
+            expansion.payload,
+            k=max(1, int(top_k)),
+            contract=expansion.contract,
+            config=cfg,
+            variable_ids=variable_ids,
+            magnitude_bin_ids=magnitude_ids,
+        )
+        hgm1 = build_hgm1_scenario_graph(scenarios.candidates, config=cfg)
+        if charts is None:
+            charts = [
+                ManifoldChart(chart_id="ctx-euclid", geometry=GeometryType.EUCLIDEAN, dimension=int(self.input_dim)),
+                ManifoldChart(chart_id="ctx-hyper", geometry=GeometryType.HYPERBOLIC, dimension=int(self.input_dim)),
+                ManifoldChart(chart_id="ctx-product", geometry=GeometryType.PRODUCT, dimension=int(self.input_dim)),
+            ]
+        hgm2 = build_hgm2_manifold_routing(hgm1.binding.hyperedges, charts=tuple(charts), config=cfg)
+        self.hgm_last_result = {
+            "expansion": expansion,
+            "scenarios": scenarios,
+            "hgm1": hgm1,
+            "hgm2": hgm2,
+        }
+        self.diagnostics.log(
+            "hgm_pipeline_run",
+            {
+                "expansion_ok": bool(expansion.validation.ok),
+                "scenario_count": int(len(scenarios.candidates)),
+                "hyperedge_count": int(len(hgm1.binding.hyperedges)),
+                "assignment_count": int(len(hgm2.routing.assignments)),
+                "hgm2_ok": bool(hgm2.validation.ok),
+            },
+        )
+        return self.hgm_last_result
+
     def enable_energy_mode(self, enable: bool = True):
         self.energy_mode = enable
         self.long_term_memory.enable_energy_efficient_mode(enable)
@@ -483,6 +607,7 @@ class EnhancedMnemonicCortex(nn.Module):
             gcfg = load_yaml_config(config_path)
             apply_config_to_broker(self.consolidation_broker, gcfg)
             self.ahg = AntiHallucinationGuard(gcfg.ahg)
+            self.configure_distillation(gcfg.distill)
         except FileNotFoundError:
             warnings.warn(
                 f"Broker config '{config_path}' not found; using default broker/AHG settings.",
@@ -492,6 +617,83 @@ class EnhancedMnemonicCortex(nn.Module):
             warnings.warn(f"Broker config load failed: {exc}", RuntimeWarning)
         except Exception as exc:
             warnings.warn(f"Broker config apply failed: {exc}", RuntimeWarning)
+        return self
+
+    def configure_from_yaml(
+        self,
+        path: str,
+        *,
+        auto_enable_broker: bool = True,
+        broker_vocab_size: Optional[int] = None,
+    ):
+        unified = load_unified_yaml_config(path)
+        ctor_cfg = unified.cortex
+
+        if int(ctor_cfg.input_dim) != int(self.input_dim) or int(ctor_cfg.output_dim) != int(self.output_dim):
+            warnings.warn(
+                "YAML cortex dims differ from existing model instance "
+                f"(yaml: in={int(ctor_cfg.input_dim)}, out={int(ctor_cfg.output_dim)}; "
+                f"model: in={int(self.input_dim)}, out={int(self.output_dim)}). "
+                "Keeping existing instantiated dimensions.",
+                RuntimeWarning,
+            )
+
+        if auto_enable_broker and self.consolidation_broker is None and unified.global_config.stores:
+            resolved_vocab = int(
+                broker_vocab_size
+                or getattr(self.consolidated_lexicon, "vocab_size", 0)
+                or int(getattr(ctor_cfg, "cms_vocab_size", 0))
+            )
+            if resolved_vocab > 0:
+                if self.consolidated_lexicon is None and int(getattr(ctor_cfg, "cms_vocab_size", 0)) > 0:
+                    self.enable_consolidated_lexicon(
+                        vocab_size=int(ctor_cfg.cms_vocab_size),
+                        senses=int(ctor_cfg.cms_senses),
+                    )
+                self.enable_consolidation_broker(vocab_size=resolved_vocab, config_path=path)
+            else:
+                warnings.warn(
+                    "Unified YAML requests broker/store config, but vocab size is unavailable. "
+                    "Provide broker_vocab_size or set cortex.cms_vocab_size in YAML.",
+                    RuntimeWarning,
+                )
+
+        apply_unified_config_to_cortex(self, unified)
+        self.diagnostics.log(
+            "configured_from_yaml",
+            {
+                "path": str(path),
+                "hgm_enabled": bool(self.hgm_enabled),
+                "reasoning_bridge_enabled": bool(self.reasoning_controller_api is not None),
+                "qdt_wm_bridge_enabled": bool(self._resolve_qdt_working_memory() is not None),
+                "shared_memory_enabled": bool(self.shared_memory_subsystem is not None),
+                "hg_episodic_ltm_enabled": bool(self.hg_episodic_ltm is not None),
+                "broker_enabled": bool(self.consolidation_broker is not None),
+            },
+        )
+        return unified
+
+    def configure_distillation(self, cfg: Any = None):
+        if cfg is None:
+            cfg = DistillationConfig(enabled=False)
+        elif isinstance(cfg, dict):
+            cfg = DistillationConfig(**cfg)
+        elif not isinstance(cfg, DistillationConfig):
+            raise ValueError("cfg must be DistillationConfig, dict, or None")
+        cfg.validate()
+        self.distillation_config = cfg
+        if self.advanced_distiller is not None:
+            self.advanced_distiller.configure(cfg)
+        self.diagnostics.log(
+            "distillation_configured",
+            {
+                "enabled": bool(cfg.enabled),
+                "teacher_domain": str(cfg.teacher_domain),
+                "student_domains": [str(x) for x in cfg.student_domains],
+                "neighbor_k": int(cfg.neighbor_k),
+                "sim_temp": float(cfg.sim_temp),
+            },
+        )
         return self
 
     def enable_ahg(self, cfg: AHGConfig = None):
@@ -546,6 +748,7 @@ class EnhancedMnemonicCortex(nn.Module):
             hidden=max(64, self.input_dim),
         )
         self.advanced_distiller = CrossDomainDistiller(self.multi_cps, cms=self.advanced_cms)
+        self.advanced_distiller.configure(self.distillation_config)
         self.advanced_quantizers = {
             dom: CPSQuantizer(QuantPolicy()) for dom in self.multi_cps.cps.keys()
         }
@@ -562,10 +765,30 @@ class EnhancedMnemonicCortex(nn.Module):
         )
         self.diagnostics.log(
             "advanced_consolidation_enabled",
-            {"domains": list(self.multi_cps.cps.keys())},
+            {
+                "domains": list(self.multi_cps.cps.keys()),
+                "distillation_enabled": bool(self.distillation_config.enabled),
+            },
         )
         self._wire_runtime_external_memory_backends()
         return self
+
+    @staticmethod
+    def _distill_keys_from_token_ids(token_ids) -> List[str]:
+        if token_ids is None:
+            return []
+        if token_ids.dim() > 1:
+            flat = token_ids.reshape(-1)
+        else:
+            flat = token_ids
+        seen = set()
+        out = []
+        for t in flat.tolist():
+            key = f"token:{int(t)}"
+            if key not in seen:
+                seen.add(key)
+                out.append(key)
+        return out
 
     def enable_reasoning_controller_bridge(
         self,
@@ -1054,6 +1277,7 @@ class EnhancedMnemonicCortex(nn.Module):
         cps_fused = []
         cps_loss = fused.new_tensor(0.0)
         routed_counts = {d: 0 for d in domain_names}
+        quantized_fusion_count = 0
         for i, tid in enumerate(flat_ids.tolist()):
             key = f"token:{int(tid)}"
             if router_probs is not None and domain_names:
@@ -1066,6 +1290,18 @@ class EnhancedMnemonicCortex(nn.Module):
             else:
                 up = self.cps.ensure(key, device=fused.device, dtype=fused.dtype)
                 v, loss = self.cps_fuser.fuse(up.view())
+                dom = "core"
+            if self.quant_fuser is not None and isinstance(self.advanced_quantizers, dict):
+                quantizer = self.advanced_quantizers.get(dom) or self.advanced_quantizers.get("core")
+                if quantizer is not None:
+                    try:
+                        self.quant_fuser.quantizer = quantizer
+                        qpack = quantizer.quantize_entry(up)
+                        qv, _ = self.quant_fuser(qpack=qpack, device=fused.device)
+                        v = 0.5 * v + 0.5 * qv.to(v.device, v.dtype)
+                        quantized_fusion_count += 1
+                    except Exception as exc:
+                        self.diagnostics.log("quant_fuser_error", {"error": str(exc), "domain": str(dom)})
             cps_fused.append(v)
             cps_loss = cps_loss + loss
         if cps_fused:
@@ -1073,6 +1309,7 @@ class EnhancedMnemonicCortex(nn.Module):
             fused = 0.85 * fused + 0.15 * cps_fused
             cps_loss = cps_loss / max(1, len(cps_fused))
             self.last_cps_aux = {"agree_loss": cps_loss}
+            self.last_cps_aux["quantized_fusion_count"] = int(quantized_fusion_count)
             token_keys = [f"token:{int(t)}" for t in flat_ids.tolist()]
             if self.advanced_broker is not None:
                 try:
@@ -1197,6 +1434,20 @@ class EnhancedMnemonicCortex(nn.Module):
         c = (cue + ctx) * 0.5
         qctx, _ = self.query_ctx_attn(c, ctx, ctx, need_weights=False)
         c = self.query_norm(c + qctx)
+        if fire_mask is None:
+            fire_mask = self.lightbulb(cue)
+        if isinstance(fire_mask, torch.Tensor):
+            fire_rate = float(fire_mask.float().mean().item())
+            has_fire = bool(fire_mask.any().item())
+        else:
+            has_fire = bool(fire_mask)
+            fire_rate = 1.0 if has_fire else 0.0
+        recall_signal = {
+            "entropy_drop": 0.0,
+            "agreement": 0.5,
+            "novelty": 0.0,
+            "uncertainty": 0.0,
+        }
 
         if self.consolidation_broker is not None and self.ahg is not None:
             query = c.mean(dim=1)
@@ -1241,12 +1492,47 @@ class EnhancedMnemonicCortex(nn.Module):
                 # conservative fallback answer vector from context only
                 z = torch.zeros(context.size(0), 256, device=context.device, dtype=context.dtype)
                 return self.retrieval(torch.cat([z, context], dim=-1))
+            recall_signal["agreement"] = float(decision.scores.get("agree", 0.5))
+            recall_signal["uncertainty"] = float(decision.scores.get("fisher", 0.0))
+
+        cue_p = torch.softmax(cue.detach().abs(), dim=-1)
+        ctx_p = torch.softmax(ctx.detach().abs(), dim=-1)
+        cue_entropy = -(cue_p * cue_p.clamp_min(1e-9).log()).sum(dim=-1).mean()
+        ctx_entropy = -(ctx_p * ctx_p.clamp_min(1e-9).log()).sum(dim=-1).mean()
+        recall_signal["entropy_drop"] = float((ctx_entropy - cue_entropy).detach().clamp_min(0.0).item())
+        novelty = (cue.detach() - ctx.detach()).norm(dim=-1).mean()
+        recall_signal["novelty"] = float(torch.sigmoid(novelty / max(1.0, float(cue.size(-1) ** 0.5))).item())
+        recall_event = self.recall_controller(
+            entropy_drop=torch.tensor(recall_signal["entropy_drop"], device=cue.device),
+            cms_cps_agreement=torch.tensor(recall_signal["agreement"], device=cue.device),
+            novelty=torch.tensor(recall_signal["novelty"], device=cue.device),
+            uncertainty=torch.tensor(recall_signal["uncertainty"], device=cue.device),
+            base_k=int(getattr(self.long_term_memory, "K_base", 8)),
+            debounce_ok=not has_fire,
+        )
+        if recall_event.triggered:
+            recall_boost = max(
+                recall_boost,
+                min(
+                    1.25,
+                    0.65
+                    + 0.10 * max(0, int(recall_event.hops))
+                    + 0.05 * max(0.0, float(recall_event.expanded_k) / max(1.0, float(getattr(self.long_term_memory, "K_base", 8))) - 1.0),
+                ),
+            )
+            fire_mask = torch.ones(B, device=cue.device, dtype=torch.bool)
+            has_fire = True
+            fire_rate = 1.0
 
         if strategy == 'direct':
             r = self.long_term_memory(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
         elif strategy == 'associative':
-            # Use curved memory path (kept simple; doesn't use fire)
-            r = self.long_term_memory.curved(c, operation='read')
+            r = self.long_term_memory.curved(
+                c,
+                operation='read',
+                fire_mask=fire_mask,
+                recall_boost=recall_boost,
+            )
         else:
             # Reconstructive via HG
             r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
@@ -1265,8 +1551,15 @@ class EnhancedMnemonicCortex(nn.Module):
                 if mann is None:
                     mann = rc_out.result.output
                 mann_seq = mann.unsqueeze(1).expand(-1, r.size(1), -1)
-                r = 0.85 * r + 0.15 * mann_seq
-                self.diagnostics.log("reasoning_mann_bridge", {"enabled": True})
+                mann_weight = min(0.45, max(0.10, 0.15 + 0.15 * float(recall_event.triggered) + 0.10 * float(fire_rate)))
+                align = torch.nn.functional.cosine_similarity(r.mean(dim=1), mann, dim=-1).mean()
+                if float(align.item()) < 0.0:
+                    mann_weight *= 0.5
+                r = (1.0 - mann_weight) * r + mann_weight * mann_seq
+                self.diagnostics.log(
+                    "reasoning_mann_bridge",
+                    {"enabled": True, "mann_weight": float(mann_weight), "alignment": float(align.item())},
+                )
             except Exception as exc:
                 self.diagnostics.log("reasoning_mann_bridge_error", {"error": str(exc)})
         inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
@@ -1275,6 +1568,17 @@ class EnhancedMnemonicCortex(nn.Module):
 
         cue_vec = self.r_proj(r.mean(dim=1))
         self.diagnostics.record_scalar("recall_boost", float(recall_boost))
+        self.diagnostics.record_scalar("recall_fire_rate", float(fire_rate))
+        self.diagnostics.log(
+            "recall_event",
+            {
+                "triggered": bool(recall_event.triggered),
+                "spike_score": float(recall_event.spike_score),
+                "expanded_k": int(recall_event.expanded_k),
+                "hops": int(recall_event.hops),
+                "signals": recall_signal,
+            },
+        )
         self.diagnostics.log("retrieve_path", {"strategy": strategy})
         return self.retrieval(torch.cat([cue_vec, context], dim=-1))
 
@@ -1351,6 +1655,21 @@ class EnhancedMnemonicCortex(nn.Module):
         if isinstance(rstats, dict):
             for k, v in rstats.items():
                 metrics[f"ltm_router_{k}"] = float(v)
+        qh_banks = getattr(self.long_term_memory, "qh_banks", None)
+        if isinstance(qh_banks, nn.ModuleDict):
+            for bank_name, bank in qh_banks.items():
+                if hasattr(bank, "trace_summary"):
+                    for k, v in bank.trace_summary().items():
+                        metrics[f"ltm_qh_{bank_name}_{k}"] = float(v)
+        wm_qh = getattr(self.working_memory, "qh_slot_bank", None)
+        if wm_qh is not None and hasattr(wm_qh, "trace_summary"):
+            for k, v in wm_qh.trace_summary().items():
+                metrics[f"wm_qh_{k}"] = float(v)
+        cms = getattr(self, "advanced_cms", None)
+        cms_qh = getattr(cms, "qh_slot_bank", None) if cms is not None else None
+        if cms_qh is not None and hasattr(cms_qh, "trace_summary"):
+            for k, v in cms_qh.trace_summary().items():
+                metrics[f"cms_qh_{k}"] = float(v)
         if self.consolidation_broker is not None:
             b = self.consolidation_broker.get_metrics()
             for k, v in b.items():
@@ -1416,6 +1735,23 @@ class EnhancedMnemonicCortex(nn.Module):
         if self.advanced_cms is not None:
             metrics["advanced_cms_keys"] = float(len(self.advanced_cms.keys()))
         metrics["reasoning_bridge_enabled"] = 1.0 if self.reasoning_controller_api is not None else 0.0
+        metrics["hgm_enabled"] = 1.0 if self.hgm_enabled else 0.0
+        if isinstance(self.hgm_last_result, dict):
+            hgm2 = self.hgm_last_result.get("hgm2", None)
+            scenarios = self.hgm_last_result.get("scenarios", None)
+            hgm1 = self.hgm_last_result.get("hgm1", None)
+            if scenarios is not None:
+                metrics["hgm_scenarios"] = float(len(getattr(scenarios, "candidates", tuple())))
+            if hgm1 is not None:
+                binding = getattr(hgm1, "binding", None)
+                if binding is not None:
+                    metrics["hgm_hyperedges"] = float(len(getattr(binding, "hyperedges", tuple())))
+            if hgm2 is not None:
+                routing = getattr(hgm2, "routing", None)
+                if routing is not None:
+                    metrics["hgm_assignments"] = float(len(getattr(routing, "assignments", tuple())))
+                validation = getattr(hgm2, "validation", None)
+                metrics["hgm_validation_ok"] = 1.0 if bool(getattr(validation, "ok", False)) else 0.0
         qdt_wm = self._resolve_qdt_working_memory()
         metrics["qdt_wm_bridge_enabled"] = 1.0 if qdt_wm is not None else 0.0
         return metrics
@@ -1673,18 +2009,44 @@ class EnhancedMnemonicCortex(nn.Module):
                 recall_loss = self.compute_recall_loss(filtered, context)
                 gate, gate_prob = self._ste_write_gate(filtered)
                 self.diagnostics.record_scalar("recall_loss", float(recall_loss.detach().item()))
-                return wm_out, {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
+                distill_loss = torch.tensor(0.0, device=filtered.device, dtype=filtered.dtype)
+                if (
+                    self.distillation_config.enabled
+                    and self.advanced_distiller is not None
+                    and self.multi_cps is not None
+                    and token_ids is not None
+                ):
+                    dkeys = self._distill_keys_from_token_ids(token_ids)
+                    if dkeys:
+                        distill_domains = {
+                            str(self.distillation_config.teacher_domain),
+                            *[str(d) for d in self.distillation_config.student_domains],
+                        }
+                        for dom in distill_domains:
+                            if self.multi_cps.has_domain(dom):
+                                for k in dkeys:
+                                    self.multi_cps.ensure(k, domain=dom, device=filtered.device, dtype=filtered.dtype)
+                        distill_loss = self.advanced_distiller.total_distill_loss(
+                            dkeys,
+                            self.distillation_config,
+                        )
+                self.diagnostics.record_scalar("distill_loss", float(distill_loss.detach().item()))
+                return wm_out, {
+                    'recall_loss': recall_loss,
+                    'distill_loss': distill_loss,
+                    'aux_total': recall_loss + distill_loss,
+                    'write_gate_prob': gate_prob.mean(),
+                }
             
             return bridged
 
         elif operation == 'retrieve':
             # Route fire to LTM for sharper readout on the cue as well
-            fire_ret = self.lightbulb(sensory_input)  # (B,)
             return self.retrieve_memory(
                 sensory_input,
                 context,
                 strategy='direct',
-                fire_mask=fire_ret,
+                fire_mask=fire,
                 recall_boost=0.3,
                 query_token_ids=token_ids,
             )

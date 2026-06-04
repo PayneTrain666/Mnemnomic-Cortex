@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from .cortex import EnhancedMnemonicCortex
 from .utils import enable_tensor_cores, optimize_memory_access, seed_everything
+from .optimizer import OptimizerConfig, build_optimizer, clip_gradients
 
 def smoke_run(device=None):
     seed_everything(42)
@@ -33,7 +33,7 @@ def tiny_train_step(steps=5, device=None):
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     B,S,d_in,d_out = 16, 7, 128, 128
     model = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out, cms_vocab_size=4096, cms_senses=3).to(device)
-    opt = optim.AdamW(model.parameters(), lr=1e-3)
+    opt = build_optimizer(model.parameters(), OptimizerConfig(name="adamw", lr=1e-3))
     loss_fn = nn.MSELoss()
 
     for t in range(steps):
@@ -49,7 +49,7 @@ def tiny_train_step(steps=5, device=None):
         loss = loss_fn(y_ret, target)
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        clip_gradients(model, max_norm=1.0)
         opt.step()
         if model.consolidated_lexicon is not None:
             model.consolidated_lexicon.renorm_constraints_()

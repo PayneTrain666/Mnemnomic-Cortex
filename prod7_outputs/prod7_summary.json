@@ -376,13 +376,13 @@
     ],
     "spans": []
   },
-  "pass": 61,
+  "pass": 62,
   "probe": {
     "failed": 0,
-    "passed": 5,
+    "passed": 6,
     "results": [
       {
-        "elapsed_ms": 0.018,
+        "elapsed_ms": 0.007,
         "evidence": {
           "module": "json",
           "read_only": true,
@@ -395,22 +395,20 @@
         "target_kind": "local_import"
       },
       {
-        "elapsed_ms": 0.184,
+        "elapsed_ms": 0.036,
         "evidence": {
-          "exists": false,
+          "exists": true,
           "read_only": true,
           "target": "release/qspin_prod7_qd6a_release_manifest.json"
         },
-        "reasons": [
-          "missing_optional_source"
-        ],
+        "reasons": [],
         "request_id": "probe_manifest",
-        "status": "skipped",
+        "status": "passed",
         "target": "release/qspin_prod7_qd6a_release_manifest.json",
         "target_kind": "manifest_exists"
       },
       {
-        "elapsed_ms": 0.01,
+        "elapsed_ms": 0.002,
         "evidence": {
           "read_only": true,
           "sentinel_passed": true,
@@ -423,7 +421,7 @@
         "target_kind": "no_write_sentinel"
       },
       {
-        "elapsed_ms": 0.002,
+        "elapsed_ms": 0.001,
         "evidence": {
           "read_only": true,
           "sentinel_passed": true,
@@ -436,7 +434,7 @@
         "target_kind": "no_network_sentinel"
       },
       {
-        "elapsed_ms": 0.002,
+        "elapsed_ms": 0.001,
         "evidence": {
           "read_only": true,
           "sentinel_passed": true,
@@ -449,7 +447,7 @@
         "target_kind": "no_commit_sentinel"
       },
       {
-        "elapsed_ms": 0.001,
+        "elapsed_ms": 0.002,
         "evidence": {
           "read_only": true,
           "sentinel_passed": true,
@@ -462,7 +460,7 @@
         "target_kind": "no_live_route_sentinel"
       }
     ],
-    "skipped": 1
+    "skipped": 0
   },
   "production_active": false,
   "readiness_blockers": {
@@ -826,6 +824,6 @@
       }
     ]
   },
-  "skip": 2,
+  "skip": 1,
   "stage": "QSPIN-PROD-7-QD6A"
 }

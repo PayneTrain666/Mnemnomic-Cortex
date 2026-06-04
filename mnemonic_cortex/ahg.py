@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
+import math
 
 
 @dataclass
@@ -12,6 +13,24 @@ class AHGConfig:
     agree_tau: float = 0.15
     ask_on_uncertain: bool = True
     refuse_on_high_risk: bool = True
+
+    def validate(self) -> None:
+        for name, value in {
+            "proto_tau": self.proto_tau,
+            "fisher_tau": self.fisher_tau,
+            "phase_rho": self.phase_rho,
+            "agree_tau": self.agree_tau,
+        }.items():
+            if not isinstance(value, (float, int)) or not math.isfinite(float(value)):
+                raise ValueError(f"{name} must be a finite number")
+        if float(self.proto_tau) < 0.0:
+            raise ValueError("proto_tau must be >= 0")
+        if float(self.fisher_tau) < 0.0:
+            raise ValueError("fisher_tau must be >= 0")
+        if not (0.0 <= float(self.phase_rho) <= 1.0):
+            raise ValueError("phase_rho must be in [0,1]")
+        if not (0.0 <= float(self.agree_tau) <= 1.0):
+            raise ValueError("agree_tau must be in [0,1]")
 
 
 @dataclass
@@ -27,14 +46,26 @@ class AntiHallucinationGuard:
     """
 
     def __init__(self, cfg: AHGConfig):
+        cfg.validate()
         self.cfg = cfg
 
+    @staticmethod
+    def _safe_float(value: Any, default: float) -> float:
+        try:
+            out = float(value)
+            if math.isfinite(out):
+                return out
+        except Exception:
+            pass
+        return float(default)
+
     def decide(self, broker_result: Dict[str, Any], cross_diag: Optional[Dict[str, Any]] = None) -> AHGDecision:
-        proto = float(broker_result.get("signals", {}).get("proto_distance", 1e9))
-        phase = float(broker_result.get("signals", {}).get("phase_agreement", 0.0))
-        fisher = float(broker_result.get("signals", {}).get("fisher_uncertainty", 1e9))
+        signals = broker_result.get("signals", {}) or {}
+        proto = self._safe_float(signals.get("proto_distance", 1e9), 1e9)
+        phase = self._safe_float(signals.get("phase_agreement", 0.0), 0.0)
+        fisher = self._safe_float(signals.get("fisher_uncertainty", 1e9), 1e9)
         has_fisher = bool(broker_result.get("signals", {}).get("has_fisher", False))
-        agree = float((cross_diag or {}).get("agreement", 0.0))
+        agree = self._safe_float((cross_diag or {}).get("agreement", 0.0), 0.0)
 
         proto_ok = proto <= self.cfg.proto_tau
         phase_ok = phase >= self.cfg.phase_rho

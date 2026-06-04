@@ -39,6 +39,8 @@ class CortexConfig:
     # Consolidated lexicon (optional)
     cms_vocab_size: int = 0
     cms_senses: int = 3
+    fusion: str = "weighted"
+    hgm_enabled: bool = False
 
     def to_cortex_kwargs(self) -> Dict[str, Any]:
         return {
@@ -52,4 +54,6 @@ class CortexConfig:
             "ltm_curved_slots": int(self.curved_mem_slots),
             "cms_vocab_size": int(self.cms_vocab_size),
             "cms_senses": int(self.cms_senses),
+            "fusion": str(self.fusion),
+            "hgm_enabled": bool(self.hgm_enabled),
         }

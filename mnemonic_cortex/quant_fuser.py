@@ -98,7 +98,16 @@ class QuantAwareCPSFuser(nn.Module):
 
         c = torch.stack(contribs, dim=0)
         gate_logits = torch.stack([self.gates[nm] for nm in names], dim=0).view(-1)
-        w = F.softmax(gate_logits / self.gate_temp.clamp_min(1e-3), dim=0)
+        temp = self.gate_temp
+        if not torch.isfinite(temp):
+            temp = torch.tensor(1.0, device=gate_logits.device, dtype=gate_logits.dtype)
+        w = F.softmax(gate_logits / temp.clamp_min(1e-3), dim=0)
+        if not torch.isfinite(w).all():
+            w = torch.full_like(w, 1.0 / max(1, w.numel()))
         fused = (w.unsqueeze(-1) * c).sum(dim=0)
-        return fused, {"weights": {n: float(w[i].detach().item()) for i, n in enumerate(names)}}
+        aux = {
+            "weights": {n: float(w[i].detach().item()) for i, n in enumerate(names)},
+            "per_head": {n: c[i].detach() for i, n in enumerate(names)},
+        }
+        return fused, aux
 

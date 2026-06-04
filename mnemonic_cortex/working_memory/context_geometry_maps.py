@@ -27,6 +27,12 @@ GEOMETRY_SET = {
     "holographic_phase",
 }
 
+MOUNT_STRATEGY_SET = {
+    "additive_bias",
+    "phase_bias",
+    "multiplicative_gate",
+}
+
 
 @dataclass(frozen=True)
 class ContextGeometryMap:
@@ -54,11 +60,26 @@ class ContextGeometryMap:
     triplet_bias: List[float] = field(default_factory=lambda: [1.0, 0.5, 0.25])
 
     def normalized_for_depths(self, num_depths: int) -> "ContextGeometryMap":
+        def _sanitize_weights(values: Sequence[float], fill: float) -> List[float]:
+            vals = [float(v) for v in values]
+            vals = [max(0.0, min(2.0, v)) if v == v else 0.0 for v in vals]
+            if len(vals) >= num_depths:
+                vals = vals[:num_depths]
+            else:
+                vals = vals + [float(fill)] * (num_depths - len(vals))
+            s = sum(vals)
+            if s <= 0.0:
+                return [1.0 / float(num_depths)] * int(num_depths)
+            return [v / s for v in vals]
+
         def fit(values: Sequence[float], fill: float) -> List[float]:
-            vals = list(values)
+            return _sanitize_weights(values, fill)
+
+        def fit_plain(values: Sequence[float], fill: float) -> List[float]:
+            vals = [float(v) if v == v else float(fill) for v in values]
             if len(vals) >= num_depths:
                 return vals[:num_depths]
-            return vals + [fill] * (num_depths - len(vals))
+            return vals + [float(fill)] * (num_depths - len(vals))
 
         def fit_geo(values: Sequence[str]) -> List[str]:
             vals = list(values)
@@ -76,8 +97,8 @@ class ContextGeometryMap:
             reasoning_tags=list(self.reasoning_tags),
             paamax_policy_tags=list(self.paamax_policy_tags),
             stability_rules=dict(self.stability_rules),
-            mount_strategy=self.mount_strategy,
-            triplet_bias=fit(self.triplet_bias, 0.25)[:3],
+            mount_strategy=self.mount_strategy if self.mount_strategy in MOUNT_STRATEGY_SET else "additive_bias",
+            triplet_bias=fit_plain(self.triplet_bias, 0.25)[:3],
         )
 
 
@@ -257,6 +278,22 @@ def validate_context_geometry_map(map_spec: ContextGeometryMap, num_depths: int 
     unknown = [g for g in map_spec.geometry_by_depth if g not in GEOMETRY_SET]
     if unknown:
         raise ValueError(f"{map_spec.name} contains unknown geometries: {unknown}")
+    if map_spec.mount_strategy not in MOUNT_STRATEGY_SET:
+        raise ValueError(f"{map_spec.name} mount_strategy must be one of {sorted(MOUNT_STRATEGY_SET)}")
+    all_weights = list(map_spec.depth_weights) + list(map_spec.warmup_weights) + list(map_spec.trainable_weight_init)
+    if any((w != w) for w in all_weights):
+        raise ValueError(f"{map_spec.name} weights must be finite")
+    min_w = float(map_spec.stability_rules.get("min_depth_weight", 0.0))
+    max_w = float(map_spec.stability_rules.get("max_depth_weight", 1.25))
+    if min_w > max_w:
+        raise ValueError(f"{map_spec.name} has invalid stability rule bounds")
+    for w in all_weights:
+        if not (min_w - 1e-9 <= float(w) <= max_w + 1e-9):
+            raise ValueError(
+                f"{map_spec.name} weight {float(w):.6f} is outside configured bounds [{min_w},{max_w}]"
+            )
+    if any((t != t) for t in map_spec.triplet_bias):
+        raise ValueError(f"{map_spec.name} triplet_bias must be finite")
 
 
 # ---------------------------------------------------------------------------

@@ -27,6 +27,8 @@ class CortexSeqModel(nn.Module):
         cms_multi_store: bool = False,
         cms_consolidation_intent: str = "auto",
         ahg_enabled: bool = False,
+        hgm_enabled: bool = False,
+        **cortex_kwargs,
     ):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
@@ -40,6 +42,8 @@ class CortexSeqModel(nn.Module):
             ltm_cgmn_slots=ltm_cgmn_slots,
             ltm_curved_slots=ltm_curved_slots,
             fusion=fusion,
+            hgm_enabled=hgm_enabled,
+            **cortex_kwargs,
         )
         self.cms_enabled = bool(cms_enabled)
         if cms_enabled:
