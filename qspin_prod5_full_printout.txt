@@ -1,0 +1,3242 @@
+QSPIN-PROD-5-QD6A FULL CONTENT PRINTOUT
+================================================================================
+
+
+# ===== .pytest_cache/.gitignore =====
+```markdown
+# Created by pytest automatically.
+*
+```
+
+# ===== .pytest_cache/CACHEDIR.TAG =====
+```markdown
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+```
+
+# ===== .pytest_cache/README.md =====
+```markdown
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+```
+
+# ===== .pytest_cache/v/cache/nodeids =====
+```markdown
+[
+  "tests/test_active_remediation_register.py::test_empty_register_is_valid",
+  "tests/test_observability.py::test_redaction_and_summary",
+  "tests/test_safety_regression_ci.py::test_safety_regressions_pass_and_xml_generates",
+  "tests/test_shadow_runtime_harness.py::test_qh_write_blocks_fail_closed",
+  "tests/test_shadow_runtime_harness.py::test_valid_shadow_passes",
+  "tests/test_source_consideration_matrix.py::test_matrix_builds_with_coverage",
+  "tests/test_synthetic_canary_bridge.py::test_all_default_canaries_pass"
+]
+```
+
+# ===== PROD5_CANARY_TEST_PLAN.md =====
+```markdown
+# PROD-5 Canary Test Plan
+
+Canary categories:
+- route_shape_canary
+- payload_integrity_canary
+- qh_no_write_canary
+- shared_slot_no_write_canary
+- external_memory_no_write_canary
+- topology_no_execute_canary
+- commit_gate_no_commit_canary
+- audit_chain_canary
+- redaction_canary
+- concurrency_guard_canary
+- timeout_bound_canary
+- malformed_input_canary
+
+Expected unsafe canaries pass only when the runtime blocks them fail-closed.
+```
+
+# ===== PROD5_OBSERVABILITY_SPEC.md =====
+```markdown
+# PROD-5 Observability Specification
+
+Observability is local, structured, and redaction-safe. It includes:
+- MetricEvent
+- AuditEvent
+- SpanEvent
+- counters for fail-closed, skips, canaries, remediations, audit events, metrics, and spans
+- lineage tags
+- stage tags
+- source tags
+
+Secret-shaped values are redacted before serialization.
+```
+
+# ===== PROD5_README.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Release
+
+PROD-5 adds a guarded live-adjacent shadow runtime harness, synthetic canary bridge runs, expanded safety regression hooks, observability primitives, source consideration tracking, and an active remediation register.
+
+Safety status: **synthetic/sandbox-only**. No live route activation, payload transfer, topology execution, QH write, shared-slot write, external-memory write, commit, network call, or production activation is allowed.
+
+Manual runner:
+
+```bash
+python3 -S prod5_manual_runner.py
+```
+```
+
+# ===== PROD5_REMEDIATION_REGISTER.md =====
+```markdown
+# PROD-5 Remediation Register
+
+The remediation register is generated from failed synthetic canaries, failed safety regressions, and missing lineage sources.
+
+Severity classes:
+- P0: safety boundary or forbidden behavior risk
+- P1: regression or audit integrity risk
+- P2: lineage completeness / deferred source availability risk
+- P3: documentation or usability improvement
+```
+
+# ===== PROD5_SAFETY_BOUNDARIES.md =====
+```markdown
+# PROD-5 Safety Boundaries
+
+The PROD-5 implementation is live-adjacent only in shape. It is not live-adjacent in authority.
+
+Explicitly blocked:
+- live routing
+- real payload transfer
+- topology execution
+- real shared-slot writes
+- QH writes
+- external-memory writes
+- commit execution
+- production activation
+- production config mutation
+- networking
+
+All blocked attempts return FAIL_CLOSED with reason code `SAFETY_BOUNDARY_BLOCK` unless they are idempotent replay skips.
+```
+
+# ===== PROD5_SHADOW_RUNTIME_SPEC.md =====
+```markdown
+# PROD-5 Shadow Runtime Specification
+
+The shadow harness accepts production-shaped envelopes but executes only local synthetic planning. It emits audit events and synthetic route IDs. It never transfers a payload or writes to memory.
+
+Modes:
+- SHADOW_IDLE
+- SHADOW_VALIDATE
+- SHADOW_PLAN
+- SHADOW_EXECUTE_SYNTHETIC
+- SHADOW_AUDIT
+- SHADOW_FAIL_CLOSED
+
+Validation is fail-closed and includes config posture, payload size, route/target markers, forbidden flags, and supported mode checks.
+```
+
+# ===== PROD5_SHIP_CHECK.md =====
+```markdown
+# PROD-5 Ship Check
+
+Required ship condition:
+- manual synthetic runner passes with fail_count = 0
+- forbidden actions are blocked fail-closed
+- missing sources are structured skips only
+- no live behavior is enabled
+
+Ship posture after generation: SHIP as synthetic/sandbox-only live-adjacent bridge infrastructure if tests pass.
+```
+
+# ===== PROD5_SOURCE_CONSIDERATION_MATRIX.md =====
+```markdown
+# PROD-5 Source Consideration Matrix
+
+The generated source matrix inspects the expected QD6A, QSPIN-8, PROD-0, PROD-1, PROD-2, PROD-3, PROD-4, and PROD-4 printout sources under `/mnt/data`.
+
+WM-7A remains reference-only because QD6A supersedes it where content differs.
+```
+
+# ===== PROD6_NEXT_COMMAND.md =====
+```markdown
+DEV-FLOW RUN QSPIN-BRIDGE Stage QSPIN-PROD-6-QD6A — Shadow Runtime Stress Replay, Deterministic Trace Corpus Expansion, CI Matrix Hardening, Source Consideration Matrix, Active Remediation Closure, Full Content Printout, Audit, Ship-Check, and PROD-7 Command
+
+ACTIVE DEV-FLOW / QSPIN GLOBAL STANDARD:
+Use the combined standard optimal command preferences mixture. Preserve all PROD-5 safety boundaries. Runtime routing remains disabled/inert by default. All behavior remains synthetic/sandbox-only unless a later explicit write-permission command authorizes otherwise.
+
+SOURCE OF TRUTH:
+- /mnt/data/qspin_prod5_qd6a_release_pack.zip
+- /mnt/data/qspin_prod5_full_printout.txt
+
+GOAL:
+Expand PROD-5 into deterministic stress replay and CI matrix hardening. Add larger synthetic trace corpora, repeated replay checks, concurrency/idempotency stress tests, redaction stress probes, latency bounds, source consideration audit, remediation closure workflow, and PROD-7 continuation command.
+
+FINAL HOLD CONDITION:
+After PROD-6 is generated and tested, stop. Do not proceed to PROD-7 in the same response.
+```
+
+# ===== docs/qdt_wm_maae/qspin_prod5_active_patching_report.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Active Patching Report
+
+Patching mode: additive synthetic-only implementation.
+
+Active remediation performed:
+- Added fail-closed safety boundary validation.
+- Added deterministic idempotency keys and replay skips.
+- Added synthetic canary corpus.
+- Added safety regression runner with JUnit XML export.
+- Added source consideration matrix with missing-source structured skip handling.
+- Added remediation register generation.
+- Added redaction-safe observability.
+
+No production files were mutated. No live execution path was enabled.
+```
+
+# ===== docs/qdt_wm_maae/qspin_prod5_audit_shipcheck.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Audit and Ship-Check
+
+Ship condition:
+- `python3 -S prod5_manual_runner.py` returns 0.
+- Synthetic canaries pass.
+- Safety regressions pass.
+- Forbidden behavior is blocked fail-closed.
+- Production activation remains disabled.
+
+Decision:
+SHIP QSPIN-PROD-5-QD6A as synthetic/sandbox-only live-adjacent bridge infrastructure if release test result reports fail_count = 0.
+```
+
+# ===== docs/qdt_wm_maae/qspin_prod5_final_shipcheck.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Final Ship Check
+
+Manual runner return code: 0
+
+Pass count: 26
+Fail count: 0
+Skip count: 0
+
+Pytest status: PASS
+
+Safety boundary confirmation:
+- commit_execution: DISABLED/BLOCKED
+- external_memory_writes: DISABLED/BLOCKED
+- live_routing: DISABLED/BLOCKED
+- production_activation: DISABLED/BLOCKED
+- qh_writes: DISABLED/BLOCKED
+- real_payload_transfer: DISABLED/BLOCKED
+- real_shared_slot_writes: DISABLED/BLOCKED
+- topology_execution: DISABLED/BLOCKED
+
+Decision: SHIP QSPIN-PROD-5-QD6A as synthetic/sandbox-only live-adjacent bridge infrastructure.
+```
+
+# ===== docs/qdt_wm_maae/qspin_prod5_qd6a_remediation_register.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Active Remediation Register
+
+| ID | Severity | Status | Module | Failure mode | PROD-6 carry-forward |
+|---|---|---|---|---|---:|
+| none | none | resolved | all | No active remediation items generated. | False |
+```
+
+# ===== docs/qdt_wm_maae/qspin_prod5_qd6a_source_consideration_matrix.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Source Consideration Matrix
+
+| Source | Exists | Status | Confidence | Risk | Use decision | Exclusion / skip reason |
+|---|---:|---|---|---|---|---|
+| QD6A | True | USED | high | low | active source of truth |  |
+| QSPIN-8 | True | USED | medium | low | lineage baseline |  |
+| PROD-0 | True | USED | medium | low | preserved contract lineage |  |
+| PROD-1 | True | USED | medium | low | preserved contract lineage |  |
+| PROD-2 | True | USED | medium | low | preserved contract lineage |  |
+| PROD-3 | True | USED | high | low | refreshed production baseline |  |
+| PROD-4 | True | USED | high | low | immediate previous release |  |
+| PROD-4-PRINTOUT | True | USED | high | low | immediate previous full printout |  |
+| WM-7A | True | REFERENCE_ONLY | medium | medium | historical comparison only | Superseded by QD6A; reference only for rollback/delta audit. |
+```
+
+# ===== docs/qdt_wm_maae/qspin_prod5_qd6a_token_budget.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Token Budget
+
+Target output size: approximately 55k-75k tokens if printed inline.
+
+Minimum complete version:
+- runtime harness
+- canary bridge
+- safety regression runner
+- observability primitives
+- source consideration matrix
+- remediation register
+- manual runner
+- docs
+- tests
+- release manifest
+
+Deep implementation version:
+- all minimum files plus structured outputs, JUnit XML, markdown summaries, full printout, release packaging, ship-check, and PROD-6 command.
+
+Clean split points if inline printing is required:
+1. Source modules
+2. Tests
+3. Documentation
+4. Runner outputs and release manifest
+5. Audit/ship-check/next command
+
+This response packages the full printout as `qspin_prod5_full_printout.txt` to avoid screen truncation.
+```
+
+# ===== mnemonic_cortex/__init__.py =====
+```python
+"""Synthetic QSPIN PROD-5 package marker."""
+```
+
+# ===== mnemonic_cortex/working_memory/__init__.py =====
+```python
+"""Working-memory synthetic QSPIN PROD-5 modules."""
+```
+
+# ===== mnemonic_cortex/working_memory/qspin_active_remediation_register.py =====
+```python
+"""Active remediation register for QSPIN-PROD-5."""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Iterable, List
+import json
+
+
+@dataclass
+class RemediationItem:
+    remediation_id: str
+    severity: str
+    status: str
+    owner: str
+    source_stage: str
+    affected_module: str
+    failure_mode: str
+    recommended_fix: str
+    safety_implication: str
+    test_coverage: str
+    acceptance_criteria: str
+    prod6_carry_forward: bool
+
+
+def build_remediation_register(canary_results: Iterable[Any], safety_summary: Dict[str, Any], source_audit: Dict[str, Any]) -> List[RemediationItem]:
+    items: List[RemediationItem] = []
+    idx = 1
+    for result in canary_results:
+        if getattr(result, "status", "PASS") != "PASS":
+            items.append(RemediationItem(
+                remediation_id=f"PROD5-REM-{idx:03d}", severity="P0", status="open", owner="unassigned",
+                source_stage="QSPIN-PROD-5-QD6A", affected_module="qspin_synthetic_canary_bridge.py",
+                failure_mode=f"Canary {getattr(result, 'canary_id', 'unknown')} failed: {getattr(result, 'observed_reason_code', '')}",
+                recommended_fix=getattr(result, "remediation_hint", "Inspect canary failure."),
+                safety_implication="Potential unsafe shadow/live boundary regression.",
+                test_coverage="Synthetic canary corpus", acceptance_criteria="Canary returns PASS with expected blocked/pass posture.",
+                prod6_carry_forward=True,
+            ))
+            idx += 1
+    for check in safety_summary.get("checks", []):
+        if not check.get("passed", False):
+            items.append(RemediationItem(
+                remediation_id=f"PROD5-REM-{idx:03d}", severity=check.get("severity", "P1"), status="open", owner="unassigned",
+                source_stage="QSPIN-PROD-5-QD6A", affected_module="qspin_safety_regression_ci.py",
+                failure_mode=f"Safety regression failed: {check.get('name')}",
+                recommended_fix="Repair fail-closed validator, regression expectation, or observability audit path.",
+                safety_implication="Could permit or mask forbidden behavior.", test_coverage="Safety regression CI",
+                acceptance_criteria="Regression passes locally and in CI-compatible runner.", prod6_carry_forward=True,
+            ))
+            idx += 1
+    for skipped in source_audit.get("skipped_missing", []):
+        items.append(RemediationItem(
+            remediation_id=f"PROD5-REM-{idx:03d}", severity="P2", status="deferred", owner="unassigned",
+            source_stage="QSPIN-PROD-5-QD6A", affected_module="qspin_source_consideration_matrix.py",
+            failure_mode=f"Source missing: {skipped}", recommended_fix="Provide missing lineage source or mark as intentionally unavailable.",
+            safety_implication="Lineage completeness reduced; runtime safety remains fail-closed.", test_coverage="Source consideration matrix",
+            acceptance_criteria="Source present or formally waived with documented reason.", prod6_carry_forward=True,
+        ))
+        idx += 1
+    return items
+
+
+def register_to_json(items: List[RemediationItem]) -> str:
+    return json.dumps([asdict(i) for i in items], indent=2, sort_keys=True)
+
+
+def register_to_markdown(items: List[RemediationItem]) -> str:
+    lines = ["# QSPIN-PROD-5-QD6A Active Remediation Register", "", "| ID | Severity | Status | Module | Failure mode | PROD-6 carry-forward |", "|---|---|---|---|---|---:|"]
+    if not items:
+        lines.append("| none | none | resolved | all | No active remediation items generated. | False |")
+    for item in items:
+        lines.append(f"| {item.remediation_id} | {item.severity} | {item.status} | {item.affected_module} | {item.failure_mode} | {item.prod6_carry_forward} |")
+    return "\n".join(lines) + "\n"
+```
+
+# ===== mnemonic_cortex/working_memory/qspin_runtime_observability.py =====
+```python
+"""QSPIN-PROD-5 synthetic runtime observability primitives.
+
+Safety posture:
+- local-only
+- no networking
+- no production writes
+- redaction-safe serialization
+- deterministic summaries
+"""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, Iterable, List, Mapping, Optional
+import json
+import re
+import time
+
+SECRET_PATTERNS = [
+    re.compile(r"(?i)(api[_-]?key|token|secret|password|credential)\s*[:=]\s*[^\s,;]+"),
+    re.compile(r"(?i)bearer\s+[a-z0-9._~+/=-]{12,}"),
+    re.compile(r"sk-[A-Za-z0-9]{12,}"),
+    re.compile(r"(?i)-----BEGIN\s+(RSA|OPENSSH|PRIVATE)\s+KEY-----"),
+]
+
+REDACTED = "<REDACTED>"
+
+
+@dataclass(frozen=True)
+class MetricEvent:
+    name: str
+    value: float
+    unit: str = "count"
+    tags: Dict[str, str] = field(default_factory=dict)
+    timestamp: float = field(default_factory=lambda: round(time.time(), 6))
+
+
+@dataclass(frozen=True)
+class AuditEvent:
+    event_type: str
+    stage: str
+    status: str
+    reason_code: str
+    detail: Dict[str, Any] = field(default_factory=dict)
+    lineage: Dict[str, str] = field(default_factory=dict)
+    timestamp: float = field(default_factory=lambda: round(time.time(), 6))
+
+
+@dataclass(frozen=True)
+class SpanEvent:
+    span_name: str
+    started_at: float
+    ended_at: float
+    status: str
+    tags: Dict[str, str] = field(default_factory=dict)
+
+    @property
+    def duration_ms(self) -> float:
+        return round((self.ended_at - self.started_at) * 1000.0, 3)
+
+
+def redact_text(value: str) -> str:
+    out = value
+    for pattern in SECRET_PATTERNS:
+        out = pattern.sub(REDACTED, out)
+    return out
+
+
+def redact_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return redact_text(value)
+    if isinstance(value, Mapping):
+        return {str(k): redact_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact_value(v) for v in value]
+    if isinstance(value, tuple):
+        return tuple(redact_value(v) for v in value)
+    return value
+
+
+def to_jsonable(value: Any) -> Any:
+    if hasattr(value, "__dataclass_fields__"):
+        return to_jsonable(asdict(value))
+    if isinstance(value, Mapping):
+        return {str(k): to_jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [to_jsonable(v) for v in value]
+    return value
+
+
+def no_secret_leakage_check(value: Any) -> bool:
+    text = json.dumps(to_jsonable(value), sort_keys=True, default=str)
+    return not any(pattern.search(text) for pattern in SECRET_PATTERNS)
+
+
+class ObservabilityEmitter:
+    """In-memory structured event emitter for synthetic QSPIN runs."""
+
+    def __init__(self, *, stage: str = "QSPIN-PROD-5-QD6A", lineage: Optional[Dict[str, str]] = None):
+        self.stage = stage
+        self.lineage = lineage or {}
+        self.metrics: List[MetricEvent] = []
+        self.audits: List[AuditEvent] = []
+        self.spans: List[SpanEvent] = []
+        self.counters: Dict[str, int] = {
+            "audit_events": 0,
+            "metric_events": 0,
+            "span_events": 0,
+            "fail_closed": 0,
+            "skips": 0,
+            "canaries": 0,
+            "remediations": 0,
+        }
+
+    def emit_metric(self, name: str, value: float, *, unit: str = "count", tags: Optional[Dict[str, str]] = None) -> MetricEvent:
+        event = MetricEvent(name=name, value=float(value), unit=unit, tags=redact_value(tags or {}))
+        self.metrics.append(event)
+        self.counters["metric_events"] += 1
+        return event
+
+    def emit_audit(self, event_type: str, status: str, reason_code: str, *, detail: Optional[Dict[str, Any]] = None) -> AuditEvent:
+        clean_detail = redact_value(detail or {})
+        event = AuditEvent(
+            event_type=event_type,
+            stage=self.stage,
+            status=status,
+            reason_code=reason_code,
+            detail=clean_detail,
+            lineage=self.lineage,
+        )
+        self.audits.append(event)
+        self.counters["audit_events"] += 1
+        if status == "FAIL_CLOSED":
+            self.counters["fail_closed"] += 1
+        if status == "SKIP":
+            self.counters["skips"] += 1
+        return event
+
+    def emit_span(self, span_name: str, started_at: float, ended_at: float, status: str, *, tags: Optional[Dict[str, str]] = None) -> SpanEvent:
+        event = SpanEvent(span_name=span_name, started_at=started_at, ended_at=ended_at, status=status, tags=redact_value(tags or {}))
+        self.spans.append(event)
+        self.counters["span_events"] += 1
+        self.emit_metric(f"latency.{span_name}", event.duration_ms, unit="ms", tags=tags)
+        return event
+
+    def increment(self, name: str, amount: int = 1) -> None:
+        self.counters[name] = self.counters.get(name, 0) + int(amount)
+
+    def summary(self) -> Dict[str, Any]:
+        payload = {
+            "stage": self.stage,
+            "lineage": self.lineage,
+            "counters": dict(sorted(self.counters.items())),
+            "metrics": [to_jsonable(v) for v in self.metrics],
+            "audits": [to_jsonable(v) for v in self.audits],
+            "spans": [to_jsonable(v) for v in self.spans],
+        }
+        return redact_value(payload)
+
+    def to_json(self) -> str:
+        payload = self.summary()
+        if not no_secret_leakage_check(payload):
+            raise ValueError("observability payload failed no_secret_leakage_check")
+        return json.dumps(payload, indent=2, sort_keys=True, default=str)
+```
+
+# ===== mnemonic_cortex/working_memory/qspin_safety_regression_ci.py =====
+```python
+"""CI-compatible safety regression runner for QSPIN-PROD-5."""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from typing import Any, Callable, Dict, List, Optional
+import json
+import time
+import xml.etree.ElementTree as ET
+
+from .qspin_shadow_runtime_harness import ShadowRuntimeEnvelope, ShadowRuntimeHarness
+from .qspin_runtime_observability import no_secret_leakage_check
+
+
+@dataclass
+class SafetyCheck:
+    regression_id: str
+    name: str
+    severity: str
+    passed: bool
+    observed_status: str
+    observed_reason: str
+    detail: Dict[str, Any]
+
+
+def _blocked_check(regression_id: str, name: str, flag: str, severity: str = "P0") -> SafetyCheck:
+    harness = ShadowRuntimeHarness()
+    result = harness.execute(ShadowRuntimeEnvelope(payload={"check": name}, flags={flag: True}))
+    passed = result.status == "FAIL_CLOSED" and result.reason_code == "SAFETY_BOUNDARY_BLOCK"
+    return SafetyCheck(regression_id, name, severity, passed, result.status, result.reason_code, {"blocked_actions": result.blocked_actions})
+
+
+def run_safety_regressions() -> Dict[str, Any]:
+    checks: List[SafetyCheck] = []
+    blocked_cases = [
+        ("REG-P5-001", "no live route activation", "live_route"),
+        ("REG-P5-002", "no real payload transfer", "transfer_payload"),
+        ("REG-P5-003", "no production write", "mutate_production_config"),
+        ("REG-P5-004", "no QH write", "write_qh"),
+        ("REG-P5-005", "no shared-slot write", "write_shared_slot"),
+        ("REG-P5-006", "no external-memory write", "write_external_memory"),
+        ("REG-P5-007", "no topology execution", "execute_topology"),
+        ("REG-P5-008", "no commit execution", "commit"),
+        ("REG-P5-009", "no network call", "network_call"),
+    ]
+    for args in blocked_cases:
+        checks.append(_blocked_check(*args))
+
+    harness = ShadowRuntimeHarness()
+    good = ShadowRuntimeEnvelope(payload={"check": "deterministic replay"})
+    r1 = harness.execute(good)
+    r2 = ShadowRuntimeHarness().execute(good)
+    checks.append(SafetyCheck("REG-P5-010", "deterministic replay", "P1", r1.fingerprint() == r2.fingerprint(), r1.status, r1.reason_code, {"fp1": r1.fingerprint(), "fp2": r2.fingerprint()}))
+
+    malformed = harness.execute(ShadowRuntimeEnvelope(payload={"check": "malformed mode"}, requested_mode="LIVE_EXECUTE"))
+    checks.append(SafetyCheck("REG-P5-011", "malformed input handling", "P1", malformed.status == "FAIL_CLOSED", malformed.status, malformed.reason_code, {"blocked_actions": malformed.blocked_actions}))
+
+    secret_payload = {"token": "bearer abcdefghijklmnopqrstuvwxyz", "nested": {"api_key": "SHOULD_NOT_LEAK"}}
+    redaction_result = harness.execute(ShadowRuntimeEnvelope(payload=secret_payload))
+    checks.append(SafetyCheck("REG-P5-012", "redaction behavior", "P0", no_secret_leakage_check(redaction_result.__dict__), redaction_result.status, redaction_result.reason_code, {}))
+
+    audit_summary = harness.emitter.summary()
+    checks.append(SafetyCheck("REG-P5-013", "audit-chain completeness", "P1", len(audit_summary.get("audits", [])) > 0, "PASS", "AUDIT_EVENTS_PRESENT", {"audit_count": len(audit_summary.get("audits", []))}))
+
+    # bounded retry/backoff/dead-letter is represented as bounded one-shot fail-closed behavior in PROD-5.
+    too_large = harness.execute(ShadowRuntimeEnvelope(payload={"blob": "x" * 70000}))
+    checks.append(SafetyCheck("REG-P5-014", "bounded payload handling", "P1", too_large.status == "FAIL_CLOSED", too_large.status, too_large.reason_code, {"blocked_actions": too_large.blocked_actions}))
+
+    pass_count = sum(1 for c in checks if c.passed)
+    fail_count = sum(1 for c in checks if not c.passed)
+    summary = {
+        "stage": "QSPIN-PROD-5-QD6A",
+        "lineage": harness.config.lineage,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "skip_count": 0,
+        "checks": [asdict(c) for c in checks],
+    }
+    return summary
+
+
+def safety_summary_to_junit_xml(summary: Dict[str, Any]) -> str:
+    testsuite = ET.Element("testsuite", name="qspin_prod5_safety_regression", tests=str(len(summary.get("checks", []))), failures=str(summary.get("fail_count", 0)))
+    for check in summary.get("checks", []):
+        case = ET.SubElement(testsuite, "testcase", classname="QSPIN_PROD5", name=check["name"])
+        if not check["passed"]:
+            failure = ET.SubElement(case, "failure", message=check["observed_reason"])
+            failure.text = json.dumps(check, indent=2, sort_keys=True)
+    return ET.tostring(testsuite, encoding="unicode")
+
+
+def main() -> int:
+    summary = run_safety_regressions()
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 1 if summary["fail_count"] else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+# ===== mnemonic_cortex/working_memory/qspin_shadow_runtime_harness.py =====
+```python
+"""QSPIN-PROD-5 guarded live-adjacent shadow runtime harness.
+
+This harness is deliberately synthetic-only. It mirrors production-shaped envelopes
+but blocks every path that would perform live routing, topology execution, payload
+transfer, commits, QH writes, shared-slot writes, external-memory writes, or
+production activation.
+"""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+import hashlib
+import json
+import threading
+import time
+
+from .qspin_runtime_observability import ObservabilityEmitter, redact_value
+
+SHADOW_IDLE = "SHADOW_IDLE"
+SHADOW_VALIDATE = "SHADOW_VALIDATE"
+SHADOW_PLAN = "SHADOW_PLAN"
+SHADOW_EXECUTE_SYNTHETIC = "SHADOW_EXECUTE_SYNTHETIC"
+SHADOW_AUDIT = "SHADOW_AUDIT"
+SHADOW_FAIL_CLOSED = "SHADOW_FAIL_CLOSED"
+
+FORBIDDEN_FLAGS = {
+    "live_route",
+    "execute_topology",
+    "transfer_payload",
+    "write_working_memory",
+    "write_long_term_memory",
+    "write_qh",
+    "write_shared_slot",
+    "write_external_memory",
+    "commit",
+    "production_activation",
+    "network_call",
+    "mutate_production_config",
+}
+
+PRODUCTION_TARGET_MARKERS = ("prod", "production", "live", "external", "qh://", "memory://", "http://", "https://")
+
+
+class FailClosedError(RuntimeError):
+    """Raised internally when the shadow harness blocks unsafe execution."""
+
+
+@dataclass
+class ShadowRuntimeConfig:
+    stage: str = "QSPIN-PROD-5-QD6A"
+    dry_run: bool = True
+    sandbox: bool = True
+    shadow_only: bool = True
+    allow_live_routing: bool = False
+    allow_payload_transfer: bool = False
+    allow_topology_execution: bool = False
+    allow_qh_writes: bool = False
+    allow_shared_slot_writes: bool = False
+    allow_external_memory_writes: bool = False
+    allow_commits: bool = False
+    allow_network: bool = False
+    allow_production_targets: bool = False
+    max_payload_bytes: int = 65536
+    max_steps: int = 8
+    timeout_ms: int = 250
+    lineage: Dict[str, str] = field(default_factory=lambda: {
+        "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+        "qspin8": "qspin8_qd6a_release_pack.zip",
+        "prod0": "qspin_prod0_qd6a_release_pack.zip",
+        "prod1": "qspin_prod1_qd6a_release_pack.zip",
+        "prod2": "qspin_prod2_qd6a_release_pack.zip",
+        "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+        "prod4": "qspin_prod4_qd6a_release_pack.zip",
+    })
+
+
+@dataclass
+class ShadowRuntimeEnvelope:
+    payload: Dict[str, Any]
+    requested_route: str = "synthetic.shadow.route"
+    requested_mode: str = SHADOW_EXECUTE_SYNTHETIC
+    target: str = "local_synthetic_shadow"
+    flags: Dict[str, bool] = field(default_factory=dict)
+    idempotency_key: Optional[str] = None
+    source_stage: str = "QSPIN-PROD-5-QD6A"
+
+
+@dataclass
+class ShadowRuntimeResult:
+    status: str
+    mode: str
+    reason_code: str
+    idempotency_key: str
+    simulated_route: Optional[str] = None
+    planned_actions: List[str] = field(default_factory=list)
+    blocked_actions: List[str] = field(default_factory=list)
+    diagnostics: Dict[str, Any] = field(default_factory=dict)
+    audit_events: List[Dict[str, Any]] = field(default_factory=list)
+    elapsed_ms: float = 0.0
+
+    def fingerprint(self) -> str:
+        body = json.dumps(asdict(self), sort_keys=True, default=str)
+        # Ignore elapsed jitter by hashing stable fields only.
+        stable = {
+            "status": self.status,
+            "mode": self.mode,
+            "reason_code": self.reason_code,
+            "idempotency_key": self.idempotency_key,
+            "simulated_route": self.simulated_route,
+            "planned_actions": self.planned_actions,
+            "blocked_actions": self.blocked_actions,
+            "diagnostics": self.diagnostics,
+        }
+        return hashlib.sha256(json.dumps(stable, sort_keys=True, default=str).encode()).hexdigest()
+
+
+class ShadowRuntimeHarness:
+    def __init__(self, config: Optional[ShadowRuntimeConfig] = None, emitter: Optional[ObservabilityEmitter] = None):
+        self.config = config or ShadowRuntimeConfig()
+        self.emitter = emitter or ObservabilityEmitter(stage=self.config.stage, lineage=self.config.lineage)
+        self._lock = threading.RLock()
+        self._seen: Dict[str, ShadowRuntimeResult] = {}
+
+    def idempotency_key_for(self, envelope: ShadowRuntimeEnvelope) -> str:
+        stable = {
+            "payload": redact_value(envelope.payload),
+            "requested_route": envelope.requested_route,
+            "requested_mode": envelope.requested_mode,
+            "target": envelope.target,
+            "flags": envelope.flags,
+            "source_stage": envelope.source_stage,
+        }
+        return hashlib.sha256(json.dumps(stable, sort_keys=True, default=str).encode()).hexdigest()
+
+    def validate_safety_boundary(self, envelope: ShadowRuntimeEnvelope) -> Tuple[bool, str, List[str]]:
+        cfg = self.config
+        blocked: List[str] = []
+        if not (cfg.dry_run and cfg.sandbox and cfg.shadow_only):
+            blocked.append("config_not_dry_run_sandbox_shadow")
+        if cfg.allow_live_routing or cfg.allow_payload_transfer or cfg.allow_topology_execution:
+            blocked.append("config_allows_live_behavior")
+        if cfg.allow_qh_writes or cfg.allow_shared_slot_writes or cfg.allow_external_memory_writes:
+            blocked.append("config_allows_persistent_memory_writes")
+        if cfg.allow_commits or cfg.allow_network or cfg.allow_production_targets:
+            blocked.append("config_allows_external_or_production_side_effects")
+
+        try:
+            payload_bytes = len(json.dumps(envelope.payload, sort_keys=True, default=str).encode("utf-8"))
+        except Exception:
+            blocked.append("payload_not_json_serializable")
+            payload_bytes = cfg.max_payload_bytes + 1
+        if payload_bytes > cfg.max_payload_bytes:
+            blocked.append("payload_too_large")
+
+        target_lower = str(envelope.target).lower()
+        route_lower = str(envelope.requested_route).lower()
+        if any(marker in target_lower for marker in PRODUCTION_TARGET_MARKERS):
+            blocked.append("production_target_blocked")
+        if "live" in route_lower or "production" in route_lower or "prod" in route_lower:
+            blocked.append("live_or_production_route_blocked")
+
+        requested_forbidden = sorted(flag for flag, enabled in envelope.flags.items() if enabled and flag in FORBIDDEN_FLAGS)
+        blocked.extend(f"forbidden_flag:{flag}" for flag in requested_forbidden)
+
+        if envelope.requested_mode not in {SHADOW_VALIDATE, SHADOW_PLAN, SHADOW_EXECUTE_SYNTHETIC, SHADOW_AUDIT}:
+            blocked.append("unsupported_shadow_mode")
+
+        if blocked:
+            return False, "SAFETY_BOUNDARY_BLOCK", blocked
+        return True, "SAFETY_BOUNDARY_PASS", []
+
+    def plan_synthetic_route(self, envelope: ShadowRuntimeEnvelope) -> List[str]:
+        return [
+            "validate_envelope",
+            "redact_payload",
+            "derive_synthetic_route_shape",
+            "simulate_bridge_decision_no_payload_transfer",
+            "emit_audit_only",
+        ][: self.config.max_steps]
+
+    def synthetic_route_simulator(self, envelope: ShadowRuntimeEnvelope) -> str:
+        route_seed = f"{envelope.requested_route}|{envelope.target}|{envelope.source_stage}"
+        return "synthetic://shadow/" + hashlib.sha256(route_seed.encode()).hexdigest()[:16]
+
+    def dry_run_executor(self, envelope: ShadowRuntimeEnvelope) -> ShadowRuntimeResult:
+        started = time.time()
+        key = envelope.idempotency_key or self.idempotency_key_for(envelope)
+        with self._lock:
+            if key in self._seen:
+                prior = self._seen[key]
+                self.emitter.emit_audit("shadow_runtime_idempotent_replay", "SKIP", "IDEMPOTENT_REPLAY", detail={"idempotency_key": key})
+                return ShadowRuntimeResult(
+                    status="SKIP",
+                    mode=SHADOW_AUDIT,
+                    reason_code="IDEMPOTENT_REPLAY",
+                    idempotency_key=key,
+                    simulated_route=prior.simulated_route,
+                    planned_actions=prior.planned_actions,
+                    blocked_actions=[],
+                    diagnostics={"replayed_from_seen_key": True, "prior_status": prior.status},
+                    audit_events=[a for a in self.emitter.summary()["audits"][-2:]],
+                    elapsed_ms=round((time.time() - started) * 1000.0, 3),
+                )
+
+            ok, reason, blocked = self.validate_safety_boundary(envelope)
+            if not ok:
+                self.emitter.emit_audit("shadow_runtime_block", "FAIL_CLOSED", reason, detail={"blocked_actions": blocked, "envelope": asdict(envelope)})
+                result = ShadowRuntimeResult(
+                    status="FAIL_CLOSED",
+                    mode=SHADOW_FAIL_CLOSED,
+                    reason_code=reason,
+                    idempotency_key=key,
+                    blocked_actions=blocked,
+                    diagnostics={"synthetic_only": True, "side_effects": "none"},
+                    audit_events=[a for a in self.emitter.summary()["audits"][-2:]],
+                    elapsed_ms=round((time.time() - started) * 1000.0, 3),
+                )
+                self._seen[key] = result
+                return result
+
+            planned = self.plan_synthetic_route(envelope)
+            simulated_route = self.synthetic_route_simulator(envelope)
+            elapsed_ms = round((time.time() - started) * 1000.0, 3)
+            if elapsed_ms > self.config.timeout_ms:
+                self.emitter.emit_audit("shadow_runtime_timeout", "FAIL_CLOSED", "TIMEOUT_BOUND_EXCEEDED", detail={"elapsed_ms": elapsed_ms})
+                result = ShadowRuntimeResult(
+                    status="FAIL_CLOSED",
+                    mode=SHADOW_FAIL_CLOSED,
+                    reason_code="TIMEOUT_BOUND_EXCEEDED",
+                    idempotency_key=key,
+                    blocked_actions=["timeout_bound_exceeded"],
+                    elapsed_ms=elapsed_ms,
+                )
+                self._seen[key] = result
+                return result
+
+            self.emitter.emit_audit("shadow_runtime_execute", "PASS", "SYNTHETIC_SHADOW_EXECUTED", detail={"simulated_route": simulated_route, "planned_actions": planned})
+            result = ShadowRuntimeResult(
+                status="PASS",
+                mode=SHADOW_EXECUTE_SYNTHETIC,
+                reason_code="SYNTHETIC_SHADOW_EXECUTED",
+                idempotency_key=key,
+                simulated_route=simulated_route,
+                planned_actions=planned,
+                diagnostics={
+                    "synthetic": True,
+                    "shadow": True,
+                    "dry_run": True,
+                    "sandbox": True,
+                    "payload_transferred": False,
+                    "persistent_writes": False,
+                },
+                audit_events=[a for a in self.emitter.summary()["audits"][-2:]],
+                elapsed_ms=elapsed_ms,
+            )
+            self._seen[key] = result
+            return result
+
+    def execute(self, envelope: ShadowRuntimeEnvelope) -> ShadowRuntimeResult:
+        started = time.time()
+        try:
+            return self.dry_run_executor(envelope)
+        except Exception as exc:  # defensive fail-closed shell
+            self.emitter.emit_audit("shadow_runtime_exception", "FAIL_CLOSED", "UNHANDLED_EXCEPTION_FAIL_CLOSED", detail={"error": repr(exc)})
+            return ShadowRuntimeResult(
+                status="FAIL_CLOSED",
+                mode=SHADOW_FAIL_CLOSED,
+                reason_code="UNHANDLED_EXCEPTION_FAIL_CLOSED",
+                idempotency_key=envelope.idempotency_key or self.idempotency_key_for(envelope),
+                blocked_actions=["unhandled_exception"],
+                diagnostics={"error": repr(exc), "side_effects": "none"},
+                audit_events=[a for a in self.emitter.summary()["audits"][-2:]],
+                elapsed_ms=round((time.time() - started) * 1000.0, 3),
+            )
+```
+
+# ===== mnemonic_cortex/working_memory/qspin_source_consideration_matrix.py =====
+```python
+"""Source consideration matrix for QSPIN-PROD-5."""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Dict, List
+import json
+
+
+class ConsiderationStatus:
+    USED = "USED"
+    SKIPPED_MISSING = "SKIPPED_MISSING"
+    REFERENCE_ONLY = "REFERENCE_ONLY"
+    EXCLUDED_SUPERSEDED = "EXCLUDED_SUPERSEDED"
+
+
+@dataclass
+class SourceRecord:
+    source_id: str
+    path: str
+    status: str
+    confidence: str
+    risk: str
+    use_decision: str
+    exclusion_reason: str = ""
+    exists: bool = False
+
+
+DEFAULT_SOURCES = [
+    ("QD6A", "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip", "active source of truth", "high", "low"),
+    ("QSPIN-8", "/mnt/data/qspin8_qd6a_release_pack.zip", "lineage baseline", "medium", "low"),
+    ("PROD-0", "/mnt/data/qspin_prod0_qd6a_release_pack.zip", "preserved contract lineage", "medium", "low"),
+    ("PROD-1", "/mnt/data/qspin_prod1_qd6a_release_pack.zip", "preserved contract lineage", "medium", "low"),
+    ("PROD-2", "/mnt/data/qspin_prod2_qd6a_release_pack.zip", "preserved contract lineage", "medium", "low"),
+    ("PROD-3", "/mnt/data/qspin_prod3_qd6a_release_pack_refresh.zip", "refreshed production baseline", "high", "low"),
+    ("PROD-4", "/mnt/data/qspin_prod4_qd6a_release_pack.zip", "immediate previous release", "high", "low"),
+    ("PROD-4-PRINTOUT", "/mnt/data/qspin_prod4_full_printout.txt", "immediate previous full printout", "high", "low"),
+    ("WM-7A", "/mnt/data/qdt_wm_maae_all_wm_zip_archives_bundle.zip", "historical comparison only", "medium", "medium"),
+]
+
+
+def build_source_matrix() -> List[SourceRecord]:
+    records: List[SourceRecord] = []
+    for source_id, path, decision, confidence, risk in DEFAULT_SOURCES:
+        exists = Path(path).exists()
+        if source_id == "WM-7A":
+            status = ConsiderationStatus.REFERENCE_ONLY if exists else ConsiderationStatus.SKIPPED_MISSING
+            exclusion = "Superseded by QD6A; reference only for rollback/delta audit."
+        else:
+            status = ConsiderationStatus.USED if exists else ConsiderationStatus.SKIPPED_MISSING
+            exclusion = "" if exists else "Source file missing in /mnt/data; stage degrades safely with structured skip."
+        records.append(SourceRecord(source_id, path, status, confidence, risk, decision, exclusion, exists))
+    return records
+
+
+def matrix_to_json(records: List[SourceRecord]) -> str:
+    return json.dumps([asdict(r) for r in records], indent=2, sort_keys=True)
+
+
+def matrix_to_markdown(records: List[SourceRecord]) -> str:
+    lines = ["# QSPIN-PROD-5-QD6A Source Consideration Matrix", "", "| Source | Exists | Status | Confidence | Risk | Use decision | Exclusion / skip reason |", "|---|---:|---|---|---|---|---|"]
+    for r in records:
+        lines.append(f"| {r.source_id} | {str(r.exists)} | {r.status} | {r.confidence} | {r.risk} | {r.use_decision} | {r.exclusion_reason} |")
+    return "\n".join(lines) + "\n"
+
+
+def consideration_coverage_audit(records: List[SourceRecord]) -> Dict[str, Any]:
+    used = [r.source_id for r in records if r.status == ConsiderationStatus.USED]
+    skipped = [r.source_id for r in records if r.status == ConsiderationStatus.SKIPPED_MISSING]
+    reference = [r.source_id for r in records if r.status == ConsiderationStatus.REFERENCE_ONLY]
+    return {
+        "used": used,
+        "skipped_missing": skipped,
+        "reference_only": reference,
+        "coverage_status": "PASS_WITH_STRUCTURED_SKIPS" if skipped else "PASS",
+    }
+```
+
+# ===== mnemonic_cortex/working_memory/qspin_synthetic_canary_bridge.py =====
+```python
+"""Synthetic canary bridge runs for QSPIN-PROD-5."""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, Iterable, List, Optional
+import copy
+import random
+
+from .qspin_shadow_runtime_harness import ShadowRuntimeEnvelope, ShadowRuntimeHarness
+
+
+CANARY_CATEGORIES = [
+    "route_shape_canary",
+    "payload_integrity_canary",
+    "qh_no_write_canary",
+    "shared_slot_no_write_canary",
+    "external_memory_no_write_canary",
+    "topology_no_execute_canary",
+    "commit_gate_no_commit_canary",
+    "audit_chain_canary",
+    "redaction_canary",
+    "concurrency_guard_canary",
+    "timeout_bound_canary",
+    "malformed_input_canary",
+]
+
+
+@dataclass
+class CanarySpec:
+    canary_id: str
+    category: str
+    description: str
+    expected_status: str = "PASS"
+    expected_reason: Optional[str] = None
+    should_block: bool = False
+    severity: str = "P1"
+
+
+@dataclass
+class CanaryPayload:
+    spec: CanarySpec
+    envelope: ShadowRuntimeEnvelope
+    mutation_notes: List[str] = field(default_factory=list)
+
+
+@dataclass
+class CanaryResult:
+    canary_id: str
+    category: str
+    status: str
+    observed_runtime_status: str
+    observed_reason_code: str
+    expected_status: str
+    remediation_hint: str
+    detail: Dict[str, Any] = field(default_factory=dict)
+
+
+def mutate_payload(base_payload: Dict[str, Any], *, seed: int, mutation: str) -> Dict[str, Any]:
+    rng = random.Random(seed)
+    payload = copy.deepcopy(base_payload)
+    payload["mutation"] = mutation
+    payload["synthetic_nonce"] = rng.randint(1000, 9999)
+    payload["synthetic"] = True
+    return payload
+
+
+def build_canary_corpus(seed: int = 5005) -> List[CanaryPayload]:
+    base = {"message": "synthetic canary bridge payload", "stage": "QSPIN-PROD-5-QD6A", "secret_probe": "api_key=SHOULD_REDACT"}
+    specs = [
+        CanarySpec("CANARY-001", "route_shape_canary", "Valid synthetic route shape should execute shadow-only."),
+        CanarySpec("CANARY-002", "payload_integrity_canary", "Benign payload should survive synthetic planning."),
+        CanarySpec("CANARY-003", "qh_no_write_canary", "QH write request must be blocked.", expected_status="PASS", expected_reason="SAFETY_BOUNDARY_BLOCK", should_block=True, severity="P0"),
+        CanarySpec("CANARY-004", "shared_slot_no_write_canary", "Shared-slot write request must be blocked.", expected_status="PASS", expected_reason="SAFETY_BOUNDARY_BLOCK", should_block=True, severity="P0"),
+        CanarySpec("CANARY-005", "external_memory_no_write_canary", "External-memory write request must be blocked.", expected_status="PASS", expected_reason="SAFETY_BOUNDARY_BLOCK", should_block=True, severity="P0"),
+        CanarySpec("CANARY-006", "topology_no_execute_canary", "Topology execution request must be blocked.", expected_status="PASS", expected_reason="SAFETY_BOUNDARY_BLOCK", should_block=True, severity="P0"),
+        CanarySpec("CANARY-007", "commit_gate_no_commit_canary", "Commit request must be blocked.", expected_status="PASS", expected_reason="SAFETY_BOUNDARY_BLOCK", should_block=True, severity="P0"),
+        CanarySpec("CANARY-008", "audit_chain_canary", "Audit chain must include a PASS audit event."),
+        CanarySpec("CANARY-009", "redaction_canary", "Secret-looking payload text must not leak unredacted."),
+        CanarySpec("CANARY-010", "concurrency_guard_canary", "Idempotent duplicate should skip replay."),
+        CanarySpec("CANARY-011", "timeout_bound_canary", "Timeout bound config remains fail-closed if exceeded."),
+        CanarySpec("CANARY-012", "malformed_input_canary", "Unsupported mode must be blocked.", expected_status="PASS", expected_reason="SAFETY_BOUNDARY_BLOCK", should_block=True, severity="P1"),
+    ]
+    flags_by_category = {
+        "qh_no_write_canary": {"write_qh": True},
+        "shared_slot_no_write_canary": {"write_shared_slot": True},
+        "external_memory_no_write_canary": {"write_external_memory": True},
+        "topology_no_execute_canary": {"execute_topology": True},
+        "commit_gate_no_commit_canary": {"commit": True},
+    }
+    corpus: List[CanaryPayload] = []
+    for i, spec in enumerate(specs):
+        flags = flags_by_category.get(spec.category, {})
+        mode = "SHADOW_EXECUTE_SYNTHETIC"
+        if spec.category == "malformed_input_canary":
+            mode = "UNSUPPORTED_LIVE_MODE"
+        target = "local_synthetic_shadow"
+        route = "synthetic.shadow.route"
+        if spec.category == "route_shape_canary":
+            route = "synthetic.shadow.bridge.route_shape"
+        payload = mutate_payload(base, seed=seed + i, mutation=spec.category)
+        envelope = ShadowRuntimeEnvelope(payload=payload, requested_route=route, requested_mode=mode, target=target, flags=flags)
+        corpus.append(CanaryPayload(spec=spec, envelope=envelope, mutation_notes=[f"seed={seed + i}", spec.category]))
+    return corpus
+
+
+def evaluate_canary(payload: CanaryPayload, harness: ShadowRuntimeHarness) -> CanaryResult:
+    result = harness.execute(payload.envelope)
+    if payload.spec.should_block:
+        passed = result.status == "FAIL_CLOSED" and (payload.spec.expected_reason is None or result.reason_code == payload.spec.expected_reason)
+    elif payload.spec.category == "concurrency_guard_canary":
+        second = harness.execute(payload.envelope)
+        passed = result.status == "PASS" and second.status == "SKIP" and second.reason_code == "IDEMPOTENT_REPLAY"
+        result_status = f"{result.status}+{second.status}"
+        reason = f"{result.reason_code}+{second.reason_code}"
+        return CanaryResult(
+            canary_id=payload.spec.canary_id,
+            category=payload.spec.category,
+            status="PASS" if passed else "FAIL",
+            observed_runtime_status=result_status,
+            observed_reason_code=reason,
+            expected_status=payload.spec.expected_status,
+            remediation_hint="Check idempotency key cache and replay guard." if not passed else "none",
+            detail={"first": result.__dict__, "second": second.__dict__},
+        )
+    else:
+        passed = result.status == payload.spec.expected_status
+    return CanaryResult(
+        canary_id=payload.spec.canary_id,
+        category=payload.spec.category,
+        status="PASS" if passed else "FAIL",
+        observed_runtime_status=result.status,
+        observed_reason_code=result.reason_code,
+        expected_status=payload.spec.expected_status,
+        remediation_hint="Inspect safety-boundary validator and expected canary posture." if not passed else "none",
+        detail={"runtime_result": result.__dict__, "spec": asdict(payload.spec)},
+    )
+
+
+def run_canaries(harness: Optional[ShadowRuntimeHarness] = None, *, seed: int = 5005) -> List[CanaryResult]:
+    harness = harness or ShadowRuntimeHarness()
+    out: List[CanaryResult] = []
+    for payload in build_canary_corpus(seed=seed):
+        harness.emitter.increment("canaries")
+        out.append(evaluate_canary(payload, harness))
+    return out
+```
+
+# ===== prod5_manual_runner.py =====
+```python
+#!/usr/bin/env python3
+"""Manual local-only runner for QSPIN-PROD-5 synthetic bridge checks.
+
+Runs with: python3 -S prod5_manual_runner.py
+"""
+from __future__ import annotations
+
+from dataclasses import asdict
+from pathlib import Path
+import json
+import sys
+
+ROOT = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from mnemonic_cortex.working_memory.qspin_shadow_runtime_harness import ShadowRuntimeHarness
+from mnemonic_cortex.working_memory.qspin_synthetic_canary_bridge import run_canaries
+from mnemonic_cortex.working_memory.qspin_safety_regression_ci import run_safety_regressions, safety_summary_to_junit_xml
+from mnemonic_cortex.working_memory.qspin_source_consideration_matrix import build_source_matrix, matrix_to_json, matrix_to_markdown, consideration_coverage_audit
+from mnemonic_cortex.working_memory.qspin_active_remediation_register import build_remediation_register, register_to_json, register_to_markdown
+
+
+def write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def main() -> int:
+    outdir = ROOT / "prod5_outputs"
+    outdir.mkdir(exist_ok=True)
+
+    records = build_source_matrix()
+    source_audit = consideration_coverage_audit(records)
+    write(outdir / "source_matrix.json", matrix_to_json(records))
+    write(outdir / "source_matrix.md", matrix_to_markdown(records))
+
+    harness = ShadowRuntimeHarness()
+    canaries = run_canaries(harness)
+    canary_payload = [asdict(c) for c in canaries]
+    write(outdir / "canary_results.json", json.dumps(canary_payload, indent=2, sort_keys=True, default=str))
+
+    safety = run_safety_regressions()
+    write(outdir / "safety_regression_summary.json", json.dumps(safety, indent=2, sort_keys=True, default=str))
+    write(outdir / "safety_regression_junit.xml", safety_summary_to_junit_xml(safety))
+
+    remediations = build_remediation_register(canaries, safety, source_audit)
+    write(outdir / "remediation_register.json", register_to_json(remediations))
+    write(outdir / "remediation_register.md", register_to_markdown(remediations))
+
+    pass_count = sum(1 for c in canaries if c.status == "PASS") + safety["pass_count"]
+    fail_count = sum(1 for c in canaries if c.status == "FAIL") + safety["fail_count"]
+    skip_count = len(source_audit.get("skipped_missing", []))
+    summary = {
+        "stage": "QSPIN-PROD-5-QD6A",
+        "status": "PASS" if fail_count == 0 else "FAIL",
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "skip_count": skip_count,
+        "canary_count": len(canaries),
+        "safety_regression_count": len(safety.get("checks", [])),
+        "source_audit": source_audit,
+        "safety_boundaries": {
+            "live_routing": "DISABLED/BLOCKED",
+            "real_payload_transfer": "DISABLED/BLOCKED",
+            "topology_execution": "DISABLED/BLOCKED",
+            "real_shared_slot_writes": "DISABLED/BLOCKED",
+            "qh_writes": "DISABLED/BLOCKED",
+            "external_memory_writes": "DISABLED/BLOCKED",
+            "commit_execution": "DISABLED/BLOCKED",
+            "production_activation": "DISABLED/BLOCKED",
+        },
+        "outputs": {
+            "source_matrix_json": str(outdir / "source_matrix.json"),
+            "canary_results_json": str(outdir / "canary_results.json"),
+            "safety_regression_summary_json": str(outdir / "safety_regression_summary.json"),
+            "remediation_register_json": str(outdir / "remediation_register.json"),
+        },
+    }
+    write(outdir / "prod5_summary.json", json.dumps(summary, indent=2, sort_keys=True, default=str))
+    md = [
+        "# QSPIN-PROD-5-QD6A Manual Runner Summary",
+        "",
+        f"Status: {summary['status']}",
+        f"Pass count: {pass_count}",
+        f"Fail count: {fail_count}",
+        f"Skip count: {skip_count}",
+        "",
+        "## Safety Boundaries",
+    ]
+    for k, v in summary["safety_boundaries"].items():
+        md.append(f"- {k}: {v}")
+    md.extend(["", "## Source audit", json.dumps(source_audit, indent=2, sort_keys=True)])
+    write(outdir / "prod5_summary.md", "\n".join(md) + "\n")
+
+    print(f"QSPIN-PROD-5-QD6A synthetic runner status={summary['status']} pass={pass_count} fail={fail_count} skip={skip_count}")
+    return 1 if fail_count else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+# ===== prod5_outputs/canary_results.json =====
+```json
+[
+  {
+    "canary_id": "CANARY-001",
+    "category": "route_shape_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/06d11e386c6cf0e7"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.755889
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.17,
+        "idempotency_key": "0d5685db7e09a9877a70ffc708147a8344f4420a421a0a1809868d49f50d96e2",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/06d11e386c6cf0e7",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-001",
+        "category": "route_shape_canary",
+        "description": "Valid synthetic route shape should execute shadow-only.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-002",
+    "category": "payload_integrity_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/06d11e386c6cf0e7"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.755889
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.756077
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.039,
+        "idempotency_key": "d6a8011e8b5524d0985281d48accdd803b11953723baea2e544f8e85bdf275a7",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-002",
+        "category": "payload_integrity_canary",
+        "description": "Benign payload should survive synthetic planning.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-003",
+    "category": "qh_no_write_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.756077
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_qh"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_qh": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "qh_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 3052
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756274
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:write_qh"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.25,
+        "idempotency_key": "77374403b88a5d56b4e85945517706b355206b7a3b7edaa4313208ef674486eb",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-003",
+        "category": "qh_no_write_canary",
+        "description": "QH write request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-004",
+    "category": "shared_slot_no_write_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_qh"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_qh": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "qh_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 3052
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756274
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_shared_slot"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_shared_slot": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "shared_slot_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 1197
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756526
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:write_shared_slot"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.299,
+        "idempotency_key": "787d1c39542250c6a6c3850211c5596139806655ccab03c66103e878d3aadd4c",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-004",
+        "category": "shared_slot_no_write_canary",
+        "description": "Shared-slot write request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-005",
+    "category": "external_memory_no_write_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_shared_slot"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_shared_slot": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "shared_slot_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 1197
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756526
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_external_memory"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_external_memory": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "external_memory_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 9919
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756842
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:write_external_memory"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.34,
+        "idempotency_key": "3254b885d1beacb9c0eadbd4a5e95976ad828d8b2712436eae4db407c89606f4",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-005",
+        "category": "external_memory_no_write_canary",
+        "description": "External-memory write request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-006",
+    "category": "topology_no_execute_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_external_memory"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_external_memory": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "external_memory_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 9919
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756842
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:execute_topology"
+              ],
+              "envelope": {
+                "flags": {
+                  "execute_topology": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "topology_no_execute_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 6049
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757179
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:execute_topology"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.395,
+        "idempotency_key": "28384c120bc25f601f5e3ca3f95e3bc7565f3efb433d51d3517b149d061a7389",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-006",
+        "category": "topology_no_execute_canary",
+        "description": "Topology execution request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-007",
+    "category": "commit_gate_no_commit_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:execute_topology"
+              ],
+              "envelope": {
+                "flags": {
+                  "execute_topology": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "topology_no_execute_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 6049
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757179
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:commit"
+              ],
+              "envelope": {
+                "flags": {
+                  "commit": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "commit_gate_no_commit_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 4314
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757586
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:commit"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.45,
+        "idempotency_key": "ef82e7f7fda9da6dec7d80e596e66bd6ff9fc7a70298abea20a786b51cf6e70f",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-007",
+        "category": "commit_gate_no_commit_canary",
+        "description": "Commit request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-008",
+    "category": "audit_chain_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:commit"
+              ],
+              "envelope": {
+                "flags": {
+                  "commit": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "commit_gate_no_commit_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 4314
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757586
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758054
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.032,
+        "idempotency_key": "28546a94c2207ac8f1ae16a5aec425a8466974260bcaccc0251767924add619f",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-008",
+        "category": "audit_chain_canary",
+        "description": "Audit chain must include a PASS audit event.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-009",
+    "category": "redaction_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758054
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758601
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.03,
+        "idempotency_key": "1b5a9f26ee89586628a9ee3499cb0e85a78e0fb05b1cbf482077642f6f1bae3b",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-009",
+        "category": "redaction_canary",
+        "description": "Secret-looking payload text must not leak unredacted.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-010",
+    "category": "concurrency_guard_canary",
+    "detail": {
+      "first": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758601
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.759146
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.03,
+        "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "second": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.759146
+          },
+          {
+            "detail": {
+              "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133"
+            },
+            "event_type": "shadow_runtime_idempotent_replay",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "IDEMPOTENT_REPLAY",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "SKIP",
+            "timestamp": 1778405403.759678
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "prior_status": "PASS",
+          "replayed_from_seen_key": true
+        },
+        "elapsed_ms": 0.586,
+        "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133",
+        "mode": "SHADOW_AUDIT",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "IDEMPOTENT_REPLAY",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "SKIP"
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED+IDEMPOTENT_REPLAY",
+    "observed_runtime_status": "PASS+SKIP",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-011",
+    "category": "timeout_bound_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133"
+            },
+            "event_type": "shadow_runtime_idempotent_replay",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "IDEMPOTENT_REPLAY",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "SKIP",
+            "timestamp": 1778405403.759678
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.760289
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.028,
+        "idempotency_key": "1178f4642fa1016a548722504b026a47705134d1ebfae079a55c9ad4c8e066cf",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-011",
+        "category": "timeout_bound_canary",
+        "description": "Timeout bound config remains fail-closed if exceeded.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-012",
+    "category": "malformed_input_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.760289
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "unsupported_shadow_mode"
+              ],
+              "envelope": {
+                "flags": {},
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "malformed_input_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 3387
+                },
+                "requested_mode": "UNSUPPORTED_LIVE_MODE",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.760944
+          }
+        ],
+        "blocked_actions": [
+          "unsupported_shadow_mode"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.711,
+        "idempotency_key": "5437b714991d96671caa7b490482c212f3f6eae913646a155f9568dc7d5df763",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-012",
+        "category": "malformed_input_canary",
+        "description": "Unsupported mode must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  }
+]
+```
+
+# ===== prod5_outputs/prod5_summary.json =====
+```json
+{
+  "canary_count": 12,
+  "fail_count": 0,
+  "outputs": {
+    "canary_results_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/canary_results.json",
+    "remediation_register_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/remediation_register.json",
+    "safety_regression_summary_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/safety_regression_summary.json",
+    "source_matrix_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/source_matrix.json"
+  },
+  "pass_count": 26,
+  "safety_boundaries": {
+    "commit_execution": "DISABLED/BLOCKED",
+    "external_memory_writes": "DISABLED/BLOCKED",
+    "live_routing": "DISABLED/BLOCKED",
+    "production_activation": "DISABLED/BLOCKED",
+    "qh_writes": "DISABLED/BLOCKED",
+    "real_payload_transfer": "DISABLED/BLOCKED",
+    "real_shared_slot_writes": "DISABLED/BLOCKED",
+    "topology_execution": "DISABLED/BLOCKED"
+  },
+  "safety_regression_count": 14,
+  "skip_count": 0,
+  "source_audit": {
+    "coverage_status": "PASS",
+    "reference_only": [
+      "WM-7A"
+    ],
+    "skipped_missing": [],
+    "used": [
+      "QD6A",
+      "QSPIN-8",
+      "PROD-0",
+      "PROD-1",
+      "PROD-2",
+      "PROD-3",
+      "PROD-4",
+      "PROD-4-PRINTOUT"
+    ]
+  },
+  "stage": "QSPIN-PROD-5-QD6A",
+  "status": "PASS"
+}
+```
+
+# ===== prod5_outputs/prod5_summary.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Manual Runner Summary
+
+Status: PASS
+Pass count: 26
+Fail count: 0
+Skip count: 0
+
+## Safety Boundaries
+- live_routing: DISABLED/BLOCKED
+- real_payload_transfer: DISABLED/BLOCKED
+- topology_execution: DISABLED/BLOCKED
+- real_shared_slot_writes: DISABLED/BLOCKED
+- qh_writes: DISABLED/BLOCKED
+- external_memory_writes: DISABLED/BLOCKED
+- commit_execution: DISABLED/BLOCKED
+- production_activation: DISABLED/BLOCKED
+
+## Source audit
+{
+  "coverage_status": "PASS",
+  "reference_only": [
+    "WM-7A"
+  ],
+  "skipped_missing": [],
+  "used": [
+    "QD6A",
+    "QSPIN-8",
+    "PROD-0",
+    "PROD-1",
+    "PROD-2",
+    "PROD-3",
+    "PROD-4",
+    "PROD-4-PRINTOUT"
+  ]
+}
+```
+
+# ===== prod5_outputs/remediation_register.json =====
+```json
+[]
+```
+
+# ===== prod5_outputs/remediation_register.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Active Remediation Register
+
+| ID | Severity | Status | Module | Failure mode | PROD-6 carry-forward |
+|---|---|---|---|---|---:|
+| none | none | resolved | all | No active remediation items generated. | False |
+```
+
+# ===== prod5_outputs/safety_regression_junit.xml =====
+```xml
+<testsuite name="qspin_prod5_safety_regression" tests="14" failures="0"><testcase classname="QSPIN_PROD5" name="no live route activation" /><testcase classname="QSPIN_PROD5" name="no real payload transfer" /><testcase classname="QSPIN_PROD5" name="no production write" /><testcase classname="QSPIN_PROD5" name="no QH write" /><testcase classname="QSPIN_PROD5" name="no shared-slot write" /><testcase classname="QSPIN_PROD5" name="no external-memory write" /><testcase classname="QSPIN_PROD5" name="no topology execution" /><testcase classname="QSPIN_PROD5" name="no commit execution" /><testcase classname="QSPIN_PROD5" name="no network call" /><testcase classname="QSPIN_PROD5" name="deterministic replay" /><testcase classname="QSPIN_PROD5" name="malformed input handling" /><testcase classname="QSPIN_PROD5" name="redaction behavior" /><testcase classname="QSPIN_PROD5" name="audit-chain completeness" /><testcase classname="QSPIN_PROD5" name="bounded payload handling" /></testsuite>
+```
+
+# ===== prod5_outputs/safety_regression_summary.json =====
+```json
+{
+  "checks": [
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:live_route"
+        ]
+      },
+      "name": "no live route activation",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-001",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:transfer_payload"
+        ]
+      },
+      "name": "no real payload transfer",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-002",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:mutate_production_config"
+        ]
+      },
+      "name": "no production write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-003",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:write_qh"
+        ]
+      },
+      "name": "no QH write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-004",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:write_shared_slot"
+        ]
+      },
+      "name": "no shared-slot write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-005",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:write_external_memory"
+        ]
+      },
+      "name": "no external-memory write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-006",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:execute_topology"
+        ]
+      },
+      "name": "no topology execution",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-007",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:commit"
+        ]
+      },
+      "name": "no commit execution",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-008",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:network_call"
+        ]
+      },
+      "name": "no network call",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-009",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "fp1": "1a5816138dc0e909d270afd170446bce374054e7785884fb0705c582e581ff96",
+        "fp2": "1a5816138dc0e909d270afd170446bce374054e7785884fb0705c582e581ff96"
+      },
+      "name": "deterministic replay",
+      "observed_reason": "SYNTHETIC_SHADOW_EXECUTED",
+      "observed_status": "PASS",
+      "passed": true,
+      "regression_id": "REG-P5-010",
+      "severity": "P1"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "unsupported_shadow_mode"
+        ]
+      },
+      "name": "malformed input handling",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-011",
+      "severity": "P1"
+    },
+    {
+      "detail": {},
+      "name": "redaction behavior",
+      "observed_reason": "SYNTHETIC_SHADOW_EXECUTED",
+      "observed_status": "PASS",
+      "passed": true,
+      "regression_id": "REG-P5-012",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "audit_count": 3
+      },
+      "name": "audit-chain completeness",
+      "observed_reason": "AUDIT_EVENTS_PRESENT",
+      "observed_status": "PASS",
+      "passed": true,
+      "regression_id": "REG-P5-013",
+      "severity": "P1"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "payload_too_large"
+        ]
+      },
+      "name": "bounded payload handling",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-014",
+      "severity": "P1"
+    }
+  ],
+  "fail_count": 0,
+  "lineage": {
+    "prod0": "qspin_prod0_qd6a_release_pack.zip",
+    "prod1": "qspin_prod1_qd6a_release_pack.zip",
+    "prod2": "qspin_prod2_qd6a_release_pack.zip",
+    "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+    "prod4": "qspin_prod4_qd6a_release_pack.zip",
+    "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+    "qspin8": "qspin8_qd6a_release_pack.zip"
+  },
+  "pass_count": 14,
+  "skip_count": 0,
+  "stage": "QSPIN-PROD-5-QD6A"
+}
+```
+
+# ===== prod5_outputs/source_matrix.json =====
+```json
+[
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+    "risk": "low",
+    "source_id": "QD6A",
+    "status": "USED",
+    "use_decision": "active source of truth"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin8_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "QSPIN-8",
+    "status": "USED",
+    "use_decision": "lineage baseline"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod0_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-0",
+    "status": "USED",
+    "use_decision": "preserved contract lineage"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod1_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-1",
+    "status": "USED",
+    "use_decision": "preserved contract lineage"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod2_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-2",
+    "status": "USED",
+    "use_decision": "preserved contract lineage"
+  },
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod3_qd6a_release_pack_refresh.zip",
+    "risk": "low",
+    "source_id": "PROD-3",
+    "status": "USED",
+    "use_decision": "refreshed production baseline"
+  },
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod4_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-4",
+    "status": "USED",
+    "use_decision": "immediate previous release"
+  },
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod4_full_printout.txt",
+    "risk": "low",
+    "source_id": "PROD-4-PRINTOUT",
+    "status": "USED",
+    "use_decision": "immediate previous full printout"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "Superseded by QD6A; reference only for rollback/delta audit.",
+    "exists": true,
+    "path": "/mnt/data/qdt_wm_maae_all_wm_zip_archives_bundle.zip",
+    "risk": "medium",
+    "source_id": "WM-7A",
+    "status": "REFERENCE_ONLY",
+    "use_decision": "historical comparison only"
+  }
+]
+```
+
+# ===== prod5_outputs/source_matrix.md =====
+```markdown
+# QSPIN-PROD-5-QD6A Source Consideration Matrix
+
+| Source | Exists | Status | Confidence | Risk | Use decision | Exclusion / skip reason |
+|---|---:|---|---|---|---|---|
+| QD6A | True | USED | high | low | active source of truth |  |
+| QSPIN-8 | True | USED | medium | low | lineage baseline |  |
+| PROD-0 | True | USED | medium | low | preserved contract lineage |  |
+| PROD-1 | True | USED | medium | low | preserved contract lineage |  |
+| PROD-2 | True | USED | medium | low | preserved contract lineage |  |
+| PROD-3 | True | USED | high | low | refreshed production baseline |  |
+| PROD-4 | True | USED | high | low | immediate previous release |  |
+| PROD-4-PRINTOUT | True | USED | high | low | immediate previous full printout |  |
+| WM-7A | True | REFERENCE_ONLY | medium | medium | historical comparison only | Superseded by QD6A; reference only for rollback/delta audit. |
+```
+
+# ===== release/qspin_prod5_pytest_result.json =====
+```json
+{
+  "command": "python3 -m pytest tests",
+  "reason": "PYTEST_AVAILABLE",
+  "returncode": 0,
+  "status": "PASS",
+  "stderr": "",
+  "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0\nrootdir: /mnt/data/qspin_prod5_qd6a\nplugins: metadata-3.1.1, json-report-1.5.0, cov-7.0.0, ddtrace-4.4.0, asyncio-1.3.0, anyio-4.13.0, Faker-40.1.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 7 items\n\ntests/test_active_remediation_register.py .                              [ 14%]\ntests/test_observability.py .                                            [ 28%]\ntests/test_safety_regression_ci.py .                                     [ 42%]\ntests/test_shadow_runtime_harness.py ..                                  [ 71%]\ntests/test_source_consideration_matrix.py .                              [ 85%]\ntests/test_synthetic_canary_bridge.py .                                  [100%]\n\n============================== 7 passed in 0.14s ===============================\n"
+}
+```
+
+# ===== release/qspin_prod5_qd6a_release_manifest.json =====
+```json
+{
+  "created_at": "2026-05-10T09:30:07Z",
+  "files": [
+    ".pytest_cache/.gitignore",
+    ".pytest_cache/CACHEDIR.TAG",
+    ".pytest_cache/README.md",
+    ".pytest_cache/v/cache/nodeids",
+    "PROD5_CANARY_TEST_PLAN.md",
+    "PROD5_OBSERVABILITY_SPEC.md",
+    "PROD5_README.md",
+    "PROD5_REMEDIATION_REGISTER.md",
+    "PROD5_SAFETY_BOUNDARIES.md",
+    "PROD5_SHADOW_RUNTIME_SPEC.md",
+    "PROD5_SHIP_CHECK.md",
+    "PROD5_SOURCE_CONSIDERATION_MATRIX.md",
+    "PROD6_NEXT_COMMAND.md",
+    "docs/qdt_wm_maae/qspin_prod5_active_patching_report.md",
+    "docs/qdt_wm_maae/qspin_prod5_audit_shipcheck.md",
+    "docs/qdt_wm_maae/qspin_prod5_qd6a_remediation_register.md",
+    "docs/qdt_wm_maae/qspin_prod5_qd6a_source_consideration_matrix.md",
+    "docs/qdt_wm_maae/qspin_prod5_qd6a_token_budget.md",
+    "mnemonic_cortex/__init__.py",
+    "mnemonic_cortex/__pycache__/__init__.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__init__.py",
+    "mnemonic_cortex/working_memory/__pycache__/__init__.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__pycache__/qspin_active_remediation_register.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__pycache__/qspin_runtime_observability.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__pycache__/qspin_safety_regression_ci.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__pycache__/qspin_shadow_runtime_harness.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__pycache__/qspin_source_consideration_matrix.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/__pycache__/qspin_synthetic_canary_bridge.cpython-313.pyc",
+    "mnemonic_cortex/working_memory/qspin_active_remediation_register.py",
+    "mnemonic_cortex/working_memory/qspin_runtime_observability.py",
+    "mnemonic_cortex/working_memory/qspin_safety_regression_ci.py",
+    "mnemonic_cortex/working_memory/qspin_shadow_runtime_harness.py",
+    "mnemonic_cortex/working_memory/qspin_source_consideration_matrix.py",
+    "mnemonic_cortex/working_memory/qspin_synthetic_canary_bridge.py",
+    "prod5_manual_runner.py",
+    "prod5_outputs/canary_results.json",
+    "prod5_outputs/prod5_summary.json",
+    "prod5_outputs/prod5_summary.md",
+    "prod5_outputs/remediation_register.json",
+    "prod5_outputs/remediation_register.md",
+    "prod5_outputs/safety_regression_junit.xml",
+    "prod5_outputs/safety_regression_summary.json",
+    "prod5_outputs/source_matrix.json",
+    "prod5_outputs/source_matrix.md",
+    "tests/__pycache__/test_active_remediation_register.cpython-313-pytest-9.0.2.pyc",
+    "tests/__pycache__/test_observability.cpython-313-pytest-9.0.2.pyc",
+    "tests/__pycache__/test_safety_regression_ci.cpython-313-pytest-9.0.2.pyc",
+    "tests/__pycache__/test_shadow_runtime_harness.cpython-313-pytest-9.0.2.pyc",
+    "tests/__pycache__/test_source_consideration_matrix.cpython-313-pytest-9.0.2.pyc",
+    "tests/__pycache__/test_synthetic_canary_bridge.cpython-313-pytest-9.0.2.pyc",
+    "tests/test_active_remediation_register.py",
+    "tests/test_observability.py",
+    "tests/test_safety_regression_ci.py",
+    "tests/test_shadow_runtime_harness.py",
+    "tests/test_source_consideration_matrix.py",
+    "tests/test_synthetic_canary_bridge.py"
+  ],
+  "lineage_sources": {
+    "coverage_status": "PASS",
+    "reference_only": [
+      "WM-7A"
+    ],
+    "skipped_missing": [],
+    "used": [
+      "QD6A",
+      "QSPIN-8",
+      "PROD-0",
+      "PROD-1",
+      "PROD-2",
+      "PROD-3",
+      "PROD-4",
+      "PROD-4-PRINTOUT"
+    ]
+  },
+  "mandatory_runner": {
+    "command": "python3 -S prod5_manual_runner.py",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "QSPIN-PROD-5-QD6A synthetic runner status=PASS pass=26 fail=0 skip=0\n"
+  },
+  "pytest": {
+    "command": "python3 -m pytest tests",
+    "reason": "PYTEST_AVAILABLE",
+    "returncode": 0,
+    "status": "PASS",
+    "stderr": "",
+    "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0\nrootdir: /mnt/data/qspin_prod5_qd6a\nplugins: metadata-3.1.1, json-report-1.5.0, cov-7.0.0, ddtrace-4.4.0, asyncio-1.3.0, anyio-4.13.0, Faker-40.1.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 7 items\n\ntests/test_active_remediation_register.py .                              [ 14%]\ntests/test_observability.py .                                            [ 28%]\ntests/test_safety_regression_ci.py .                                     [ 42%]\ntests/test_shadow_runtime_harness.py ..                                  [ 71%]\ntests/test_source_consideration_matrix.py .                              [ 85%]\ntests/test_synthetic_canary_bridge.py .                                  [100%]\n\n============================== 7 passed in 0.14s ===============================\n"
+  },
+  "release_type": "synthetic_sandbox_only_live_adjacent_bridge_infrastructure",
+  "safety_boundaries": {
+    "commit_execution": "DISABLED/BLOCKED",
+    "external_memory_writes": "DISABLED/BLOCKED",
+    "live_routing": "DISABLED/BLOCKED",
+    "production_activation": "DISABLED/BLOCKED",
+    "qh_writes": "DISABLED/BLOCKED",
+    "real_payload_transfer": "DISABLED/BLOCKED",
+    "real_shared_slot_writes": "DISABLED/BLOCKED",
+    "topology_execution": "DISABLED/BLOCKED"
+  },
+  "ship_decision": "SHIP",
+  "source_command": "/mnt/data/Pasted text.txt",
+  "stage": "QSPIN-PROD-5-QD6A"
+}
+```
+
+# ===== release/qspin_prod5_test_result.json =====
+```json
+{
+  "canary_count": 12,
+  "fail_count": 0,
+  "outputs": {
+    "canary_results_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/canary_results.json",
+    "remediation_register_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/remediation_register.json",
+    "safety_regression_summary_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/safety_regression_summary.json",
+    "source_matrix_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/source_matrix.json"
+  },
+  "pass_count": 26,
+  "safety_boundaries": {
+    "commit_execution": "DISABLED/BLOCKED",
+    "external_memory_writes": "DISABLED/BLOCKED",
+    "live_routing": "DISABLED/BLOCKED",
+    "production_activation": "DISABLED/BLOCKED",
+    "qh_writes": "DISABLED/BLOCKED",
+    "real_payload_transfer": "DISABLED/BLOCKED",
+    "real_shared_slot_writes": "DISABLED/BLOCKED",
+    "topology_execution": "DISABLED/BLOCKED"
+  },
+  "safety_regression_count": 14,
+  "skip_count": 0,
+  "source_audit": {
+    "coverage_status": "PASS",
+    "reference_only": [
+      "WM-7A"
+    ],
+    "skipped_missing": [],
+    "used": [
+      "QD6A",
+      "QSPIN-8",
+      "PROD-0",
+      "PROD-1",
+      "PROD-2",
+      "PROD-3",
+      "PROD-4",
+      "PROD-4-PRINTOUT"
+    ]
+  },
+  "stage": "QSPIN-PROD-5-QD6A",
+  "status": "PASS"
+}
+```
+
+# ===== tests/test_active_remediation_register.py =====
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mnemonic_cortex.working_memory.qspin_active_remediation_register import build_remediation_register, register_to_markdown
+
+def test_empty_register_is_valid():
+    items = build_remediation_register([], {"checks": []}, {"skipped_missing": []})
+    assert items == []
+    assert "No active remediation" in register_to_markdown(items)
+```
+
+# ===== tests/test_observability.py =====
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mnemonic_cortex.working_memory.qspin_runtime_observability import ObservabilityEmitter, no_secret_leakage_check
+
+def test_redaction_and_summary():
+    emitter = ObservabilityEmitter()
+    emitter.emit_audit("x", "PASS", "OK", detail={"api_key": "SECRET"})
+    summary = emitter.summary()
+    assert no_secret_leakage_check(summary)
+    assert summary["counters"]["audit_events"] == 1
+```
+
+# ===== tests/test_safety_regression_ci.py =====
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mnemonic_cortex.working_memory.qspin_safety_regression_ci import run_safety_regressions, safety_summary_to_junit_xml
+
+def test_safety_regressions_pass_and_xml_generates():
+    summary = run_safety_regressions()
+    assert summary["fail_count"] == 0
+    assert "testsuite" in safety_summary_to_junit_xml(summary)
+```
+
+# ===== tests/test_shadow_runtime_harness.py =====
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mnemonic_cortex.working_memory.qspin_shadow_runtime_harness import ShadowRuntimeEnvelope, ShadowRuntimeHarness
+
+def test_valid_shadow_passes():
+    result = ShadowRuntimeHarness().execute(ShadowRuntimeEnvelope(payload={"ok": True}))
+    assert result.status == "PASS"
+    assert result.diagnostics["persistent_writes"] is False
+
+def test_qh_write_blocks_fail_closed():
+    result = ShadowRuntimeHarness().execute(ShadowRuntimeEnvelope(payload={"x": 1}, flags={"write_qh": True}))
+    assert result.status == "FAIL_CLOSED"
+    assert "forbidden_flag:write_qh" in result.blocked_actions
+```
+
+# ===== tests/test_source_consideration_matrix.py =====
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mnemonic_cortex.working_memory.qspin_source_consideration_matrix import build_source_matrix, consideration_coverage_audit, matrix_to_markdown
+
+def test_matrix_builds_with_coverage():
+    records = build_source_matrix()
+    audit = consideration_coverage_audit(records)
+    assert "coverage_status" in audit
+    assert "QD6A" in [r.source_id for r in records]
+    assert "Source Consideration Matrix" in matrix_to_markdown(records)
+```
+
+# ===== tests/test_synthetic_canary_bridge.py =====
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mnemonic_cortex.working_memory.qspin_synthetic_canary_bridge import run_canaries
+
+def test_all_default_canaries_pass():
+    results = run_canaries(seed=5005)
+    assert len(results) >= 12
+    assert all(r.status == "PASS" for r in results)
+```

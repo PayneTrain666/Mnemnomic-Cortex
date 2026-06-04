@@ -1,0 +1,133 @@
+{
+  "stage": "REASON-2D",
+  "stage_complete": true,
+  "source_pack": "/mnt/data/mnemonic_reasoning_reason2c_evidence_counterfactual_pack.zip",
+  "token_budget": {
+    "global_policy_resolution": {
+      "fixed_18000_rule_removed": true,
+      "rule": "Precompute estimated token cost from selected source/test/doc content before each response; set split budget from selected content plus margin.",
+      "response_split_budgets": {
+        "implementation_status_response": {
+          "estimated_tokens": 2600,
+          "budget_enforced": 4100
+        },
+        "REASON-2D-PRINT-P1": {
+          "estimated_tokens": 5573,
+          "budget_enforced": 6773
+        },
+        "REASON-2D-PRINT-P1B": {
+          "estimated_tokens": 2173,
+          "budget_enforced": 3073
+        },
+        "REASON-2D-PRINT-P2": {
+          "estimated_tokens": 1711,
+          "budget_enforced": 2911
+        },
+        "REASON-2D-PRINT-P3": {
+          "estimated_tokens": 14800,
+          "budget_enforced": 16300
+        }
+      }
+    },
+    "stage_budget": {
+      "target_scope": "REASON-2D controller API hardening, release audit, regression matrix, public import stabilization, tests, docs, tracker, manifest, package, and print sequence.",
+      "minimum_complete_version_tokens_est": 18000,
+      "deep_implementation_version_tokens_est": 50000,
+      "generated_content_total_tokens_est": 35457,
+      "binding_split_decision": "Implementation/tests/package completed in one execution; printout split into REASON-2D-PRINT-P1/P1B/P2/P3 using dynamic precomputed budgets.",
+      "file_module_count": {
+        "new_source_files": 3,
+        "patched_source_files": 1,
+        "new_tests": 8,
+        "new_docs": 6,
+        "updated_tracker": 1,
+        "release_manifest": 1
+      },
+      "benchmark_count": 0,
+      "selected_split_scope": "Full REASON-2D implementation and package; print source files first.",
+      "clean_split_points": [
+        "source-integrity audit",
+        "API wrapper",
+        "release audit",
+        "regression matrix",
+        "init export patch",
+        "tests",
+        "docs/tracker/ship-check",
+        "package bundles",
+        "print sequence"
+      ],
+      "explicit_out_of_scope": [
+        "REASON-3A advanced reasoning strategy graph",
+        "permanent memory-store commit execution",
+        "production persistence adapters",
+        "model weight mutation",
+        "optimizer mutation",
+        "destructive WM/MANN/LTM replacement",
+        "fake production-complete claim"
+      ]
+    },
+    "file_token_estimates": {
+      "mnemonic_cortex/reasoning_depth/reasoning_controller_api.py": 2551,
+      "mnemonic_cortex/reasoning_depth/reasoning_release_audit.py": 1923,
+      "mnemonic_cortex/reasoning_depth/reasoning_regression_matrix.py": 1099,
+      "mnemonic_cortex/reasoning_depth/__init__.py": 2173,
+      "tests/test_reason2d_config_serialization.py": 201,
+      "tests/test_reason2d_controller_api_disabled.py": 196,
+      "tests/test_reason2d_controller_api_enabled.py": 272,
+      "tests/test_reason2d_no_mutation_and_defaults.py": 232,
+      "tests/test_reason2d_reason2c_compatibility.py": 303,
+      "tests/test_reason2d_regression_matrix.py": 145,
+      "tests/test_reason2d_release_audit.py": 182,
+      "tests/test_reason2d_trace_schema_stability.py": 180
+    }
+  },
+  "shipcheck": {
+    "stage": "REASON-2D",
+    "stage_complete": true,
+    "source_pack": "/mnt/data/mnemonic_reasoning_reason2c_evidence_counterfactual_pack.zip",
+    "source_files_created": [
+      "mnemonic_cortex/reasoning_depth/reasoning_controller_api.py",
+      "mnemonic_cortex/reasoning_depth/reasoning_release_audit.py",
+      "mnemonic_cortex/reasoning_depth/reasoning_regression_matrix.py"
+    ],
+    "source_files_patched": [
+      "mnemonic_cortex/reasoning_depth/__init__.py",
+      "mnemonic_cortex/reasoning_depth/reasoning_controller_api.py"
+    ],
+    "tests_created": [
+      "tests/test_reason2d_config_serialization.py",
+      "tests/test_reason2d_controller_api_disabled.py",
+      "tests/test_reason2d_controller_api_enabled.py",
+      "tests/test_reason2d_no_mutation_and_defaults.py",
+      "tests/test_reason2d_reason2c_compatibility.py",
+      "tests/test_reason2d_regression_matrix.py",
+      "tests/test_reason2d_release_audit.py",
+      "tests/test_reason2d_trace_schema_stability.py"
+    ],
+    "docs_created": [
+      "docs/reasoning_engine/55_reasoning_controller_api_design.md",
+      "docs/reasoning_engine/56_reasoning_controller_api.md",
+      "docs/reasoning_engine/57_release_audit_and_regression_matrix.md",
+      "docs/reasoning_engine/58_reasoning_controller_api_tests.md",
+      "docs/reasoning_engine/59_reasoning_controller_api_shipcheck.md",
+      "docs/reasoning_engine/60_exact_reason_3a_command.md"
+    ],
+    "full_test_result": "\u001b[32m\u001b[32m\u001b[1m55 passed\u001b[0m\u001b[32m in 1.37s\u001b[0m\u001b[0m",
+    "default_inert_behavior_preserved": true,
+    "public_api_write_permission_rejected": true,
+    "config_serialization_hardened": true,
+    "trace_schema_serialization_hardened": true,
+    "release_audit_available": true,
+    "regression_matrix_available": true,
+    "permanent_memory_store_mutation": false,
+    "destructive_replacement": false,
+    "fake_production_complete_claim": false,
+    "patch_phase": [
+      "REASON-2D-PATCH-0001 internal controller slot_count clamp for small public API configs"
+    ],
+    "printout_status": "split_required; PRINT-P1 source files begins in assistant final response",
+    "redo_required": false,
+    "full_depth_adequacy_gate": "PASS"
+  },
+  "next_stage": "REASON-3A"
+}

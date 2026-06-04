@@ -1,0 +1,25 @@
+{
+  "decision": "ship_allowed",
+  "passed": true,
+  "prod7_carry_forward": [
+    "P3_ci_matrix_provider"
+  ],
+  "records": [
+    {
+      "defer_justification": "",
+      "defer_target": "",
+      "item_id": "P2_trace_corpus_expand",
+      "safety_implication": "coverage increased",
+      "severity": "P2",
+      "status": "resolved"
+    },
+    {
+      "defer_justification": "real CI provider integration remains out of scope",
+      "defer_target": "PROD-7",
+      "item_id": "P3_ci_matrix_provider",
+      "safety_implication": "no live provider calls in PROD-6",
+      "severity": "P3",
+      "status": "deferred"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "deferred_blockers": [],
+  "minimum_safe_activation_gates": [
+    "explicit future write-permission command",
+    "security review complete",
+    "operator approval complete",
+    "live rollback test complete",
+    "observability live test complete",
+    "commit-gate production execution validated"
+  ],
+  "open_blockers": [
+    "BB-001",
+    "BB-002",
+    "BB-003",
+    "BB-004",
+    "BB-005",
+    "BB-006",
+    "BB-007",
+    "BB-008",
+    "BB-009",
+    "BB-010",
+    "BB-011",
+    "BB-012",
+    "BB-013",
+    "BB-014",
+    "BB-015",
+    "BB-016",
+    "BB-017",
+    "BB-018"
+  ],
+  "p0_blockers": [
+    "BB-001",
+    "BB-002",
+    "BB-003",
+    "BB-004",
+    "BB-005",
+    "BB-006",
+    "BB-007",
+    "BB-008"
+  ],
+  "p1_blockers": [
+    "BB-009",
+    "BB-010",
+    "BB-011",
+    "BB-012",
+    "BB-013",
+    "BB-014"
+  ],
+  "recommended_sequence": [
+    "M1",
+    "M2",
+    "M3"
+  ],
+  "resolved_blockers": [],
+  "status": "blocked"
+}

@@ -1,0 +1,277 @@
+{
+  "stage": "QSPIN-PROD-6-QD6A",
+  "created_utc": "2026-05-10T11:40:57.237351Z",
+  "source_of_truth": "/mnt/data/qspin_prod5_qd6a_release_pack.zip",
+  "lineage": [
+    "QD6A",
+    "QSPIN-8",
+    "PROD-0",
+    "PROD-1",
+    "PROD-2",
+    "PROD-3",
+    "PROD-4",
+    "PROD-5"
+  ],
+  "safety_boundaries": {
+    "live_routing": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "topology_execution": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "commit_execution": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "production_config_mutation": "BLOCKED",
+    "unbounded_workers": "BLOCKED",
+    "hidden_skips": "BLOCKED"
+  },
+  "test_result": {
+    "stage": "QSPIN-PROD-6-QD6A",
+    "manual": {
+      "command": "python3 -S prod6_manual_runner.py",
+      "returncode": 0,
+      "stdout": "PASS=7\nFAIL=0\nSKIP=0\n",
+      "stderr": ""
+    },
+    "pytest": {
+      "command": "python3 -m pytest -q tests",
+      "returncode": 0,
+      "stdout": ".................                                                        [100%]\n17 passed in 0.49s\n",
+      "stderr": ""
+    },
+    "passed": true
+  },
+  "ship_decision": "SHIP QSPIN-PROD-6-QD6A as deterministic stress replay / trace corpus / CI hardening infrastructure. NOT production-active.",
+  "generated_files": [
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_shadow_stress_replay.py",
+      "size_bytes": 8181,
+      "sha256": "a13dcaee666e38cfe4c7d42f6d4757fd0d972766018e5a993415d8adf8c89d0f"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_trace_corpus.py",
+      "size_bytes": 7129,
+      "sha256": "501f8f651be53182dbcab5f71211c6124b120c2326e9de07ddb500b29ce33464"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_ci_matrix_hardening.py",
+      "size_bytes": 6069,
+      "sha256": "f8786353cac4b5136be5735f0eb018b5f8d32a9fa83d40322d6d507427ffcc94"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_extended_safety_regression.py",
+      "size_bytes": 3466,
+      "sha256": "516826d01d233b388b2291e23f372ec4b5c46389fc60b7f923970682c1eb18a1"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_remediation_closure.py",
+      "size_bytes": 4874,
+      "sha256": "3eaa7de9acf8cb9133620bdfb5c16839151cb07338d93682fbdb9872787ebaf2"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_prod6_observability.py",
+      "size_bytes": 5394,
+      "sha256": "298bef0fbcc026e551a5eab22aab834b61dc8e7144d22e4104028349f5f1d033"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_prod6_source_matrix.py",
+      "size_bytes": 3156,
+      "sha256": "931b9c3af56b4e1c2bd4958ed660a24bfd39edc18b9ac54e9dc1c9490c478dfd"
+    },
+    {
+      "path": "prod6_manual_runner.py",
+      "size_bytes": 5229,
+      "sha256": "8a79bb87048c182756414a1fadb7da9e105285d1a2c9eeaf248dd563b1fe0351"
+    },
+    {
+      "path": "tests/test_qspin_shadow_stress_replay.py",
+      "size_bytes": 419,
+      "sha256": "586bb31ff62e1cc4abd5df4ee3dbd9628071dd28296bec5f29d313d4893129c4"
+    },
+    {
+      "path": "tests/test_qspin_trace_corpus.py",
+      "size_bytes": 390,
+      "sha256": "932b2231de603c211a0306eaf227023c8a73a8e9c1dd4e833e2ba5abddd4f837"
+    },
+    {
+      "path": "tests/test_qspin_ci_matrix_hardening.py",
+      "size_bytes": 372,
+      "sha256": "140d202a00f652baaf46c4621198d68cc01c2180e5e4de6d5c7eae1bf6f87827"
+    },
+    {
+      "path": "tests/test_qspin_extended_safety_regression.py",
+      "size_bytes": 443,
+      "sha256": "4756db3e4f424b932472fada6ab34c1a19dc80031ba100919ab2a6e1521cabdb"
+    },
+    {
+      "path": "tests/test_qspin_remediation_closure.py",
+      "size_bytes": 421,
+      "sha256": "1261fa811171187ca823db9da5649d5ee4f146e2621a5599cd061e1b60fb5424"
+    },
+    {
+      "path": "tests/test_qspin_prod6_observability.py",
+      "size_bytes": 693,
+      "sha256": "37f3b0fb4b2f054135329b5131859b4a3ea978ea99bf85a5d55e3fb42d79d302"
+    },
+    {
+      "path": "tests/test_qspin_prod6_source_matrix.py",
+      "size_bytes": 283,
+      "sha256": "ed2e40219e0f272a3ef02f59d0d9dafac84f3335f573d8ebc74959e74d92f436"
+    },
+    {
+      "path": "tests/test_qspin_prod6_manual_runner.py",
+      "size_bytes": 347,
+      "sha256": "e155a11271ef05177171e9603cca08bee9e966ac53a71812185dcb03e4db7df2"
+    },
+    {
+      "path": "tests/test_qspin_prod6_failure_abuse_cases.py",
+      "size_bytes": 738,
+      "sha256": "cc5b6c73b40a500f6dacf21606b60714585982c8aa8074598c880bb7749cec85"
+    },
+    {
+      "path": "PROD6_ACTIVE_PATCHING_REPORT.md",
+      "size_bytes": 440,
+      "sha256": "6ea4eee3fa2f57613e9079eb15be0e64d3c2fdaa097f02c56b00e8083faae0e4"
+    },
+    {
+      "path": "PROD6_AUDIT_SHIP_CHECK.md",
+      "size_bytes": 409,
+      "sha256": "579e28a9bc486599599dfd31b2f191ab7e621dfe5b65993fd48ac76a1eae1609"
+    },
+    {
+      "path": "PROD6_CI_MATRIX_HARDENING.md",
+      "size_bytes": 158,
+      "sha256": "32ca8554e20c9767f3bf2730229a5c98d763201ecbc8f0e1f11d00d69be3a791"
+    },
+    {
+      "path": "PROD6_EXTENDED_SAFETY_REGRESSION.md",
+      "size_bytes": 223,
+      "sha256": "fce364205b8e617344dc9f29a487d05b0971f2964989dfd35a09ca42d6d30c7b"
+    },
+    {
+      "path": "PROD6_NEXT_COMMAND.md",
+      "size_bytes": 1100,
+      "sha256": "02dfd4c96ab0e1e3cc57052aa16bd2d9f0ba6409c056d942a7476c88bfd167e0"
+    },
+    {
+      "path": "PROD6_OBSERVABILITY_SPEC.md",
+      "size_bytes": 136,
+      "sha256": "79f423f61885730f2d72d407a3d2b7803d13aa7fcdd4f63ce0cd68e039ef48d5"
+    },
+    {
+      "path": "PROD6_README.md",
+      "size_bytes": 167,
+      "sha256": "2cc6d6ab54d6c676728d079bd7f91d92c15dd619d349a0dc56428ac350e93762"
+    },
+    {
+      "path": "PROD6_REMEDIATION_CLOSURE.md",
+      "size_bytes": 142,
+      "sha256": "364271d3b2cf624fe946412bd7dd9cc9dfc59a113fbf4a776a1894aa81701695"
+    },
+    {
+      "path": "PROD6_SAFETY_BOUNDARIES.md",
+      "size_bytes": 311,
+      "sha256": "ff03043a1a36788cc85ac43e1eff924bf8593ac106e10ed1d81ed35382c18307"
+    },
+    {
+      "path": "PROD6_SOURCE_CONSIDERATION_MATRIX.md",
+      "size_bytes": 1490,
+      "sha256": "ca78eaab8cac4e76ef42903a8edd92cbaa1c7d5a30b872c7710c08d92f3cd659"
+    },
+    {
+      "path": "PROD6_STRESS_REPLAY_SPEC.md",
+      "size_bytes": 204,
+      "sha256": "76a468a76659360b9f78e7b968590cb1fb532dc05d28de46159babf68fa1aebd"
+    },
+    {
+      "path": "PROD6_TEST_RESULTS.md",
+      "size_bytes": 299,
+      "sha256": "fc7d2caef08cce957e02f0e59659905fe64c755d4e48db4e6b935f20746ac218"
+    },
+    {
+      "path": "PROD6_TRACE_CORPUS_SPEC.md",
+      "size_bytes": 135,
+      "sha256": "d1ebe4cfbdcbb9cb4419f33b1f4cf239b035bef337f7efa8c7c48b0ada728e87"
+    },
+    {
+      "path": "prod6_outputs/ci_matrix.json",
+      "size_bytes": 2949,
+      "sha256": "e7d22ec5aaa5bf0150639e40a3bf0e82e2c4a20b39e30cd6dfbc8d2b0aafe569"
+    },
+    {
+      "path": "prod6_outputs/ci_matrix.md",
+      "size_bytes": 1329,
+      "sha256": "f4349c4d1d4e163fd8f52f3cd5aa0f26f3a1b9be20f426322be9e0f9ad736c30"
+    },
+    {
+      "path": "prod6_outputs/ci_matrix_junit.xml",
+      "size_bytes": 1307,
+      "sha256": "c7ae2a742ab76f7521223f6ad71f3acab6bf7f765dcc777b8336a381a531f6f5"
+    },
+    {
+      "path": "prod6_outputs/extended_safety.json",
+      "size_bytes": 5613,
+      "sha256": "2f059ac05db6d42fde85ffdde6b78ddd8937411ef0b533b9daceee3f9dc14802"
+    },
+    {
+      "path": "prod6_outputs/observability_snapshot.json",
+      "size_bytes": 794,
+      "sha256": "3d9d6e9e677d54b08dedd19acf3701d7345bc08251dfe43fddcf46844a1dbe15"
+    },
+    {
+      "path": "prod6_outputs/prod6_summary.json",
+      "size_bytes": 678,
+      "sha256": "5a456595efead2370b9dbee75e427ce5fdb4a7e65fec6de2fa50ec2448861d9c"
+    },
+    {
+      "path": "prod6_outputs/prod6_summary.md",
+      "size_bytes": 45,
+      "sha256": "75f6a107886c77b27a334fa468ec5a895057459a4f0210a546c1b98b3a787885"
+    },
+    {
+      "path": "prod6_outputs/remediation_closure.json",
+      "size_bytes": 629,
+      "sha256": "1342f4f57a147a527a3f76d6693e4d3182cb1026c6e1ba831b3bdad7919aba37"
+    },
+    {
+      "path": "prod6_outputs/remediation_closure.md",
+      "size_bytes": 225,
+      "sha256": "9f8613fda2d718a6d110eaddf0f33caf67292b7ddb11ff2adb74376be5a3aaff"
+    },
+    {
+      "path": "prod6_outputs/source_matrix.json",
+      "size_bytes": 4439,
+      "sha256": "def9d45a93df2219dda6d92b6e7988a860ff439c18026cc3cc296403554bcee0"
+    },
+    {
+      "path": "prod6_outputs/source_matrix.md",
+      "size_bytes": 1490,
+      "sha256": "ca78eaab8cac4e76ef42903a8edd92cbaa1c7d5a30b872c7710c08d92f3cd659"
+    },
+    {
+      "path": "prod6_outputs/stress_replay.json",
+      "size_bytes": 3079,
+      "sha256": "5f569589a75e8b571c9e9984ced344d15c2b50387878c59bb4037b28c38571ef"
+    },
+    {
+      "path": "prod6_outputs/trace_corpus.json",
+      "size_bytes": 9474,
+      "sha256": "4199ce220ae43abee138859a54c964a5fb6586ada58677c656a67bb7e8ef07d6"
+    },
+    {
+      "path": "prod6_outputs/trace_corpus.md",
+      "size_bytes": 827,
+      "sha256": "fc2244be4e1da27c3f9c05f1fd04dca31dec8a0f92b7cb3a7249577ff27146ad"
+    },
+    {
+      "path": "prod6_outputs/trace_replay.json",
+      "size_bytes": 192,
+      "sha256": "8e16e05b94645ef0f070715ca77faf47e95f12179000692642c56873b484a747"
+    }
+  ],
+  "next_stage": "QSPIN-PROD-7-QD6A"
+}

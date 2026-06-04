@@ -1,0 +1,24 @@
+{
+  "fail_count": 0,
+  "pass_count": 7,
+  "passed": true,
+  "safety_boundaries": {
+    "commit_execution": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "hidden_skips": "BLOCKED",
+    "live_routing": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "production_config_mutation": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "topology_execution": "BLOCKED",
+    "unbounded_workers": "BLOCKED"
+  },
+  "skip_count": 0,
+  "stage": "QSPIN-PROD-6-QD6A"
+}

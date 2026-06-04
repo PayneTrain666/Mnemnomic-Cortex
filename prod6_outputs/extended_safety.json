@@ -1,0 +1,196 @@
+{
+  "fail_count": 0,
+  "pass_count": 21,
+  "passed": true,
+  "results": [
+    {
+      "case_id": "safety_no_live_route_activation",
+      "kind": "no_live_route_activation",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_real_payload_transfer",
+      "kind": "no_real_payload_transfer",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_production_write",
+      "kind": "no_production_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_qh_write",
+      "kind": "no_qh_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_shared_slot_write",
+      "kind": "no_shared_slot_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_external_memory_write",
+      "kind": "no_external_memory_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_topology_execution",
+      "kind": "no_topology_execution",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_commit_execution",
+      "kind": "no_commit_execution",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_production_activation",
+      "kind": "no_production_activation",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_bounded_retries",
+      "kind": "bounded_retries",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_timeout_behavior",
+      "kind": "timeout_behavior",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_malformed_input_handling",
+      "kind": "malformed_input_handling",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_redaction_behavior",
+      "kind": "redaction_behavior",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_audit_chain_completeness",
+      "kind": "audit_chain_completeness",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_deterministic_replay",
+      "kind": "deterministic_replay",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_trace_corpus_hash_stability",
+      "kind": "trace_corpus_hash_stability",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_ci_matrix_safety_stability",
+      "kind": "ci_matrix_safety_stability",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_remediation_closure_integrity",
+      "kind": "remediation_closure_integrity",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_concurrency_idempotency",
+      "kind": "concurrency_idempotency",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_dead_letter_reason_code_safety",
+      "kind": "dead_letter_reason_code_safety",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_missing_source_structured_skip",
+      "kind": "missing_source_structured_skip",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    }
+  ]
+}

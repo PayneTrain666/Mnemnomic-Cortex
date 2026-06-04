@@ -1,0 +1,21 @@
+{
+  "release_name": "QDT-WM-MAAE context compression memory extension pack",
+  "stage": "WM-CONTEXT-COMP-1A",
+  "source_files_created": [
+    "mnemonic_cortex/working_memory/context_compression_memory.py"
+  ],
+  "source_files_patched": [
+    "mnemonic_cortex/working_memory/wm_context_mount.py",
+    "mnemonic_cortex/working_memory/__init__.py"
+  ],
+  "tests_created": [
+    "tests/test_wm_context_compression_memory.py"
+  ],
+  "docs_created": [
+    "docs/qdt_wm_maae/110_context_compression_memory.md",
+    "docs/qdt_wm_maae/111_context_compression_pytest_output.txt",
+    "docs/qdt_wm_maae/112_context_compression_shipcheck.json"
+  ],
+  "targeted_test_result": "6 passed",
+  "stage_complete": true
+}

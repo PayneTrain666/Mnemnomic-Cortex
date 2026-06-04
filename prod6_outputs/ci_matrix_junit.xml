@@ -1,0 +1,34 @@
+<testsuite name="qspin_prod6_ci_matrix" tests="16" failures="0" skipped="0">
+<testcase classname="qspin_prod6" name="ci_python_version">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_os">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_torch_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_pytest_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_source_pack_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_previous_pack_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_qh_write_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_shared_slot_write_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_external_write_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_payload_transfer_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_commit_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_production_activation_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_malformed_input">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_timeout_pressure">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_concurrency_pressure">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_redaction_pressure">
+</testcase>
+</testsuite>

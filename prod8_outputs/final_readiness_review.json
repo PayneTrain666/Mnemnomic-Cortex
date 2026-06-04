@@ -1,0 +1,250 @@
+{
+  "block_reasons": [
+    "critical_blockers_open"
+  ],
+  "deferred_items": [
+    "evidence_operator_approval_placeholder",
+    "evidence_external_security_review_placeholder",
+    "evidence_performance_benchmark_placeholder",
+    "evidence_live_canary_placeholder",
+    "evidence_live_rollback_test_placeholder"
+  ],
+  "domain_results": [
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "source_lineage",
+      "evidence_ids": [
+        "evidence_source_lineage"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "qd6a_compatibility",
+      "evidence_ids": [
+        "evidence_qd6a_compatibility"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "qspin_0_through_8_preservation",
+      "evidence_ids": [
+        "evidence_qspin_0_through_8_preservation"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "prod_0_through_7_preservation",
+      "evidence_ids": [
+        "evidence_prod_0_through_7_preservation"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "safety_boundaries",
+      "evidence_ids": [
+        "evidence_safety_boundaries"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "readonly_probe_evidence",
+      "evidence_ids": [
+        "evidence_readonly_probe_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "synthetic_to_real_boundary_evidence",
+      "evidence_ids": [
+        "evidence_synthetic_to_real_boundary_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "ci_gate_evidence",
+      "evidence_ids": [
+        "evidence_ci_gate_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "observability_evidence",
+      "evidence_ids": [
+        "evidence_observability_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "readiness_blocker_evidence",
+      "evidence_ids": [
+        "evidence_readiness_blocker_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "security_data_safety_evidence",
+      "evidence_ids": [
+        "evidence_security_data_safety_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "rollback_evidence",
+      "evidence_ids": [
+        "evidence_rollback_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "kill_switch_evidence",
+      "evidence_ids": [
+        "evidence_kill_switch_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "production_caveats",
+      "evidence_ids": [
+        "evidence_production_caveats"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "deferred_hardening",
+      "evidence_ids": [
+        "evidence_deferred_hardening"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_operator_approval_placeholder"
+      ],
+      "domain": "operator_approval_placeholder",
+      "evidence_ids": [
+        "evidence_operator_approval_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_external_security_review_placeholder"
+      ],
+      "domain": "external_security_review_placeholder",
+      "evidence_ids": [
+        "evidence_external_security_review_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_performance_benchmark_placeholder"
+      ],
+      "domain": "performance_benchmark_placeholder",
+      "evidence_ids": [
+        "evidence_performance_benchmark_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_live_canary_placeholder"
+      ],
+      "domain": "live_canary_placeholder",
+      "evidence_ids": [
+        "evidence_live_canary_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_live_rollback_test_placeholder"
+      ],
+      "domain": "live_rollback_test_placeholder",
+      "evidence_ids": [
+        "evidence_live_rollback_test_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    }
+  ],
+  "final_recommendation": "FINAL HOLD REQUIRED: preserve pre-activation package; do not enable production activation until blockers are burned down under a separate explicit command.",
+  "hold_required": true,
+  "missing_evidence": [],
+  "production_ready": false,
+  "request_id": "prod8_readiness",
+  "status": "blocked"
+}

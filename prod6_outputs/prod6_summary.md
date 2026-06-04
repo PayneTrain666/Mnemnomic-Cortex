@@ -1,0 +1,5 @@
+# QSPIN-PROD-6 Summary
+
+PASS=7
+FAIL=0
+SKIP=0

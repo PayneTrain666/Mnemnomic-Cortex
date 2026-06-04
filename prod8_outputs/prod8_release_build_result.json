@@ -1,0 +1,97 @@
+{
+  "block_reasons": [],
+  "manifest": {
+    "artifacts": [
+      {
+        "artifact_id": "hold",
+        "critical": true,
+        "kind": "final_hold_command",
+        "path": "PROD8_FINAL_HOLD_COMMAND.md",
+        "present": true
+      },
+      {
+        "artifact_id": "docs",
+        "critical": true,
+        "kind": "doc",
+        "path": "docs/",
+        "present": true
+      },
+      {
+        "artifact_id": "modules",
+        "critical": true,
+        "kind": "module",
+        "path": "mnemonic_cortex/working_memory/",
+        "present": true
+      },
+      {
+        "artifact_id": "runner",
+        "critical": true,
+        "kind": "runner",
+        "path": "prod8_manual_runner.py",
+        "present": true
+      },
+      {
+        "artifact_id": "blockers",
+        "critical": true,
+        "kind": "blocker_burndown",
+        "path": "prod8_outputs/blocker_burndown.json",
+        "present": true
+      },
+      {
+        "artifact_id": "ci",
+        "critical": true,
+        "kind": "ci_baseline",
+        "path": "prod8_outputs/ci_baseline_freeze.json",
+        "present": true
+      },
+      {
+        "artifact_id": "readiness",
+        "critical": true,
+        "kind": "readiness_review",
+        "path": "prod8_outputs/final_readiness_review.json",
+        "present": true
+      },
+      {
+        "artifact_id": "remediation",
+        "critical": true,
+        "kind": "remediation_register",
+        "path": "prod8_outputs/final_remediation_register.json",
+        "present": true
+      },
+      {
+        "artifact_id": "source_matrix",
+        "critical": true,
+        "kind": "source_matrix",
+        "path": "prod8_outputs/prod8_source_matrix.json",
+        "present": true
+      },
+      {
+        "artifact_id": "probe",
+        "critical": true,
+        "kind": "probe_report",
+        "path": "prod8_outputs/readonly_probe_report.json",
+        "present": true
+      },
+      {
+        "artifact_id": "tests",
+        "critical": true,
+        "kind": "test",
+        "path": "tests/",
+        "present": true
+      }
+    ],
+    "final_hold_required": true,
+    "production_active": false,
+    "release_id": "qspin_prod8_qd6a_release_pack",
+    "safety_boundaries": [
+      "no_live_routing",
+      "no_payload_transfer",
+      "no_writes",
+      "no_commits",
+      "no_production_activation"
+    ],
+    "stage": "QSPIN-PROD-8-QD6A"
+  },
+  "request_id": "prod8_release",
+  "status": "ready_to_package"
+}

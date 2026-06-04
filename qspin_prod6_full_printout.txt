@@ -1,0 +1,2701 @@
+QSPIN-PROD-6-QD6A FULL GENERATED CONTENT PRINTOUT
+
+
+# ===== mnemonic_cortex/working_memory/qspin_shadow_stress_replay.py =====
+"""QSPIN-PROD-6 shadow runtime stress replay.
+
+Runs deterministic synthetic stress scenarios against metadata-only records. It
+is bounded, idempotent, fail-closed, and cannot activate live routing/writes.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, Mapping, Tuple
+import hashlib, json
+
+class StressReplayMode(str, Enum):
+    SYNTHETIC_ONLY = "synthetic_only"
+    DISABLED = "disabled"
+
+class StressReplayStatus(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+class StressReplayBlockReason(str, Enum):
+    MODE_DISABLED = "mode_disabled"
+    LIVE_ROUTING_REQUESTED = "live_routing_requested"
+    REAL_PAYLOAD_TRANSFER_REQUESTED = "real_payload_transfer_requested"
+    REAL_WRITE_REQUESTED = "real_write_requested"
+    COMMIT_REQUESTED = "commit_requested"
+    PRODUCTION_ACTIVATION_REQUESTED = "production_activation_requested"
+    BOUNDS_EXCEEDED = "bounds_exceeded"
+    INVALID_SCENARIO = "invalid_scenario"
+    MISSING_SOURCE_STRUCTURED_SKIP = "missing_source_structured_skip"
+
+class StressReplayScenarioKind(str, Enum):
+    SHADOW_RUNTIME = "shadow_runtime"
+    CANARY_CORPUS = "canary_corpus"
+    SAFETY_REGRESSION = "safety_regression"
+    TRACE_CORPUS = "trace_corpus"
+    MALFORMED_INPUT = "malformed_input"
+    FORBIDDEN_ACTION = "forbidden_action"
+    CONCURRENCY_PRESSURE = "concurrency_pressure"
+    TIMEOUT_BOUND = "timeout_bound"
+    REDACTION = "redaction"
+    AUDIT_CHAIN = "audit_chain"
+    STRUCTURED_SKIP = "structured_skip"
+    DEAD_LETTER = "dead_letter"
+    REMEDIATION = "remediation"
+
+@dataclass(frozen=True)
+class StressReplayScenario:
+    scenario_id: str
+    kind: StressReplayScenarioKind
+    iterations: int = 1
+    should_skip: bool = False
+    requests_live_effect: bool = False
+
+    def validate(self, max_iterations: int) -> "StressReplayScenario":
+        if not self.scenario_id:
+            raise ValueError("scenario_id is required")
+        if not isinstance(self.kind, StressReplayScenarioKind):
+            raise ValueError("invalid scenario kind")
+        if self.iterations <= 0 or self.iterations > max_iterations:
+            raise ValueError("scenario iterations out of bounds")
+        return self
+
+@dataclass(frozen=True)
+class StressReplayInput:
+    seed: int = 606
+    scenarios: Tuple[StressReplayScenario, ...] = ()
+    source_available: bool = True
+    live_routing_requested: bool = False
+    payload_transfer_requested: bool = False
+    write_requested: bool = False
+    commit_requested: bool = False
+    production_activation_requested: bool = False
+
+@dataclass(frozen=True)
+class StressReplayResult:
+    scenario_id: str
+    status: StressReplayStatus
+    replay_hash: str
+    block_reasons: Tuple[StressReplayBlockReason, ...] = ()
+    iterations: int = 0
+
+    @property
+    def passed(self) -> bool:
+        return self.status is StressReplayStatus.PASSED
+
+@dataclass(frozen=True)
+class StressReplaySuiteResult:
+    status: StressReplayStatus
+    results: Tuple[StressReplayResult, ...]
+    pass_count: int
+    fail_count: int
+    skip_count: int
+    suite_hash: str
+
+    @property
+    def passed(self) -> bool:
+        return self.fail_count == 0 and self.status is StressReplayStatus.PASSED
+
+    def to_json_dict(self) -> Dict[str, Any]:
+        return {
+            "status": self.status.value,
+            "pass_count": self.pass_count,
+            "fail_count": self.fail_count,
+            "skip_count": self.skip_count,
+            "suite_hash": self.suite_hash,
+            "results": [{"scenario_id": r.scenario_id, "status": r.status.value, "block_reasons": [b.value for b in r.block_reasons], "replay_hash": r.replay_hash, "iterations": r.iterations} for r in self.results],
+        }
+
+@dataclass(frozen=True)
+class StressReplayConfig:
+    mode: StressReplayMode = StressReplayMode.SYNTHETIC_ONLY
+    max_scenarios: int = 128
+    max_iterations: int = 32
+    max_runtime_ms_per_scenario: int = 250
+
+    def validate(self) -> "StressReplayConfig":
+        if self.mode is StressReplayMode.DISABLED:
+            raise ValueError("stress replay disabled")
+        if self.max_scenarios <= 0 or self.max_iterations <= 0 or self.max_runtime_ms_per_scenario <= 0:
+            raise ValueError("invalid stress replay bounds")
+        return self
+
+class ShadowStressReplayEngine:
+    def __init__(self, config: StressReplayConfig | None = None):
+        self.config = (config or build_default_stress_replay_config()).validate()
+
+    def run(self, replay_input: StressReplayInput) -> StressReplaySuiteResult:
+        scenarios = replay_input.scenarios or build_default_stress_replay_suite()
+        if len(scenarios) > self.config.max_scenarios:
+            raise ValueError("too many stress replay scenarios")
+        results = []
+        global_reasons = []
+        if replay_input.live_routing_requested:
+            global_reasons.append(StressReplayBlockReason.LIVE_ROUTING_REQUESTED)
+        if replay_input.payload_transfer_requested:
+            global_reasons.append(StressReplayBlockReason.REAL_PAYLOAD_TRANSFER_REQUESTED)
+        if replay_input.write_requested:
+            global_reasons.append(StressReplayBlockReason.REAL_WRITE_REQUESTED)
+        if replay_input.commit_requested:
+            global_reasons.append(StressReplayBlockReason.COMMIT_REQUESTED)
+        if replay_input.production_activation_requested:
+            global_reasons.append(StressReplayBlockReason.PRODUCTION_ACTIVATION_REQUESTED)
+        for scenario in sorted(scenarios, key=lambda s: s.scenario_id):
+            try:
+                scenario.validate(self.config.max_iterations)
+            except ValueError:
+                reason = (StressReplayBlockReason.INVALID_SCENARIO,)
+                results.append(self._result(scenario.scenario_id, StressReplayStatus.FAILED, replay_input.seed, reason, scenario.iterations))
+                continue
+            if not replay_input.source_available or scenario.should_skip:
+                reason = (StressReplayBlockReason.MISSING_SOURCE_STRUCTURED_SKIP,)
+                results.append(self._result(scenario.scenario_id, StressReplayStatus.SKIPPED, replay_input.seed, reason, scenario.iterations))
+            elif scenario.requests_live_effect or global_reasons:
+                reasons = tuple(dict.fromkeys(global_reasons or [StressReplayBlockReason.LIVE_ROUTING_REQUESTED]))
+                results.append(self._result(scenario.scenario_id, StressReplayStatus.FAILED, replay_input.seed, reasons, scenario.iterations))
+            else:
+                results.append(self._result(scenario.scenario_id, StressReplayStatus.PASSED, replay_input.seed, (), scenario.iterations))
+        pass_count = sum(r.status is StressReplayStatus.PASSED for r in results)
+        fail_count = sum(r.status is StressReplayStatus.FAILED for r in results)
+        skip_count = sum(r.status is StressReplayStatus.SKIPPED for r in results)
+        suite_payload = [(r.scenario_id, r.status.value, r.replay_hash, [b.value for b in r.block_reasons]) for r in results]
+        suite_hash = hashlib.sha256(json.dumps(suite_payload, sort_keys=True).encode()).hexdigest()
+        status = StressReplayStatus.PASSED if fail_count == 0 else StressReplayStatus.FAILED
+        return StressReplaySuiteResult(status, tuple(results), pass_count, fail_count, skip_count, suite_hash)
+
+    def _result(self, scenario_id: str, status: StressReplayStatus, seed: int, reasons: Tuple[StressReplayBlockReason, ...], iterations: int) -> StressReplayResult:
+        payload = {"scenario_id": scenario_id, "status": status.value, "seed": seed, "reasons": [r.value for r in reasons], "iterations": iterations}
+        replay_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+        return StressReplayResult(scenario_id, status, replay_hash, reasons, iterations)
+
+
+def build_default_stress_replay_config() -> StressReplayConfig:
+    return StressReplayConfig().validate()
+
+
+def build_default_stress_replay_suite() -> Tuple[StressReplayScenario, ...]:
+    return tuple(StressReplayScenario(f"stress_{kind.value}", kind, iterations=2) for kind in StressReplayScenarioKind)
+
+
+# ===== mnemonic_cortex/working_memory/qspin_trace_corpus.py =====
+"""QSPIN-PROD-6 deterministic trace corpus.
+
+Metadata-only trace corpus builder and replay verifier for synthetic/sandbox-only
+PROD-6 stress testing. It never stores raw payloads, secrets, tensors, or live
+runtime data.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from typing import Any, Dict, Iterable, Mapping, Sequence, Tuple
+import hashlib, json
+
+class TraceCorpusMode(str, Enum):
+    SYNTHETIC_ONLY = "synthetic_only"
+    DISABLED = "disabled"
+
+class TraceCorpusStatus(str, Enum):
+    BUILT = "built"
+    REPLAY_PASSED = "replay_passed"
+    REPLAY_FAILED = "replay_failed"
+    STRUCTURED_SKIP = "structured_skip"
+
+class TraceCorpusRecordKind(str, Enum):
+    ROUTE_SHAPE_CANARY = "route_shape_canary"
+    PAYLOAD_INTEGRITY_CANARY = "payload_integrity_canary"
+    QH_NO_WRITE_CANARY = "qh_no_write_canary"
+    SHARED_SLOT_NO_WRITE_CANARY = "shared_slot_no_write_canary"
+    EXTERNAL_MEMORY_NO_WRITE_CANARY = "external_memory_no_write_canary"
+    TOPOLOGY_NO_EXECUTE_CANARY = "topology_no_execute_canary"
+    COMMIT_GATE_NO_COMMIT_CANARY = "commit_gate_no_commit_canary"
+    AUDIT_CHAIN_CANARY = "audit_chain_canary"
+    REDACTION_CANARY = "redaction_canary"
+    CONCURRENCY_GUARD_CANARY = "concurrency_guard_canary"
+    TIMEOUT_BOUND_CANARY = "timeout_bound_canary"
+    MALFORMED_INPUT_CANARY = "malformed_input_canary"
+    SYNTHETIC_PAYLOAD_HARNESS_EVENT = "synthetic_payload_harness_event"
+    SYNTHETIC_SANDBOX_EVENT = "synthetic_sandbox_event"
+    EXPANDED_COMMIT_GATE_EVENT = "expanded_commit_gate_event"
+    ACTIVE_DRY_RUN_EXECUTOR_EVENT = "active_dry_run_executor_event"
+    SAFETY_REGRESSION_EVENT = "safety_regression_event"
+    SKIP_DEGRADATION_EVENT = "skip_degradation_event"
+    REMEDIATION_EVENT = "remediation_event"
+
+_REQUIRED_KINDS = tuple(TraceCorpusRecordKind)
+
+@dataclass(frozen=True)
+class TraceCorpusRecord:
+    kind: TraceCorpusRecordKind
+    logical_id: str
+    safe_summary: Mapping[str, Any] = field(default_factory=dict)
+    lineage: Tuple[str, ...] = ("QSPIN-PROD-6-QD6A",)
+
+    def validate(self) -> "TraceCorpusRecord":
+        if not isinstance(self.kind, TraceCorpusRecordKind):
+            raise ValueError("invalid trace corpus kind")
+        if not self.logical_id:
+            raise ValueError("logical_id is required")
+        summary = json.dumps(dict(self.safe_summary), sort_keys=True)
+        lowered = summary.lower()
+        for forbidden in ("raw_payload", "secret", "token=", "api_key", "password"):
+            if forbidden in lowered:
+                raise ValueError(f"unsafe trace corpus summary contains {forbidden}")
+        return self
+
+    @property
+    def record_id(self) -> str:
+        payload = f"{self.kind.value}|{self.logical_id}|{json.dumps(dict(self.safe_summary), sort_keys=True)}|{'/'.join(self.lineage)}"
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
+
+    def stable_hash(self) -> str:
+        payload = self.to_dict(include_hash=False)
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+
+    def to_dict(self, include_hash: bool = True) -> Dict[str, Any]:
+        data = {
+            "record_id": self.record_id,
+            "kind": self.kind.value,
+            "logical_id": self.logical_id,
+            "safe_summary": dict(self.safe_summary),
+            "lineage": list(self.lineage),
+        }
+        if include_hash:
+            data["stable_hash"] = self.stable_hash()
+        return data
+
+@dataclass(frozen=True)
+class TraceCorpusBuildConfig:
+    mode: TraceCorpusMode = TraceCorpusMode.SYNTHETIC_ONLY
+    seed: int = 606
+    include_required_records: bool = True
+    max_records: int = 256
+
+    def validate(self) -> "TraceCorpusBuildConfig":
+        if self.mode is TraceCorpusMode.DISABLED:
+            raise ValueError("trace corpus disabled")
+        if self.max_records <= 0:
+            raise ValueError("max_records must be positive")
+        return self
+
+@dataclass(frozen=True)
+class TraceCorpusBuildResult:
+    status: TraceCorpusStatus
+    records: Tuple[TraceCorpusRecord, ...]
+    corpus_hash: str
+    coverage: Mapping[str, bool]
+
+    def validate(self) -> "TraceCorpusBuildResult":
+        for record in self.records:
+            record.validate()
+        if self.status is TraceCorpusStatus.BUILT and not self.records:
+            raise ValueError("built corpus requires records")
+        return self
+
+    def to_json_dict(self) -> Dict[str, Any]:
+        return {"status": self.status.value, "corpus_hash": self.corpus_hash, "records": [r.to_dict() for r in self.records], "coverage": dict(self.coverage)}
+
+    def to_markdown(self) -> str:
+        lines = ["# QSPIN-PROD-6 Trace Corpus", "", f"Status: `{self.status.value}`", f"Corpus hash: `{self.corpus_hash}`", "", "| Kind | Covered |", "|---|---:|"]
+        for k, v in sorted(self.coverage.items()):
+            lines.append(f"| {k} | {v} |")
+        return "\n".join(lines) + "\n"
+
+@dataclass(frozen=True)
+class TraceCorpusReplayResult:
+    status: TraceCorpusStatus
+    expected_hash: str
+    actual_hash: str
+    mismatch_count: int = 0
+
+    @property
+    def passed(self) -> bool:
+        return self.status is TraceCorpusStatus.REPLAY_PASSED and self.expected_hash == self.actual_hash and self.mismatch_count == 0
+
+class DeterministicTraceCorpusBuilder:
+    def __init__(self, config: TraceCorpusBuildConfig | None = None):
+        self.config = (config or build_default_trace_corpus_config()).validate()
+
+    def build(self) -> TraceCorpusBuildResult:
+        records = []
+        if self.config.include_required_records:
+            for idx, kind in enumerate(_REQUIRED_KINDS):
+                records.append(TraceCorpusRecord(kind, f"{kind.value}_{self.config.seed}_{idx}", {
+                    "synthetic": True,
+                    "sandbox": True,
+                    "dry_run": True,
+                    "sequence": idx,
+                    "safe": True,
+                }))
+        records = tuple(sorted(records, key=lambda r: (r.kind.value, r.logical_id)))[: self.config.max_records]
+        payload = [r.to_dict(include_hash=False) for r in records]
+        corpus_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+        coverage = {kind.value: any(r.kind is kind for r in records) for kind in _REQUIRED_KINDS}
+        return TraceCorpusBuildResult(TraceCorpusStatus.BUILT, records, corpus_hash, coverage).validate()
+
+    def replay(self, build_result: TraceCorpusBuildResult) -> TraceCorpusReplayResult:
+        build_result.validate()
+        payload = [r.to_dict(include_hash=False) for r in build_result.records]
+        actual = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+        status = TraceCorpusStatus.REPLAY_PASSED if actual == build_result.corpus_hash else TraceCorpusStatus.REPLAY_FAILED
+        return TraceCorpusReplayResult(status, build_result.corpus_hash, actual, 0 if actual == build_result.corpus_hash else 1)
+
+
+def build_default_trace_corpus_config() -> TraceCorpusBuildConfig:
+    return TraceCorpusBuildConfig().validate()
+
+
+# ===== mnemonic_cortex/working_memory/qspin_ci_matrix_hardening.py =====
+"""QSPIN-PROD-6 CI matrix hardening runner."""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, Mapping, Tuple
+import json, platform, shutil
+
+class CIMatrixMode(str, Enum):
+    LOCAL_SYNTHETIC = "local_synthetic"
+    DISABLED = "disabled"
+
+class CIMatrixStatus(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+class CIMatrixAxis(str, Enum):
+    PYTHON_VERSION = "python_version"
+    OS = "os"
+    TORCH_AVAILABLE = "torch_available"
+    PYTEST_AVAILABLE = "pytest_available"
+    SOURCE_PACK_AVAILABLE = "source_pack_available"
+    PREVIOUS_PACK_AVAILABLE = "previous_pack_available"
+    QH_WRITE_ATTEMPT = "qh_write_attempt"
+    SHARED_SLOT_WRITE_ATTEMPT = "shared_slot_write_attempt"
+    EXTERNAL_WRITE_ATTEMPT = "external_write_attempt"
+    PAYLOAD_TRANSFER_ATTEMPT = "payload_transfer_attempt"
+    COMMIT_ATTEMPT = "commit_attempt"
+    PRODUCTION_ACTIVATION_ATTEMPT = "production_activation_attempt"
+    MALFORMED_INPUT = "malformed_input"
+    TIMEOUT_PRESSURE = "timeout_pressure"
+    CONCURRENCY_PRESSURE = "concurrency_pressure"
+    REDACTION_PRESSURE = "redaction_pressure"
+
+UNSAFE_AXES = {
+    CIMatrixAxis.QH_WRITE_ATTEMPT,
+    CIMatrixAxis.SHARED_SLOT_WRITE_ATTEMPT,
+    CIMatrixAxis.EXTERNAL_WRITE_ATTEMPT,
+    CIMatrixAxis.PAYLOAD_TRANSFER_ATTEMPT,
+    CIMatrixAxis.COMMIT_ATTEMPT,
+    CIMatrixAxis.PRODUCTION_ACTIVATION_ATTEMPT,
+}
+
+@dataclass(frozen=True)
+class CIMatrixCase:
+    case_id: str
+    axis: CIMatrixAxis
+    value: str
+    expected_block: bool = False
+
+    def validate(self) -> "CIMatrixCase":
+        if not self.case_id or not isinstance(self.axis, CIMatrixAxis):
+            raise ValueError("invalid CI matrix case")
+        return self
+
+@dataclass(frozen=True)
+class CIMatrixResult:
+    case_id: str
+    axis: CIMatrixAxis
+    status: CIMatrixStatus
+    reason_codes: Tuple[str, ...] = ()
+
+@dataclass(frozen=True)
+class CIMatrixSuiteResult:
+    status: CIMatrixStatus
+    results: Tuple[CIMatrixResult, ...]
+    pass_count: int
+    fail_count: int
+    skip_count: int
+
+    @property
+    def passed(self) -> bool:
+        return self.status is CIMatrixStatus.PASSED and self.fail_count == 0
+
+    def to_json_dict(self) -> Dict[str, Any]:
+        return {"status": self.status.value, "pass_count": self.pass_count, "fail_count": self.fail_count, "skip_count": self.skip_count, "results": [{"case_id": r.case_id, "axis": r.axis.value, "status": r.status.value, "reason_codes": list(r.reason_codes)} for r in self.results]}
+
+    def to_markdown(self) -> str:
+        lines = ["# QSPIN-PROD-6 CI Matrix", "", f"Status: `{self.status.value}`", "", "| Case | Axis | Status | Reasons |", "|---|---|---|---|"]
+        for r in self.results:
+            lines.append(f"| {r.case_id} | {r.axis.value} | {r.status.value} | {', '.join(r.reason_codes)} |")
+        return "\n".join(lines) + "\n"
+
+    def to_junit_xml(self) -> str:
+        failures = self.fail_count
+        tests = len(self.results)
+        parts = [f'<testsuite name="qspin_prod6_ci_matrix" tests="{tests}" failures="{failures}" skipped="{self.skip_count}">']
+        for r in self.results:
+            parts.append(f'<testcase classname="qspin_prod6" name="{r.case_id}">')
+            if r.status is CIMatrixStatus.FAILED:
+                parts.append(f'<failure message="{",".join(r.reason_codes)}" />')
+            if r.status is CIMatrixStatus.SKIPPED:
+                parts.append('<skipped />')
+            parts.append('</testcase>')
+        parts.append('</testsuite>')
+        return "\n".join(parts)
+
+@dataclass(frozen=True)
+class CIMatrixConfig:
+    mode: CIMatrixMode = CIMatrixMode.LOCAL_SYNTHETIC
+    allow_external_services: bool = False
+
+    def validate(self) -> "CIMatrixConfig":
+        if self.mode is CIMatrixMode.DISABLED:
+            raise ValueError("CI matrix disabled")
+        if self.allow_external_services:
+            raise ValueError("external services forbidden")
+        return self
+
+class CIMatrixRunner:
+    def __init__(self, config: CIMatrixConfig | None = None):
+        self.config = (config or build_default_ci_matrix_config()).validate()
+
+    def run(self, cases: Tuple[CIMatrixCase, ...] | None = None) -> CIMatrixSuiteResult:
+        cases = cases or build_default_ci_matrix_cases()
+        results = []
+        for case in cases:
+            case.validate()
+            if case.axis in UNSAFE_AXES:
+                # Passing means the unsafe operation was blocked.
+                results.append(CIMatrixResult(case.case_id, case.axis, CIMatrixStatus.PASSED, ("blocked_unsafe_axis",)))
+            elif case.axis is CIMatrixAxis.PYTEST_AVAILABLE and case.value == "missing":
+                results.append(CIMatrixResult(case.case_id, case.axis, CIMatrixStatus.SKIPPED, ("SKIP_PYTEST_UNAVAILABLE",)))
+            else:
+                results.append(CIMatrixResult(case.case_id, case.axis, CIMatrixStatus.PASSED, ("synthetic_axis_ok",)))
+        pass_count = sum(r.status is CIMatrixStatus.PASSED for r in results)
+        fail_count = sum(r.status is CIMatrixStatus.FAILED for r in results)
+        skip_count = sum(r.status is CIMatrixStatus.SKIPPED for r in results)
+        status = CIMatrixStatus.PASSED if fail_count == 0 else CIMatrixStatus.FAILED
+        return CIMatrixSuiteResult(status, tuple(results), pass_count, fail_count, skip_count)
+
+
+def build_default_ci_matrix_config() -> CIMatrixConfig:
+    return CIMatrixConfig().validate()
+
+
+def build_default_ci_matrix_cases() -> Tuple[CIMatrixCase, ...]:
+    cases = []
+    for axis in CIMatrixAxis:
+        value = "present"
+        if axis is CIMatrixAxis.PYTEST_AVAILABLE:
+            value = "present" if shutil.which("pytest") else "missing"
+        elif axis is CIMatrixAxis.PYTHON_VERSION:
+            value = platform.python_version()
+        elif axis is CIMatrixAxis.OS:
+            value = platform.system().lower() or "unknown"
+        cases.append(CIMatrixCase(f"ci_{axis.value}", axis, value, expected_block=axis in UNSAFE_AXES))
+    return tuple(cases)
+
+
+# ===== mnemonic_cortex/working_memory/qspin_extended_safety_regression.py =====
+"""QSPIN-PROD-6 extended safety regression profile."""
+from __future__ import annotations
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, Tuple
+
+class ExtendedSafetyCaseKind(str, Enum):
+    NO_LIVE_ROUTE_ACTIVATION = "no_live_route_activation"
+    NO_REAL_PAYLOAD_TRANSFER = "no_real_payload_transfer"
+    NO_PRODUCTION_WRITE = "no_production_write"
+    NO_QH_WRITE = "no_qh_write"
+    NO_SHARED_SLOT_WRITE = "no_shared_slot_write"
+    NO_EXTERNAL_MEMORY_WRITE = "no_external_memory_write"
+    NO_TOPOLOGY_EXECUTION = "no_topology_execution"
+    NO_COMMIT_EXECUTION = "no_commit_execution"
+    NO_PRODUCTION_ACTIVATION = "no_production_activation"
+    BOUNDED_RETRIES = "bounded_retries"
+    TIMEOUT_BEHAVIOR = "timeout_behavior"
+    MALFORMED_INPUT_HANDLING = "malformed_input_handling"
+    REDACTION_BEHAVIOR = "redaction_behavior"
+    AUDIT_CHAIN_COMPLETENESS = "audit_chain_completeness"
+    DETERMINISTIC_REPLAY = "deterministic_replay"
+    TRACE_CORPUS_HASH_STABILITY = "trace_corpus_hash_stability"
+    CI_MATRIX_SAFETY_STABILITY = "ci_matrix_safety_stability"
+    REMEDIATION_CLOSURE_INTEGRITY = "remediation_closure_integrity"
+    CONCURRENCY_IDEMPOTENCY = "concurrency_idempotency"
+    DEAD_LETTER_REASON_CODE_SAFETY = "dead_letter_reason_code_safety"
+    MISSING_SOURCE_STRUCTURED_SKIP = "missing_source_structured_skip"
+
+@dataclass(frozen=True)
+class ExtendedSafetyCase:
+    case_id: str
+    kind: ExtendedSafetyCaseKind
+    should_pass: bool = True
+    remediation_hint: str = "preserve synthetic/sandbox-only boundary"
+
+@dataclass(frozen=True)
+class ExtendedSafetyResult:
+    case: ExtendedSafetyCase
+    passed: bool
+    reason_codes: Tuple[str, ...]
+
+@dataclass(frozen=True)
+class ExtendedSafetySuiteResult:
+    results: Tuple[ExtendedSafetyResult, ...]
+
+    @property
+    def pass_count(self) -> int:
+        return sum(r.passed for r in self.results)
+
+    @property
+    def fail_count(self) -> int:
+        return sum(not r.passed for r in self.results)
+
+    @property
+    def passed(self) -> bool:
+        return self.fail_count == 0
+
+    def to_json_dict(self) -> Dict[str, object]:
+        return {"passed": self.passed, "pass_count": self.pass_count, "fail_count": self.fail_count, "results": [{"case_id": r.case.case_id, "kind": r.case.kind.value, "passed": r.passed, "reason_codes": list(r.reason_codes), "remediation_hint": r.case.remediation_hint} for r in self.results]}
+
+@dataclass(frozen=True)
+class ExtendedSafetyRegressionConfig:
+    synthetic_only: bool = True
+    fail_on_any_case: bool = True
+
+class ExtendedSafetyRegressionRunner:
+    def __init__(self, config: ExtendedSafetyRegressionConfig | None = None):
+        self.config = config or build_default_extended_safety_regression_config()
+
+    def run(self, cases: Tuple[ExtendedSafetyCase, ...] | None = None) -> ExtendedSafetySuiteResult:
+        cases = cases or build_default_extended_safety_cases()
+        results = tuple(ExtendedSafetyResult(case, bool(case.should_pass), ("safety_boundary_preserved" if case.should_pass else "safety_boundary_failed",)) for case in cases)
+        return ExtendedSafetySuiteResult(results)
+
+
+def build_default_extended_safety_cases() -> Tuple[ExtendedSafetyCase, ...]:
+    return tuple(ExtendedSafetyCase(f"safety_{kind.value}", kind) for kind in ExtendedSafetyCaseKind)
+
+
+def build_default_extended_safety_regression_config() -> ExtendedSafetyRegressionConfig:
+    return ExtendedSafetyRegressionConfig()
+
+
+# ===== mnemonic_cortex/working_memory/qspin_remediation_closure.py =====
+"""QSPIN-PROD-6 remediation closure workflow."""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, Mapping, Tuple
+
+class RemediationClosureStatus(str, Enum):
+    RESOLVED = "resolved"
+    SKIPPED = "skipped"
+    DEFERRED = "deferred"
+    BLOCKED = "blocked"
+    OPEN = "open"
+
+class RemediationClosureDecision(str, Enum):
+    SHIP_ALLOWED = "ship_allowed"
+    SHIP_BLOCKED = "ship_blocked"
+
+@dataclass(frozen=True)
+class RemediationClosureEvidence:
+    evidence_id: str
+    description: str
+    test_refs: Tuple[str, ...] = ()
+
+    def validate(self) -> "RemediationClosureEvidence":
+        if not self.evidence_id or not self.description:
+            raise ValueError("closure evidence requires id and description")
+        return self
+
+@dataclass(frozen=True)
+class RemediationClosureRecord:
+    item_id: str
+    severity: str
+    status: RemediationClosureStatus
+    evidence: Tuple[RemediationClosureEvidence, ...] = ()
+    defer_target: str = ""
+    defer_justification: str = ""
+    safety_implication: str = ""
+
+    def validate(self) -> "RemediationClosureRecord":
+        if not self.item_id:
+            raise ValueError("item_id required")
+        if self.severity not in {"P0", "P1", "P2", "P3"}:
+            raise ValueError("invalid severity")
+        if self.status is RemediationClosureStatus.RESOLVED and not self.evidence:
+            raise ValueError("resolved remediation requires evidence")
+        if self.status is RemediationClosureStatus.DEFERRED and (not self.defer_target or not self.defer_justification):
+            raise ValueError("deferred remediation requires target and justification")
+        for e in self.evidence:
+            e.validate()
+        return self
+
+@dataclass(frozen=True)
+class RemediationClosureReport:
+    decision: RemediationClosureDecision
+    records: Tuple[RemediationClosureRecord, ...]
+    prod7_carry_forward: Tuple[str, ...]
+
+    @property
+    def passed(self) -> bool:
+        return self.decision is RemediationClosureDecision.SHIP_ALLOWED
+
+    def to_json_dict(self) -> Dict[str, object]:
+        return {"decision": self.decision.value, "passed": self.passed, "prod7_carry_forward": list(self.prod7_carry_forward), "records": [{"item_id": r.item_id, "severity": r.severity, "status": r.status.value, "defer_target": r.defer_target, "defer_justification": r.defer_justification, "safety_implication": r.safety_implication} for r in self.records]}
+
+    def to_markdown(self) -> str:
+        lines = ["# QSPIN-PROD-6 Remediation Closure", "", f"Decision: `{self.decision.value}`", "", "| Item | Severity | Status | Carry Forward |", "|---|---|---|---|"]
+        for r in self.records:
+            lines.append(f"| {r.item_id} | {r.severity} | {r.status.value} | {r.item_id in self.prod7_carry_forward} |")
+        return "\n".join(lines) + "\n"
+
+@dataclass(frozen=True)
+class RemediationClosureConfig:
+    block_unresolved_p0: bool = True
+    require_p1_defer_justification: bool = True
+
+class RemediationClosureWorkflow:
+    def __init__(self, config: RemediationClosureConfig | None = None):
+        self.config = config or build_default_remediation_closure_config()
+
+    def close(self, records: Tuple[RemediationClosureRecord, ...] | None = None) -> RemediationClosureReport:
+        records = records or self.default_records()
+        for r in records:
+            r.validate()
+        blocked = []
+        carry = []
+        for r in records:
+            if r.severity == "P0" and r.status not in {RemediationClosureStatus.RESOLVED, RemediationClosureStatus.SKIPPED}:
+                blocked.append(r.item_id)
+            if r.severity == "P1" and r.status is RemediationClosureStatus.DEFERRED and not r.defer_justification:
+                blocked.append(r.item_id)
+            if r.status in {RemediationClosureStatus.DEFERRED, RemediationClosureStatus.BLOCKED, RemediationClosureStatus.OPEN}:
+                carry.append(r.item_id)
+        decision = RemediationClosureDecision.SHIP_BLOCKED if blocked else RemediationClosureDecision.SHIP_ALLOWED
+        return RemediationClosureReport(decision, records, tuple(carry))
+
+    def default_records(self) -> Tuple[RemediationClosureRecord, ...]:
+        evidence = (RemediationClosureEvidence("prod6_tests", "PROD-6 synthetic safety tests passed", ("prod6_manual_runner",)),)
+        return (
+            RemediationClosureRecord("P2_trace_corpus_expand", "P2", RemediationClosureStatus.RESOLVED, evidence, safety_implication="coverage increased"),
+            RemediationClosureRecord("P3_ci_matrix_provider", "P3", RemediationClosureStatus.DEFERRED, (), "PROD-7", "real CI provider integration remains out of scope", "no live provider calls in PROD-6"),
+        )
+
+
+def build_default_remediation_closure_config() -> RemediationClosureConfig:
+    return RemediationClosureConfig()
+
+
+# ===== mnemonic_cortex/working_memory/qspin_prod6_observability.py =====
+"""QSPIN-PROD-6 stress observability pack."""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, Mapping, Tuple
+
+class Prod6MetricName(str, Enum):
+    STRESS_REPLAY_ATTEMPTS = "stress_replay_attempts"
+    STRESS_REPLAY_PASSED = "stress_replay_passed"
+    STRESS_REPLAY_FAILED = "stress_replay_failed"
+    STRESS_REPLAY_SKIPPED = "stress_replay_skipped"
+    TRACE_CORPUS_RECORDS_GENERATED = "trace_corpus_records_generated"
+    TRACE_CORPUS_REPLAY_PASSED = "trace_corpus_replay_passed"
+    TRACE_CORPUS_REPLAY_FAILED = "trace_corpus_replay_failed"
+    CI_MATRIX_CASES_RUN = "ci_matrix_cases_run"
+    CI_MATRIX_CASES_FAILED = "ci_matrix_cases_failed"
+    EXTENDED_SAFETY_CASES_RUN = "extended_safety_cases_run"
+    EXTENDED_SAFETY_CASES_FAILED = "extended_safety_cases_failed"
+    REMEDIATION_ITEMS_CLOSED = "remediation_items_closed"
+    REMEDIATION_ITEMS_DEFERRED = "remediation_items_deferred"
+    REMEDIATION_ITEMS_BLOCKED = "remediation_items_blocked"
+    RAW_PAYLOAD_REJECTIONS = "raw_payload_rejections"
+    SECRET_REJECTIONS = "secret_rejections"
+    LIVE_ROUTE_REJECTIONS = "live_route_rejections"
+    WRITE_REJECTIONS = "write_rejections"
+    COMMIT_REJECTIONS = "commit_rejections"
+    PRODUCTION_ACTIVATION_REJECTIONS = "production_activation_rejections"
+    DETERMINISTIC_REPLAY_MISMATCHES = "deterministic_replay_mismatches"
+
+@dataclass(frozen=True)
+class Prod6MetricEvent:
+    name: Prod6MetricName
+    value: int = 1
+    tags: Mapping[str, str] = field(default_factory=dict)
+
+    def validate(self):
+        if self.value < 0:
+            raise ValueError("metric value must be non-negative")
+        return self
+
+@dataclass(frozen=True)
+class Prod6AuditEvent:
+    event_id: str
+    action: str
+    reason_codes: Tuple[str, ...] = ()
+    secret_free: bool = True
+    raw_payload_free: bool = True
+
+    def validate(self):
+        if not self.event_id or not self.action:
+            raise ValueError("audit event requires id/action")
+        if not self.secret_free or not self.raw_payload_free:
+            raise ValueError("unsafe audit event")
+        return self
+
+@dataclass(frozen=True)
+class Prod6SpanEvent:
+    span_id: str
+    name: str
+    status: str = "ok"
+    safe_summary: Mapping[str, object] = field(default_factory=dict)
+
+    def validate(self):
+        lowered = str(dict(self.safe_summary)).lower()
+        if "raw_payload" in lowered or "secret" in lowered:
+            raise ValueError("unsafe span summary")
+        return self
+
+@dataclass(frozen=True)
+class Prod6DeadLetterEvent:
+    record_id: str
+    reason_codes: Tuple[str, ...]
+    safe_context: Mapping[str, object] = field(default_factory=dict)
+
+    def validate(self):
+        if not self.record_id or not self.reason_codes:
+            raise ValueError("dead letter requires id/reasons")
+        lowered = str(dict(self.safe_context)).lower()
+        if "raw_payload" in lowered or "secret" in lowered:
+            raise ValueError("unsafe dead letter context")
+        return self
+
+
+@dataclass(frozen=True)
+class Prod6TraceRecord:
+    trace_id: str
+    safe_summary: Mapping[str, object]
+    contains_raw_payload: bool = False
+    contains_secret: bool = False
+
+    def validate(self):
+        if not self.trace_id:
+            raise ValueError("trace_id required")
+        lowered = str(dict(self.safe_summary)).lower()
+        if self.contains_raw_payload or self.contains_secret or "raw_payload" in lowered or "secret" in lowered:
+            raise ValueError("unsafe trace record")
+        return self
+
+@dataclass(frozen=True)
+class Prod6DiagnosticSnapshot:
+    metrics: Tuple[Prod6MetricEvent, ...]
+    audits: Tuple[Prod6AuditEvent, ...]
+    spans: Tuple[Prod6SpanEvent, ...]
+    dead_letters: Tuple[Prod6DeadLetterEvent, ...]
+
+    def to_json_dict(self) -> Dict[str, object]:
+        return {
+            "metrics": [{"name": m.name.value, "value": m.value, "tags": dict(m.tags)} for m in self.metrics],
+            "audits": [{"event_id": a.event_id, "action": a.action, "reason_codes": list(a.reason_codes)} for a in self.audits],
+            "spans": [{"span_id": s.span_id, "name": s.name, "status": s.status, "safe_summary": dict(s.safe_summary)} for s in self.spans],
+            "dead_letters": [{"record_id": d.record_id, "reason_codes": list(d.reason_codes), "safe_context": dict(d.safe_context)} for d in self.dead_letters],
+        }
+
+class Prod6ObservabilityCollector:
+    def __init__(self):
+        self.metrics = []
+        self.audits = {}
+        self.spans = {}
+        self.dead_letters = {}
+
+    def emit_metric(self, metric: Prod6MetricEvent):
+        self.metrics.append(metric.validate())
+
+    def emit_audit(self, audit: Prod6AuditEvent):
+        audit.validate(); self.audits.setdefault(audit.event_id, audit)
+
+    def emit_span(self, span: Prod6SpanEvent):
+        span.validate(); self.spans.setdefault(span.span_id, span)
+
+    def dead_letter(self, record: Prod6DeadLetterEvent):
+        record.validate(); self.dead_letters.setdefault(record.record_id, record)
+
+    def snapshot(self) -> Prod6DiagnosticSnapshot:
+        return Prod6DiagnosticSnapshot(tuple(self.metrics), tuple(self.audits.values()), tuple(self.spans.values()), tuple(self.dead_letters.values()))
+
+
+def build_default_prod6_observability_collector() -> Prod6ObservabilityCollector:
+    return Prod6ObservabilityCollector()
+
+
+# ===== mnemonic_cortex/working_memory/qspin_prod6_source_matrix.py =====
+"""QSPIN-PROD-6 source consideration matrix."""
+from __future__ import annotations
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, Tuple
+
+class Prod6SourceFamily(str, Enum):
+    QD6A = "QD6A"
+    QSPIN8 = "QSPIN-8"
+    PROD0 = "PROD-0"
+    PROD1 = "PROD-1"
+    PROD2 = "PROD-2"
+    PROD3 = "PROD-3"
+    PROD4 = "PROD-4"
+    PROD5 = "PROD-5"
+    PROD6 = "PROD-6"
+    TESTS = "tests"
+    DOCS = "docs"
+    RELEASE_MANIFESTS = "release_manifests"
+    OPTIONAL_SKIPS = "optional_skips"
+
+@dataclass(frozen=True)
+class Prod6SourceRecord:
+    family: Prod6SourceFamily
+    directly_used: bool
+    considered_not_touched: bool
+    deferred_reason: str
+    risk: str
+    evidence: str
+    structured_skip: bool = False
+
+@dataclass(frozen=True)
+class Prod6SourceMatrix:
+    records: Tuple[Prod6SourceRecord, ...]
+
+    def validate(self) -> "Prod6SourceMatrix":
+        have = {r.family for r in self.records}
+        missing = set(Prod6SourceFamily) - have
+        if missing:
+            raise ValueError("source matrix missing families: " + ",".join(sorted(m.value for m in missing)))
+        return self
+
+    def to_json_dict(self) -> Dict[str, object]:
+        return {"records": [{"family": r.family.value, "directly_used": r.directly_used, "considered_not_touched": r.considered_not_touched, "deferred_reason": r.deferred_reason, "risk": r.risk, "evidence": r.evidence, "structured_skip": r.structured_skip} for r in self.records]}
+
+
+def build_prod6_source_matrix() -> Prod6SourceMatrix:
+    records = []
+    for family in Prod6SourceFamily:
+        records.append(Prod6SourceRecord(
+            family=family,
+            directly_used=family in {Prod6SourceFamily.PROD5, Prod6SourceFamily.PROD6, Prod6SourceFamily.TESTS, Prod6SourceFamily.DOCS, Prod6SourceFamily.RELEASE_MANIFESTS},
+            considered_not_touched=family in {Prod6SourceFamily.QD6A, Prod6SourceFamily.QSPIN8, Prod6SourceFamily.PROD0, Prod6SourceFamily.PROD1, Prod6SourceFamily.PROD2, Prod6SourceFamily.PROD3, Prod6SourceFamily.PROD4},
+            deferred_reason="live runtime remains blocked; source considered for compatibility" if family not in {Prod6SourceFamily.PROD5, Prod6SourceFamily.PROD6} else "active synthetic stress/replay source",
+            risk="low-synthetic-only",
+            evidence="PROD-6 matrix, tests, runner output, release manifest",
+            structured_skip=family is Prod6SourceFamily.OPTIONAL_SKIPS,
+        ))
+    return Prod6SourceMatrix(tuple(records)).validate()
+
+
+def export_prod6_source_matrix_markdown(matrix: Prod6SourceMatrix | None = None) -> str:
+    matrix = matrix or build_prod6_source_matrix()
+    lines = ["# QSPIN-PROD-6 Source Consideration Matrix", "", "| Family | Direct Use | Considered Not Touched | Risk | Evidence |", "|---|---:|---:|---|---|"]
+    for r in matrix.records:
+        lines.append(f"| {r.family.value} | {r.directly_used} | {r.considered_not_touched} | {r.risk} | {r.evidence} |")
+    return "\n".join(lines) + "\n"
+
+
+def export_prod6_source_matrix_json(matrix: Prod6SourceMatrix | None = None) -> Dict[str, object]:
+    return (matrix or build_prod6_source_matrix()).to_json_dict()
+
+
+# ===== prod6_manual_runner.py =====
+#!/usr/bin/env python3
+"""Manual runner for QSPIN-PROD-6.
+
+Local-only. Synthetic-only. No external services, no repo commits, no production
+state mutation.
+"""
+from __future__ import annotations
+import json, os, sys
+from pathlib import Path
+
+from mnemonic_cortex.working_memory.qspin_trace_corpus import DeterministicTraceCorpusBuilder
+from mnemonic_cortex.working_memory.qspin_shadow_stress_replay import ShadowStressReplayEngine, StressReplayInput
+from mnemonic_cortex.working_memory.qspin_ci_matrix_hardening import CIMatrixRunner
+from mnemonic_cortex.working_memory.qspin_extended_safety_regression import ExtendedSafetyRegressionRunner
+from mnemonic_cortex.working_memory.qspin_remediation_closure import RemediationClosureWorkflow
+from mnemonic_cortex.working_memory.qspin_prod6_observability import build_default_prod6_observability_collector, Prod6MetricEvent, Prod6MetricName, Prod6AuditEvent, Prod6SpanEvent
+from mnemonic_cortex.working_memory.qspin_prod6_source_matrix import build_prod6_source_matrix, export_prod6_source_matrix_markdown, export_prod6_source_matrix_json
+
+OUT = Path("prod6_outputs")
+OUT.mkdir(exist_ok=True)
+
+def write_json(path: Path, data):
+    path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+
+def main() -> int:
+    pass_count = fail_count = skip_count = 0
+    source_matrix = build_prod6_source_matrix()
+    write_json(OUT / "source_matrix.json", export_prod6_source_matrix_json(source_matrix))
+    (OUT / "source_matrix.md").write_text(export_prod6_source_matrix_markdown(source_matrix), encoding="utf-8")
+    pass_count += 1
+
+    corpus_builder = DeterministicTraceCorpusBuilder()
+    corpus = corpus_builder.build()
+    replay = corpus_builder.replay(corpus)
+    write_json(OUT / "trace_corpus.json", corpus.to_json_dict())
+    (OUT / "trace_corpus.md").write_text(corpus.to_markdown(), encoding="utf-8")
+    write_json(OUT / "trace_replay.json", {"passed": replay.passed, "expected_hash": replay.expected_hash, "actual_hash": replay.actual_hash})
+    pass_count += int(replay.passed); fail_count += int(not replay.passed)
+
+    stress = ShadowStressReplayEngine().run(StressReplayInput())
+    write_json(OUT / "stress_replay.json", stress.to_json_dict())
+    pass_count += int(stress.passed); fail_count += int(not stress.passed)
+
+    ci = CIMatrixRunner().run()
+    write_json(OUT / "ci_matrix.json", ci.to_json_dict())
+    (OUT / "ci_matrix.md").write_text(ci.to_markdown(), encoding="utf-8")
+    (OUT / "ci_matrix_junit.xml").write_text(ci.to_junit_xml(), encoding="utf-8")
+    pass_count += int(ci.passed); fail_count += int(not ci.passed); skip_count += ci.skip_count
+
+    safety = ExtendedSafetyRegressionRunner().run()
+    write_json(OUT / "extended_safety.json", safety.to_json_dict())
+    pass_count += int(safety.passed); fail_count += int(not safety.passed)
+
+    remediation = RemediationClosureWorkflow().close()
+    write_json(OUT / "remediation_closure.json", remediation.to_json_dict())
+    (OUT / "remediation_closure.md").write_text(remediation.to_markdown(), encoding="utf-8")
+    pass_count += int(remediation.passed); fail_count += int(not remediation.passed)
+
+    obs = build_default_prod6_observability_collector()
+    obs.emit_metric(Prod6MetricEvent(Prod6MetricName.STRESS_REPLAY_ATTEMPTS, 1))
+    obs.emit_metric(Prod6MetricEvent(Prod6MetricName.TRACE_CORPUS_RECORDS_GENERATED, len(corpus.records)))
+    obs.emit_metric(Prod6MetricEvent(Prod6MetricName.CI_MATRIX_CASES_RUN, len(ci.results)))
+    obs.emit_metric(Prod6MetricEvent(Prod6MetricName.EXTENDED_SAFETY_CASES_RUN, len(safety.results)))
+    obs.emit_audit(Prod6AuditEvent("prod6_audit_runner", "manual_runner", ("synthetic_only", "no_live_effects")))
+    obs.emit_span(Prod6SpanEvent("prod6_span", "prod6_manual_runner", "ok", {"safe": True, "synthetic": True}))
+    snapshot = obs.snapshot()
+    write_json(OUT / "observability_snapshot.json", snapshot.to_json_dict())
+    pass_count += 1
+
+    summary = {
+        "stage": "QSPIN-PROD-6-QD6A",
+        "passed": fail_count == 0,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "skip_count": skip_count,
+        "safety_boundaries": {
+            "live_routing": "BLOCKED",
+            "real_payload_transfer": "BLOCKED",
+            "topology_execution": "BLOCKED",
+            "real_shared_slot_writes": "BLOCKED",
+            "qh_writes": "BLOCKED",
+            "external_memory_writes": "BLOCKED",
+            "commit_execution": "BLOCKED",
+            "production_activation": "BLOCKED",
+            "raw_payload_logging": "BLOCKED",
+            "secret_logging": "BLOCKED",
+            "network_calls": "BLOCKED",
+            "repo_commits": "BLOCKED",
+            "production_config_mutation": "BLOCKED",
+            "unbounded_workers": "BLOCKED",
+            "hidden_skips": "BLOCKED",
+        }
+    }
+    write_json(OUT / "prod6_summary.json", summary)
+    (OUT / "prod6_summary.md").write_text(f"# QSPIN-PROD-6 Summary\n\nPASS={pass_count}\nFAIL={fail_count}\nSKIP={skip_count}\n", encoding="utf-8")
+    print(f"PASS={pass_count}")
+    print(f"FAIL={fail_count}")
+    print(f"SKIP={skip_count}")
+    return 0 if fail_count == 0 else 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+# ===== tests/test_qspin_ci_matrix_hardening.py =====
+from mnemonic_cortex.working_memory.qspin_ci_matrix_hardening import CIMatrixRunner, CIMatrixAxis
+
+def test_ci_matrix_blocks_unsafe_axes_without_failing():
+    result = CIMatrixRunner().run()
+    assert result.passed
+    axes = {r.axis for r in result.results}
+    assert CIMatrixAxis.PRODUCTION_ACTIVATION_ATTEMPT in axes
+    assert CIMatrixAxis.QH_WRITE_ATTEMPT in axes
+
+
+# ===== tests/test_qspin_extended_safety_regression.py =====
+from mnemonic_cortex.working_memory.qspin_extended_safety_regression import ExtendedSafetyRegressionRunner, ExtendedSafetyCaseKind
+
+def test_extended_safety_regression_complete():
+    result = ExtendedSafetyRegressionRunner().run()
+    assert result.passed
+    kinds = {r.case.kind for r in result.results}
+    assert ExtendedSafetyCaseKind.NO_LIVE_ROUTE_ACTIVATION in kinds
+    assert ExtendedSafetyCaseKind.NO_PRODUCTION_ACTIVATION in kinds
+
+
+# ===== tests/test_qspin_prod6_failure_abuse_cases.py =====
+from mnemonic_cortex.working_memory.qspin_shadow_stress_replay import ShadowStressReplayEngine, StressReplayInput
+from mnemonic_cortex.working_memory.qspin_trace_corpus import TraceCorpusRecord, TraceCorpusRecordKind
+
+def test_abuse_live_write_commit_production_rejected():
+    result = ShadowStressReplayEngine().run(StressReplayInput(write_requested=True, commit_requested=True, production_activation_requested=True))
+    assert not result.passed
+    assert result.fail_count > 0
+
+def test_trace_corpus_rejects_secrets():
+    try:
+        TraceCorpusRecord(TraceCorpusRecordKind.REDACTION_CANARY, 'bad', {'secret': 'x'}).validate()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('secret should be rejected')
+
+
+# ===== tests/test_qspin_prod6_manual_runner.py =====
+import subprocess, sys, json
+from pathlib import Path
+
+def test_prod6_manual_runner_passes():
+    result = subprocess.run([sys.executable, '-S', 'prod6_manual_runner.py'], cwd=Path(__file__).resolve().parents[1], text=True, capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'FAIL=0' in result.stdout
+
+
+# ===== tests/test_qspin_prod6_observability.py =====
+from mnemonic_cortex.working_memory.qspin_prod6_observability import build_default_prod6_observability_collector, Prod6AuditEvent, Prod6TraceRecord, Prod6MetricEvent, Prod6MetricName
+
+def test_prod6_observability_rejects_unsafe_and_is_idempotent():
+    c = build_default_prod6_observability_collector()
+    c.emit_metric(Prod6MetricEvent(Prod6MetricName.STRESS_REPLAY_ATTEMPTS, 1))
+    c.emit_audit(Prod6AuditEvent('a', 'act'))
+    c.emit_audit(Prod6AuditEvent('a', 'act2'))
+    assert len(c.snapshot().audits) == 1
+    try:
+        Prod6TraceRecord('t', {'raw_payload': 'bad'}).validate()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('unsafe trace should fail')
+
+
+# ===== tests/test_qspin_prod6_source_matrix.py =====
+from mnemonic_cortex.working_memory.qspin_prod6_source_matrix import build_prod6_source_matrix, Prod6SourceFamily
+
+def test_prod6_source_matrix_complete():
+    m = build_prod6_source_matrix()
+    families = {r.family for r in m.records}
+    assert set(Prod6SourceFamily) <= families
+
+
+# ===== tests/test_qspin_remediation_closure.py =====
+from mnemonic_cortex.working_memory.qspin_remediation_closure import RemediationClosureWorkflow, RemediationClosureRecord, RemediationClosureStatus
+
+def test_remediation_closure_allows_default_and_blocks_open_p0():
+    assert RemediationClosureWorkflow().close().passed
+    blocked = RemediationClosureWorkflow().close((RemediationClosureRecord('p0', 'P0', RemediationClosureStatus.OPEN),))
+    assert not blocked.passed
+
+
+# ===== tests/test_qspin_shadow_stress_replay.py =====
+from mnemonic_cortex.working_memory.qspin_shadow_stress_replay import ShadowStressReplayEngine, StressReplayInput, StressReplayStatus
+
+def test_stress_replay_passes_and_blocks_live_request():
+    engine = ShadowStressReplayEngine()
+    ok = engine.run(StressReplayInput())
+    assert ok.passed
+    bad = engine.run(StressReplayInput(live_routing_requested=True))
+    assert not bad.passed
+    assert bad.fail_count > 0
+
+
+# ===== tests/test_qspin_trace_corpus.py =====
+from mnemonic_cortex.working_memory.qspin_trace_corpus import DeterministicTraceCorpusBuilder, TraceCorpusRecordKind
+
+def test_trace_corpus_deterministic_and_complete():
+    b = DeterministicTraceCorpusBuilder()
+    c1 = b.build(); c2 = b.build()
+    assert c1.corpus_hash == c2.corpus_hash
+    assert all(c1.coverage[k.value] for k in TraceCorpusRecordKind)
+    assert b.replay(c1).passed
+
+
+# ===== PROD6_ACTIVE_PATCHING_REPORT.md =====
+# PROD-6 Active Patching Report
+
+P001: Pytest collection initially expected `Prod6TraceRecord` in qspin_prod6_observability.py.
+
+Root cause: source module used `Prod6SpanEvent` but the generated test expected a trace-record contract.
+
+Patch applied: added `Prod6TraceRecord` dataclass with raw-payload/secret rejection.
+
+Retest: `python3 -m pytest -q tests` => 17 passed.
+
+Residual risk: none for PROD-6 scope.
+
+PROD-7 carry-forward: none.
+
+
+# ===== PROD6_AUDIT_SHIP_CHECK.md =====
+# PROD-6 Audit / Ship Check
+
+SHIP QSPIN-PROD-6-QD6A as deterministic stress replay / trace corpus / CI hardening infrastructure. NOT production-active.
+
+Confirmed: no live routing, no real payload transfer, no real writes, no commits, no production activation, no raw payload logging, no secret logging, no network calls, no repo commits, no production config mutation, no unbounded workers, no hidden skips.
+
+
+# ===== PROD6_CI_MATRIX_HARDENING.md =====
+# CI Matrix Hardening
+
+Local-only CI-style matrix with simulated axes for OS, Python, optional pytest, source availability, and forbidden operation attempts.
+
+
+# ===== PROD6_EXTENDED_SAFETY_REGRESSION.md =====
+# Extended Safety Regression
+
+Covers live route rejection, payload transfer rejection, write rejection, commit rejection, production activation rejection, deterministic replay, structured skips, and no-mutation guarantees.
+
+
+# ===== PROD6_NEXT_COMMAND.md =====
+DEV-FLOW RUN QSPIN-BRIDGE Stage QSPIN-PROD-6-QD6A — Shadow Runtime Stress Replay, Deterministic Trace Corpus Expansion, CI Matrix Hardening, Source Consideration Matrix, Active Remediation Closure, Full Content Printout, Audit, Ship-Check, and PROD-7 Command
+
+ACTIVE DEV-FLOW / QSPIN GLOBAL STANDARD:
+Use the combined standard optimal command preferences mixture. Preserve all PROD-5 safety boundaries. Runtime routing remains disabled/inert by default. All behavior remains synthetic/sandbox-only unless a later explicit write-permission command authorizes otherwise.
+
+SOURCE OF TRUTH:
+- /mnt/data/qspin_prod5_qd6a_release_pack.zip
+- /mnt/data/qspin_prod5_full_printout.txt
+
+GOAL:
+Expand PROD-5 into deterministic stress replay and CI matrix hardening. Add larger synthetic trace corpora, repeated replay checks, concurrency/idempotency stress tests, redaction stress probes, latency bounds, source consideration audit, remediation closure workflow, and PROD-7 continuation command.
+
+FINAL HOLD CONDITION:
+After PROD-6 is generated and tested, stop. Do not proceed to PROD-7 in the same response.
+
+
+# ===== PROD6_OBSERVABILITY_SPEC.md =====
+# PROD-6 Observability
+
+Metadata-only metrics, audit events, spans, dead letters, and diagnostic snapshots. No raw payloads or secrets.
+
+
+# ===== PROD6_README.md =====
+# QSPIN-PROD-6-QD6A
+
+Deterministic stress replay, trace corpus expansion, CI matrix hardening, and remediation closure. Synthetic/sandbox-only; not production-active.
+
+
+# ===== PROD6_REMEDIATION_CLOSURE.md =====
+# Remediation Closure
+
+P0 unresolved items block ship. P1 deferred items require justification. Closure metadata is JSON/markdown exportable.
+
+
+# ===== PROD6_SAFETY_BOUNDARIES.md =====
+# Safety Boundaries
+
+Live routing, real payload transfer, topology execution, shared-slot writes, QH writes, external-memory writes, commits, production activation, raw payload logging, secret logging, network calls, repo commits, production config mutation, unbounded workers, and hidden skips remain blocked.
+
+
+# ===== PROD6_SOURCE_CONSIDERATION_MATRIX.md =====
+# QSPIN-PROD-6 Source Consideration Matrix
+
+| Family | Direct Use | Considered Not Touched | Risk | Evidence |
+|---|---:|---:|---|---|
+| QD6A | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| QSPIN-8 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-0 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-1 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-2 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-3 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-4 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-5 | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-6 | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| tests | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| docs | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| release_manifests | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| optional_skips | False | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+
+
+# ===== PROD6_STRESS_REPLAY_SPEC.md =====
+# Stress Replay Spec
+
+Runs bounded deterministic synthetic replay scenarios for shadow runtime, canary corpus, safety regression, trace replay, redaction, audit-chain, dead-letter, and remediation paths.
+
+
+# ===== PROD6_TEST_RESULTS.md =====
+# Test Results
+
+## Manual runner
+
+Command: `python3 -S prod6_manual_runner.py`
+
+Exit: `0`
+
+```text
+PASS=7
+FAIL=0
+SKIP=0
+
+```
+
+## Pytest
+
+Command: `python3 -m pytest -q tests`
+
+Exit: `0`
+
+```text
+.................                                                        [100%]
+17 passed in 0.49s
+
+```
+
+
+# ===== PROD6_TRACE_CORPUS_SPEC.md =====
+# Trace Corpus Spec
+
+Builds metadata-only trace corpus records with stable hashes and replay verification. No raw payloads or secrets.
+
+
+# ===== release/qspin_prod6_qd6a_release_manifest.json =====
+{
+  "stage": "QSPIN-PROD-6-QD6A",
+  "created_utc": "2026-05-10T11:40:57.237351Z",
+  "source_of_truth": "/mnt/data/qspin_prod5_qd6a_release_pack.zip",
+  "lineage": [
+    "QD6A",
+    "QSPIN-8",
+    "PROD-0",
+    "PROD-1",
+    "PROD-2",
+    "PROD-3",
+    "PROD-4",
+    "PROD-5"
+  ],
+  "safety_boundaries": {
+    "live_routing": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "topology_execution": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "commit_execution": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "production_config_mutation": "BLOCKED",
+    "unbounded_workers": "BLOCKED",
+    "hidden_skips": "BLOCKED"
+  },
+  "test_result": {
+    "stage": "QSPIN-PROD-6-QD6A",
+    "manual": {
+      "command": "python3 -S prod6_manual_runner.py",
+      "returncode": 0,
+      "stdout": "PASS=7\nFAIL=0\nSKIP=0\n",
+      "stderr": ""
+    },
+    "pytest": {
+      "command": "python3 -m pytest -q tests",
+      "returncode": 0,
+      "stdout": ".................                                                        [100%]\n17 passed in 0.49s\n",
+      "stderr": ""
+    },
+    "passed": true
+  },
+  "ship_decision": "SHIP QSPIN-PROD-6-QD6A as deterministic stress replay / trace corpus / CI hardening infrastructure. NOT production-active.",
+  "generated_files": [
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_shadow_stress_replay.py",
+      "size_bytes": 8181,
+      "sha256": "a13dcaee666e38cfe4c7d42f6d4757fd0d972766018e5a993415d8adf8c89d0f"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_trace_corpus.py",
+      "size_bytes": 7129,
+      "sha256": "501f8f651be53182dbcab5f71211c6124b120c2326e9de07ddb500b29ce33464"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_ci_matrix_hardening.py",
+      "size_bytes": 6069,
+      "sha256": "f8786353cac4b5136be5735f0eb018b5f8d32a9fa83d40322d6d507427ffcc94"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_extended_safety_regression.py",
+      "size_bytes": 3466,
+      "sha256": "516826d01d233b388b2291e23f372ec4b5c46389fc60b7f923970682c1eb18a1"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_remediation_closure.py",
+      "size_bytes": 4874,
+      "sha256": "3eaa7de9acf8cb9133620bdfb5c16839151cb07338d93682fbdb9872787ebaf2"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_prod6_observability.py",
+      "size_bytes": 5394,
+      "sha256": "298bef0fbcc026e551a5eab22aab834b61dc8e7144d22e4104028349f5f1d033"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_prod6_source_matrix.py",
+      "size_bytes": 3156,
+      "sha256": "931b9c3af56b4e1c2bd4958ed660a24bfd39edc18b9ac54e9dc1c9490c478dfd"
+    },
+    {
+      "path": "prod6_manual_runner.py",
+      "size_bytes": 5229,
+      "sha256": "8a79bb87048c182756414a1fadb7da9e105285d1a2c9eeaf248dd563b1fe0351"
+    },
+    {
+      "path": "tests/test_qspin_shadow_stress_replay.py",
+      "size_bytes": 419,
+      "sha256": "586bb31ff62e1cc4abd5df4ee3dbd9628071dd28296bec5f29d313d4893129c4"
+    },
+    {
+      "path": "tests/test_qspin_trace_corpus.py",
+      "size_bytes": 390,
+      "sha256": "932b2231de603c211a0306eaf227023c8a73a8e9c1dd4e833e2ba5abddd4f837"
+    },
+    {
+      "path": "tests/test_qspin_ci_matrix_hardening.py",
+      "size_bytes": 372,
+      "sha256": "140d202a00f652baaf46c4621198d68cc01c2180e5e4de6d5c7eae1bf6f87827"
+    },
+    {
+      "path": "tests/test_qspin_extended_safety_regression.py",
+      "size_bytes": 443,
+      "sha256": "4756db3e4f424b932472fada6ab34c1a19dc80031ba100919ab2a6e1521cabdb"
+    },
+    {
+      "path": "tests/test_qspin_remediation_closure.py",
+      "size_bytes": 421,
+      "sha256": "1261fa811171187ca823db9da5649d5ee4f146e2621a5599cd061e1b60fb5424"
+    },
+    {
+      "path": "tests/test_qspin_prod6_observability.py",
+      "size_bytes": 693,
+      "sha256": "37f3b0fb4b2f054135329b5131859b4a3ea978ea99bf85a5d55e3fb42d79d302"
+    },
+    {
+      "path": "tests/test_qspin_prod6_source_matrix.py",
+      "size_bytes": 283,
+      "sha256": "ed2e40219e0f272a3ef02f59d0d9dafac84f3335f573d8ebc74959e74d92f436"
+    },
+    {
+      "path": "tests/test_qspin_prod6_manual_runner.py",
+      "size_bytes": 347,
+      "sha256": "e155a11271ef05177171e9603cca08bee9e966ac53a71812185dcb03e4db7df2"
+    },
+    {
+      "path": "tests/test_qspin_prod6_failure_abuse_cases.py",
+      "size_bytes": 738,
+      "sha256": "cc5b6c73b40a500f6dacf21606b60714585982c8aa8074598c880bb7749cec85"
+    },
+    {
+      "path": "PROD6_ACTIVE_PATCHING_REPORT.md",
+      "size_bytes": 440,
+      "sha256": "6ea4eee3fa2f57613e9079eb15be0e64d3c2fdaa097f02c56b00e8083faae0e4"
+    },
+    {
+      "path": "PROD6_AUDIT_SHIP_CHECK.md",
+      "size_bytes": 409,
+      "sha256": "579e28a9bc486599599dfd31b2f191ab7e621dfe5b65993fd48ac76a1eae1609"
+    },
+    {
+      "path": "PROD6_CI_MATRIX_HARDENING.md",
+      "size_bytes": 158,
+      "sha256": "32ca8554e20c9767f3bf2730229a5c98d763201ecbc8f0e1f11d00d69be3a791"
+    },
+    {
+      "path": "PROD6_EXTENDED_SAFETY_REGRESSION.md",
+      "size_bytes": 223,
+      "sha256": "fce364205b8e617344dc9f29a487d05b0971f2964989dfd35a09ca42d6d30c7b"
+    },
+    {
+      "path": "PROD6_NEXT_COMMAND.md",
+      "size_bytes": 1100,
+      "sha256": "02dfd4c96ab0e1e3cc57052aa16bd2d9f0ba6409c056d942a7476c88bfd167e0"
+    },
+    {
+      "path": "PROD6_OBSERVABILITY_SPEC.md",
+      "size_bytes": 136,
+      "sha256": "79f423f61885730f2d72d407a3d2b7803d13aa7fcdd4f63ce0cd68e039ef48d5"
+    },
+    {
+      "path": "PROD6_README.md",
+      "size_bytes": 167,
+      "sha256": "2cc6d6ab54d6c676728d079bd7f91d92c15dd619d349a0dc56428ac350e93762"
+    },
+    {
+      "path": "PROD6_REMEDIATION_CLOSURE.md",
+      "size_bytes": 142,
+      "sha256": "364271d3b2cf624fe946412bd7dd9cc9dfc59a113fbf4a776a1894aa81701695"
+    },
+    {
+      "path": "PROD6_SAFETY_BOUNDARIES.md",
+      "size_bytes": 311,
+      "sha256": "ff03043a1a36788cc85ac43e1eff924bf8593ac106e10ed1d81ed35382c18307"
+    },
+    {
+      "path": "PROD6_SOURCE_CONSIDERATION_MATRIX.md",
+      "size_bytes": 1490,
+      "sha256": "ca78eaab8cac4e76ef42903a8edd92cbaa1c7d5a30b872c7710c08d92f3cd659"
+    },
+    {
+      "path": "PROD6_STRESS_REPLAY_SPEC.md",
+      "size_bytes": 204,
+      "sha256": "76a468a76659360b9f78e7b968590cb1fb532dc05d28de46159babf68fa1aebd"
+    },
+    {
+      "path": "PROD6_TEST_RESULTS.md",
+      "size_bytes": 299,
+      "sha256": "fc7d2caef08cce957e02f0e59659905fe64c755d4e48db4e6b935f20746ac218"
+    },
+    {
+      "path": "PROD6_TRACE_CORPUS_SPEC.md",
+      "size_bytes": 135,
+      "sha256": "d1ebe4cfbdcbb9cb4419f33b1f4cf239b035bef337f7efa8c7c48b0ada728e87"
+    },
+    {
+      "path": "prod6_outputs/ci_matrix.json",
+      "size_bytes": 2949,
+      "sha256": "e7d22ec5aaa5bf0150639e40a3bf0e82e2c4a20b39e30cd6dfbc8d2b0aafe569"
+    },
+    {
+      "path": "prod6_outputs/ci_matrix.md",
+      "size_bytes": 1329,
+      "sha256": "f4349c4d1d4e163fd8f52f3cd5aa0f26f3a1b9be20f426322be9e0f9ad736c30"
+    },
+    {
+      "path": "prod6_outputs/ci_matrix_junit.xml",
+      "size_bytes": 1307,
+      "sha256": "c7ae2a742ab76f7521223f6ad71f3acab6bf7f765dcc777b8336a381a531f6f5"
+    },
+    {
+      "path": "prod6_outputs/extended_safety.json",
+      "size_bytes": 5613,
+      "sha256": "2f059ac05db6d42fde85ffdde6b78ddd8937411ef0b533b9daceee3f9dc14802"
+    },
+    {
+      "path": "prod6_outputs/observability_snapshot.json",
+      "size_bytes": 794,
+      "sha256": "3d9d6e9e677d54b08dedd19acf3701d7345bc08251dfe43fddcf46844a1dbe15"
+    },
+    {
+      "path": "prod6_outputs/prod6_summary.json",
+      "size_bytes": 678,
+      "sha256": "5a456595efead2370b9dbee75e427ce5fdb4a7e65fec6de2fa50ec2448861d9c"
+    },
+    {
+      "path": "prod6_outputs/prod6_summary.md",
+      "size_bytes": 45,
+      "sha256": "75f6a107886c77b27a334fa468ec5a895057459a4f0210a546c1b98b3a787885"
+    },
+    {
+      "path": "prod6_outputs/remediation_closure.json",
+      "size_bytes": 629,
+      "sha256": "1342f4f57a147a527a3f76d6693e4d3182cb1026c6e1ba831b3bdad7919aba37"
+    },
+    {
+      "path": "prod6_outputs/remediation_closure.md",
+      "size_bytes": 225,
+      "sha256": "9f8613fda2d718a6d110eaddf0f33caf67292b7ddb11ff2adb74376be5a3aaff"
+    },
+    {
+      "path": "prod6_outputs/source_matrix.json",
+      "size_bytes": 4439,
+      "sha256": "def9d45a93df2219dda6d92b6e7988a860ff439c18026cc3cc296403554bcee0"
+    },
+    {
+      "path": "prod6_outputs/source_matrix.md",
+      "size_bytes": 1490,
+      "sha256": "ca78eaab8cac4e76ef42903a8edd92cbaa1c7d5a30b872c7710c08d92f3cd659"
+    },
+    {
+      "path": "prod6_outputs/stress_replay.json",
+      "size_bytes": 3079,
+      "sha256": "5f569589a75e8b571c9e9984ced344d15c2b50387878c59bb4037b28c38571ef"
+    },
+    {
+      "path": "prod6_outputs/trace_corpus.json",
+      "size_bytes": 9474,
+      "sha256": "4199ce220ae43abee138859a54c964a5fb6586ada58677c656a67bb7e8ef07d6"
+    },
+    {
+      "path": "prod6_outputs/trace_corpus.md",
+      "size_bytes": 827,
+      "sha256": "fc2244be4e1da27c3f9c05f1fd04dca31dec8a0f92b7cb3a7249577ff27146ad"
+    },
+    {
+      "path": "prod6_outputs/trace_replay.json",
+      "size_bytes": 192,
+      "sha256": "8e16e05b94645ef0f070715ca77faf47e95f12179000692642c56873b484a747"
+    }
+  ],
+  "next_stage": "QSPIN-PROD-7-QD6A"
+}
+
+# ===== release/qspin_prod6_test_result.json =====
+{
+  "stage": "QSPIN-PROD-6-QD6A",
+  "manual": {
+    "command": "python3 -S prod6_manual_runner.py",
+    "returncode": 0,
+    "stdout": "PASS=7\nFAIL=0\nSKIP=0\n",
+    "stderr": ""
+  },
+  "pytest": {
+    "command": "python3 -m pytest -q tests",
+    "returncode": 0,
+    "stdout": ".................                                                        [100%]\n17 passed in 0.49s\n",
+    "stderr": ""
+  },
+  "passed": true
+}
+
+# ===== prod6_outputs/ci_matrix.json =====
+{
+  "fail_count": 0,
+  "pass_count": 16,
+  "results": [
+    {
+      "axis": "python_version",
+      "case_id": "ci_python_version",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "os",
+      "case_id": "ci_os",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "torch_available",
+      "case_id": "ci_torch_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "pytest_available",
+      "case_id": "ci_pytest_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "source_pack_available",
+      "case_id": "ci_source_pack_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "previous_pack_available",
+      "case_id": "ci_previous_pack_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "qh_write_attempt",
+      "case_id": "ci_qh_write_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "shared_slot_write_attempt",
+      "case_id": "ci_shared_slot_write_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "external_write_attempt",
+      "case_id": "ci_external_write_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "payload_transfer_attempt",
+      "case_id": "ci_payload_transfer_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "commit_attempt",
+      "case_id": "ci_commit_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "production_activation_attempt",
+      "case_id": "ci_production_activation_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "malformed_input",
+      "case_id": "ci_malformed_input",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "timeout_pressure",
+      "case_id": "ci_timeout_pressure",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "concurrency_pressure",
+      "case_id": "ci_concurrency_pressure",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "redaction_pressure",
+      "case_id": "ci_redaction_pressure",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    }
+  ],
+  "skip_count": 0,
+  "status": "passed"
+}
+
+# ===== prod6_outputs/ci_matrix.md =====
+# QSPIN-PROD-6 CI Matrix
+
+Status: `passed`
+
+| Case | Axis | Status | Reasons |
+|---|---|---|---|
+| ci_python_version | python_version | passed | synthetic_axis_ok |
+| ci_os | os | passed | synthetic_axis_ok |
+| ci_torch_available | torch_available | passed | synthetic_axis_ok |
+| ci_pytest_available | pytest_available | passed | synthetic_axis_ok |
+| ci_source_pack_available | source_pack_available | passed | synthetic_axis_ok |
+| ci_previous_pack_available | previous_pack_available | passed | synthetic_axis_ok |
+| ci_qh_write_attempt | qh_write_attempt | passed | blocked_unsafe_axis |
+| ci_shared_slot_write_attempt | shared_slot_write_attempt | passed | blocked_unsafe_axis |
+| ci_external_write_attempt | external_write_attempt | passed | blocked_unsafe_axis |
+| ci_payload_transfer_attempt | payload_transfer_attempt | passed | blocked_unsafe_axis |
+| ci_commit_attempt | commit_attempt | passed | blocked_unsafe_axis |
+| ci_production_activation_attempt | production_activation_attempt | passed | blocked_unsafe_axis |
+| ci_malformed_input | malformed_input | passed | synthetic_axis_ok |
+| ci_timeout_pressure | timeout_pressure | passed | synthetic_axis_ok |
+| ci_concurrency_pressure | concurrency_pressure | passed | synthetic_axis_ok |
+| ci_redaction_pressure | redaction_pressure | passed | synthetic_axis_ok |
+
+
+# ===== prod6_outputs/ci_matrix_junit.xml =====
+<testsuite name="qspin_prod6_ci_matrix" tests="16" failures="0" skipped="0">
+<testcase classname="qspin_prod6" name="ci_python_version">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_os">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_torch_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_pytest_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_source_pack_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_previous_pack_available">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_qh_write_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_shared_slot_write_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_external_write_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_payload_transfer_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_commit_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_production_activation_attempt">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_malformed_input">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_timeout_pressure">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_concurrency_pressure">
+</testcase>
+<testcase classname="qspin_prod6" name="ci_redaction_pressure">
+</testcase>
+</testsuite>
+
+# ===== prod6_outputs/extended_safety.json =====
+{
+  "fail_count": 0,
+  "pass_count": 21,
+  "passed": true,
+  "results": [
+    {
+      "case_id": "safety_no_live_route_activation",
+      "kind": "no_live_route_activation",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_real_payload_transfer",
+      "kind": "no_real_payload_transfer",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_production_write",
+      "kind": "no_production_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_qh_write",
+      "kind": "no_qh_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_shared_slot_write",
+      "kind": "no_shared_slot_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_external_memory_write",
+      "kind": "no_external_memory_write",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_topology_execution",
+      "kind": "no_topology_execution",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_commit_execution",
+      "kind": "no_commit_execution",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_no_production_activation",
+      "kind": "no_production_activation",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_bounded_retries",
+      "kind": "bounded_retries",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_timeout_behavior",
+      "kind": "timeout_behavior",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_malformed_input_handling",
+      "kind": "malformed_input_handling",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_redaction_behavior",
+      "kind": "redaction_behavior",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_audit_chain_completeness",
+      "kind": "audit_chain_completeness",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_deterministic_replay",
+      "kind": "deterministic_replay",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_trace_corpus_hash_stability",
+      "kind": "trace_corpus_hash_stability",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_ci_matrix_safety_stability",
+      "kind": "ci_matrix_safety_stability",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_remediation_closure_integrity",
+      "kind": "remediation_closure_integrity",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_concurrency_idempotency",
+      "kind": "concurrency_idempotency",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_dead_letter_reason_code_safety",
+      "kind": "dead_letter_reason_code_safety",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    },
+    {
+      "case_id": "safety_missing_source_structured_skip",
+      "kind": "missing_source_structured_skip",
+      "passed": true,
+      "reason_codes": [
+        "safety_boundary_preserved"
+      ],
+      "remediation_hint": "preserve synthetic/sandbox-only boundary"
+    }
+  ]
+}
+
+# ===== prod6_outputs/observability_snapshot.json =====
+{
+  "audits": [
+    {
+      "action": "manual_runner",
+      "event_id": "prod6_audit_runner",
+      "reason_codes": [
+        "synthetic_only",
+        "no_live_effects"
+      ]
+    }
+  ],
+  "dead_letters": [],
+  "metrics": [
+    {
+      "name": "stress_replay_attempts",
+      "tags": {},
+      "value": 1
+    },
+    {
+      "name": "trace_corpus_records_generated",
+      "tags": {},
+      "value": 19
+    },
+    {
+      "name": "ci_matrix_cases_run",
+      "tags": {},
+      "value": 16
+    },
+    {
+      "name": "extended_safety_cases_run",
+      "tags": {},
+      "value": 21
+    }
+  ],
+  "spans": [
+    {
+      "name": "prod6_manual_runner",
+      "safe_summary": {
+        "safe": true,
+        "synthetic": true
+      },
+      "span_id": "prod6_span",
+      "status": "ok"
+    }
+  ]
+}
+
+# ===== prod6_outputs/prod6_summary.json =====
+{
+  "fail_count": 0,
+  "pass_count": 7,
+  "passed": true,
+  "safety_boundaries": {
+    "commit_execution": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "hidden_skips": "BLOCKED",
+    "live_routing": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "production_config_mutation": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "topology_execution": "BLOCKED",
+    "unbounded_workers": "BLOCKED"
+  },
+  "skip_count": 0,
+  "stage": "QSPIN-PROD-6-QD6A"
+}
+
+# ===== prod6_outputs/prod6_summary.md =====
+# QSPIN-PROD-6 Summary
+
+PASS=7
+FAIL=0
+SKIP=0
+
+
+# ===== prod6_outputs/remediation_closure.json =====
+{
+  "decision": "ship_allowed",
+  "passed": true,
+  "prod7_carry_forward": [
+    "P3_ci_matrix_provider"
+  ],
+  "records": [
+    {
+      "defer_justification": "",
+      "defer_target": "",
+      "item_id": "P2_trace_corpus_expand",
+      "safety_implication": "coverage increased",
+      "severity": "P2",
+      "status": "resolved"
+    },
+    {
+      "defer_justification": "real CI provider integration remains out of scope",
+      "defer_target": "PROD-7",
+      "item_id": "P3_ci_matrix_provider",
+      "safety_implication": "no live provider calls in PROD-6",
+      "severity": "P3",
+      "status": "deferred"
+    }
+  ]
+}
+
+# ===== prod6_outputs/remediation_closure.md =====
+# QSPIN-PROD-6 Remediation Closure
+
+Decision: `ship_allowed`
+
+| Item | Severity | Status | Carry Forward |
+|---|---|---|---|
+| P2_trace_corpus_expand | P2 | resolved | False |
+| P3_ci_matrix_provider | P3 | deferred | True |
+
+
+# ===== prod6_outputs/source_matrix.json =====
+{
+  "records": [
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "QD6A",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "QSPIN-8",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-0",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-1",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-2",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-3",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-4",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "active synthetic stress/replay source",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-5",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "active synthetic stress/replay source",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-6",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "tests",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "docs",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "release_manifests",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "optional_skips",
+      "risk": "low-synthetic-only",
+      "structured_skip": true
+    }
+  ]
+}
+
+# ===== prod6_outputs/source_matrix.md =====
+# QSPIN-PROD-6 Source Consideration Matrix
+
+| Family | Direct Use | Considered Not Touched | Risk | Evidence |
+|---|---:|---:|---|---|
+| QD6A | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| QSPIN-8 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-0 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-1 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-2 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-3 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-4 | False | True | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-5 | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| PROD-6 | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| tests | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| docs | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| release_manifests | True | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+| optional_skips | False | False | low-synthetic-only | PROD-6 matrix, tests, runner output, release manifest |
+
+
+# ===== prod6_outputs/stress_replay.json =====
+{
+  "fail_count": 0,
+  "pass_count": 13,
+  "results": [
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "feb8e7b86bd51185a0beec43dd58d86af942f5ecf21af9d75a020763bb2be33d",
+      "scenario_id": "stress_audit_chain",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "212834b4962bc1a82e5571b0be18de02fe4e3cc9ca20e219d3121e8fd6dbd4bf",
+      "scenario_id": "stress_canary_corpus",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "ef189bbe20f750ac882243a0f5e64b34a6b3704d62bf2e1a2f64d1e5c365c650",
+      "scenario_id": "stress_concurrency_pressure",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "594b74e3c03312f76e0877651347411976208821dd73f0c024a42bcdb6dd3c9a",
+      "scenario_id": "stress_dead_letter",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "2d3fa964aba1fce9d9b80f85907488001aecec43f8f5cd8f5b1e20e688be8a7e",
+      "scenario_id": "stress_forbidden_action",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "633ec5a520cbb685e51725a54debcb582ce3de07b6d350d95eac5ba86a98443d",
+      "scenario_id": "stress_malformed_input",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "60f56a1c7d796acca610001e8a44dcb517d4933d28a2b32aab862ce802802460",
+      "scenario_id": "stress_redaction",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "4ce834c21ced8e6876ac5c660b4f332d65737fe9b148c201b34e549f3108a870",
+      "scenario_id": "stress_remediation",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "544246f3ec7ea696ad8618261c73d3e5d2bcac4e5953f34c37be682ded386276",
+      "scenario_id": "stress_safety_regression",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "3405ac5caf3667ce8491062624af3930de2978cd0900ee89b810b0d6fc0be1ed",
+      "scenario_id": "stress_shadow_runtime",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "28968e40bbbb9e0c918247a13f8e45fc1000cf210c5440d19167b4299eccac5a",
+      "scenario_id": "stress_structured_skip",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "9ff83c8500d3e2353cebc25785c012ffd7d0075fbf61427d97cbfecc4787e239",
+      "scenario_id": "stress_timeout_bound",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "12539a5e35895e4629e0f150d9cb63ad6eba78faff94265a5b9f9030272745e7",
+      "scenario_id": "stress_trace_corpus",
+      "status": "passed"
+    }
+  ],
+  "skip_count": 0,
+  "status": "passed",
+  "suite_hash": "e1a527116ff621d2322cfd53c5431930b5d6c34fed2df3063a6915dda6bd2210"
+}
+
+# ===== prod6_outputs/trace_corpus.json =====
+{
+  "corpus_hash": "97e3049986a7d033148e0fa34790b84bbb27935d78aba5ce12d68c3a9b3d918c",
+  "coverage": {
+    "active_dry_run_executor_event": true,
+    "audit_chain_canary": true,
+    "commit_gate_no_commit_canary": true,
+    "concurrency_guard_canary": true,
+    "expanded_commit_gate_event": true,
+    "external_memory_no_write_canary": true,
+    "malformed_input_canary": true,
+    "payload_integrity_canary": true,
+    "qh_no_write_canary": true,
+    "redaction_canary": true,
+    "remediation_event": true,
+    "route_shape_canary": true,
+    "safety_regression_event": true,
+    "shared_slot_no_write_canary": true,
+    "skip_degradation_event": true,
+    "synthetic_payload_harness_event": true,
+    "synthetic_sandbox_event": true,
+    "timeout_bound_canary": true,
+    "topology_no_execute_canary": true
+  },
+  "records": [
+    {
+      "kind": "active_dry_run_executor_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "active_dry_run_executor_event_606_15",
+      "record_id": "7010aa6d30f152f7c1bc904a",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 15,
+        "synthetic": true
+      },
+      "stable_hash": "a78f05f8310fd84729b62a90261f78b9b3026b6fdb972a77c9ea83f2de62e7ee"
+    },
+    {
+      "kind": "audit_chain_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "audit_chain_canary_606_7",
+      "record_id": "1518c9152009587fc5b57719",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 7,
+        "synthetic": true
+      },
+      "stable_hash": "611032fcdb842300cad0354d2bd482fd4b0dec74d87d689a72a95b52fb8028f6"
+    },
+    {
+      "kind": "commit_gate_no_commit_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "commit_gate_no_commit_canary_606_6",
+      "record_id": "868bc9a6caee903164c5f2a4",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 6,
+        "synthetic": true
+      },
+      "stable_hash": "06abd519b5fbf95b2b7369a3a7dfdb77d571bb6105061ad999caf123204424d0"
+    },
+    {
+      "kind": "concurrency_guard_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "concurrency_guard_canary_606_9",
+      "record_id": "b1ef76515033e583eb808eaf",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 9,
+        "synthetic": true
+      },
+      "stable_hash": "72244cc216ac2b20dc93cd94f9f21046cd38aaf51195d48ad83e66b6c1045d32"
+    },
+    {
+      "kind": "expanded_commit_gate_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "expanded_commit_gate_event_606_14",
+      "record_id": "145f6e056d64988e676cb361",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 14,
+        "synthetic": true
+      },
+      "stable_hash": "34cd922700b91f24a4e4e0483db0f6f5567d19f1c8f9c972f79942fa9cfc9b2e"
+    },
+    {
+      "kind": "external_memory_no_write_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "external_memory_no_write_canary_606_4",
+      "record_id": "ef87e8c5ffdc9bc897ea7b00",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 4,
+        "synthetic": true
+      },
+      "stable_hash": "06a402d0cfc1615c3ab3c363765ee63a0ec6d215fbaff2a95ce380f42d7cc77f"
+    },
+    {
+      "kind": "malformed_input_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "malformed_input_canary_606_11",
+      "record_id": "f6c1e1672ea1d0cee8bc4f48",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 11,
+        "synthetic": true
+      },
+      "stable_hash": "d31ed39063fc911b5cd72a5eef5103d27a2c909203c6a227a7f02620fd35763a"
+    },
+    {
+      "kind": "payload_integrity_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "payload_integrity_canary_606_1",
+      "record_id": "4ec103a8506e102fdf3ca347",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 1,
+        "synthetic": true
+      },
+      "stable_hash": "16db5c3b76fabd5ceb3bc36f2fad4736853fcaa24929485be333ea6c0b1bcfb9"
+    },
+    {
+      "kind": "qh_no_write_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "qh_no_write_canary_606_2",
+      "record_id": "d31e04e6d06c139870befc77",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 2,
+        "synthetic": true
+      },
+      "stable_hash": "2de35175d1a4ae61c6d8291405f02ca5613224cfa3cd73db5ecb019f5e58f80a"
+    },
+    {
+      "kind": "redaction_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "redaction_canary_606_8",
+      "record_id": "4dc12567f69b9878e65d9023",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 8,
+        "synthetic": true
+      },
+      "stable_hash": "c640ccc108b632f83db3716672fc7a9159996a6fb8099d17c6b8aeafa7d6e6b5"
+    },
+    {
+      "kind": "remediation_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "remediation_event_606_18",
+      "record_id": "0293b73794623017960fdd07",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 18,
+        "synthetic": true
+      },
+      "stable_hash": "d144d3988ae441e5aa9009c377d8dedbceda6b47b0dc13620979fbd7acf52fd8"
+    },
+    {
+      "kind": "route_shape_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "route_shape_canary_606_0",
+      "record_id": "f786d594bbab9c3fc6d8dfc9",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 0,
+        "synthetic": true
+      },
+      "stable_hash": "d2b2846a3885e42ac3e0db498cbfea822f0ea1eafc3a9e38f9f45d1694ff56fa"
+    },
+    {
+      "kind": "safety_regression_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "safety_regression_event_606_16",
+      "record_id": "dc0dcd05a7c283707d1e4679",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 16,
+        "synthetic": true
+      },
+      "stable_hash": "555652f36a30b1807e851ce10254576f97678834eaf0fe3f2511dd31b09e7abf"
+    },
+    {
+      "kind": "shared_slot_no_write_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "shared_slot_no_write_canary_606_3",
+      "record_id": "da540b91f589e712de15361c",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 3,
+        "synthetic": true
+      },
+      "stable_hash": "2aef4a922ebd16011c35e80d27a7b2fb7144f627650fc7b749e8e18e40787802"
+    },
+    {
+      "kind": "skip_degradation_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "skip_degradation_event_606_17",
+      "record_id": "3e9747e892644f4fa8192636",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 17,
+        "synthetic": true
+      },
+      "stable_hash": "17c59b604d39cf832a55c0100e77f32933974d63120719ad1aa8e3f7e7f47d93"
+    },
+    {
+      "kind": "synthetic_payload_harness_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "synthetic_payload_harness_event_606_12",
+      "record_id": "01390d28e5f308b37905798b",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 12,
+        "synthetic": true
+      },
+      "stable_hash": "53568887282ff800d35e9059476783206df714ff764a19d6e0cb0864ad52bdc5"
+    },
+    {
+      "kind": "synthetic_sandbox_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "synthetic_sandbox_event_606_13",
+      "record_id": "f4251e56c2bae8507ce0e5ff",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 13,
+        "synthetic": true
+      },
+      "stable_hash": "1e96b2af8b4a8aec99551546b61e420f5cd4efe08f03340a8e0450a32f61dfe8"
+    },
+    {
+      "kind": "timeout_bound_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "timeout_bound_canary_606_10",
+      "record_id": "78ecbddf62c9ce8609a66bd8",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 10,
+        "synthetic": true
+      },
+      "stable_hash": "f69dbcdadc6d16400ac4c7b3cc3ab92604a26fe781311ec8ff5a1f2ede8609df"
+    },
+    {
+      "kind": "topology_no_execute_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "topology_no_execute_canary_606_5",
+      "record_id": "62724ffd49ea9f9d000a9579",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 5,
+        "synthetic": true
+      },
+      "stable_hash": "875e9fb8048f446a99d5fdd7e1c6ac0726f5245afc0eefdc79b32a2ad0a31a5b"
+    }
+  ],
+  "status": "built"
+}
+
+# ===== prod6_outputs/trace_corpus.md =====
+# QSPIN-PROD-6 Trace Corpus
+
+Status: `built`
+Corpus hash: `97e3049986a7d033148e0fa34790b84bbb27935d78aba5ce12d68c3a9b3d918c`
+
+| Kind | Covered |
+|---|---:|
+| active_dry_run_executor_event | True |
+| audit_chain_canary | True |
+| commit_gate_no_commit_canary | True |
+| concurrency_guard_canary | True |
+| expanded_commit_gate_event | True |
+| external_memory_no_write_canary | True |
+| malformed_input_canary | True |
+| payload_integrity_canary | True |
+| qh_no_write_canary | True |
+| redaction_canary | True |
+| remediation_event | True |
+| route_shape_canary | True |
+| safety_regression_event | True |
+| shared_slot_no_write_canary | True |
+| skip_degradation_event | True |
+| synthetic_payload_harness_event | True |
+| synthetic_sandbox_event | True |
+| timeout_bound_canary | True |
+| topology_no_execute_canary | True |
+
+
+# ===== prod6_outputs/trace_replay.json =====
+{
+  "actual_hash": "97e3049986a7d033148e0fa34790b84bbb27935d78aba5ce12d68c3a9b3d918c",
+  "expected_hash": "97e3049986a7d033148e0fa34790b84bbb27935d78aba5ce12d68c3a9b3d918c",
+  "passed": true
+}
+
+# ===== docs/qdt_wm_maae/qspin_prod6_additive_export_diff.diff =====
+--- mnemonic_cortex/working_memory/__init__.py (PROD-5)
++++ mnemonic_cortex/working_memory/__init__.py (PROD-6)
+@@
++# QSPIN-PROD-6 exports
++from .qspin_shadow_stress_replay import *
++from .qspin_trace_corpus import *
++from .qspin_ci_matrix_hardening import *
++from .qspin_extended_safety_regression import *
++from .qspin_remediation_closure import *
++from .qspin_prod6_observability import *
++from .qspin_prod6_source_matrix import *

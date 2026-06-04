@@ -1,0 +1,10 @@
+--- qspin_prod3/mnemonic_cortex/working_memory/__init__.py
++++ qspin_prod4/mnemonic_cortex/working_memory/__init__.py
+@@
++# QSPIN-PROD-4 synthetic/sandbox-only production-track infrastructure exports.
++# Additive only; does not activate runtime routing or writes.
++from .qspin_synthetic_payload_harness import *
++from .qspin_synthetic_qh_shared_slot_sandbox import *
++from .qspin_commit_gate_expanded_dry_run import *
++from .qspin_runtime_safety_regression import *
++from .qspin_prod4_observability import *
