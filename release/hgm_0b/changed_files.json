@@ -1,0 +1,26 @@
+{
+  "added": [
+    "docs/hgm_hpme/01_hgm_0b_probability_expander.md",
+    "mnemonic_cortex/hypergraph_manifold/normalization.py",
+    "mnemonic_cortex/hypergraph_manifold/probability_expander.py",
+    "mnemonic_cortex/hypergraph_manifold/runtime_result.py",
+    "mnemonic_cortex/hypergraph_manifold/scenario_extraction.py",
+    "release/hgm_0b/changed_files.json",
+    "release/hgm_0b/compatibility_pytest_output.txt",
+    "release/hgm_0b/compile_output.txt",
+    "release/hgm_0b/manifest.json",
+    "release/hgm_0b/pytest_output.txt",
+    "release/hgm_0b/ship_check.md",
+    "tests/test_hgm_0b_probability_expander.py"
+  ],
+  "modified": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "mnemonic_cortex/hypergraph_manifold/enums.py"
+  ],
+  "deleted": [],
+  "ignored": [
+    ".pytest_cache",
+    "__pycache__",
+    "*.pyc"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "stage": "HGM-1",
+  "title": "Hyperedge Scenario Binder, Coherence Scoring, Conflict Graphs, and Opportunity Graphs",
+  "source_of_truth": "/mnt/data/current-branch-HGM-0B-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "safety_level": "dry-run safe, additive only",
+  "files_added": [
+    ".pytest_cache/.gitignore",
+    ".pytest_cache/CACHEDIR.TAG",
+    ".pytest_cache/README.md",
+    ".pytest_cache/v/cache/nodeids",
+    "docs/hgm_hpme/02_hgm_1_hyperedge_binder.md",
+    "mnemonic_cortex/hypergraph_manifold/coherence.py",
+    "mnemonic_cortex/hypergraph_manifold/conflict_graph.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm1_result.py",
+    "mnemonic_cortex/hypergraph_manifold/hyperedge_binder.py",
+    "mnemonic_cortex/hypergraph_manifold/opportunity_graph.py",
+    "release/hgm_1/compatibility_pytest_output.txt",
+    "release/hgm_1/compile_output.txt",
+    "release/hgm_1/pytest_output.txt",
+    "tests/test_hgm_1_hyperedge_binder.py"
+  ],
+  "files_modified": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "tests": {
+    "targeted": "python -m pytest tests/test_hgm_1_hyperedge_binder.py -q",
+    "targeted_result": "............                                                             [100%]\n12 passed in 0.34s",
+    "compatibility": "python -m pytest tests/test_hgm_0a_foundation_types.py tests/test_hgm_0b_probability_expander.py tests/test_hgm_1_hyperedge_binder.py -q",
+    "compatibility_result": ".................................                                        [100%]\n33 passed in 0.36s",
+    "compileall": "python -m compileall -q mnemonic_cortex/hypergraph_manifold",
+    "compileall_result": "compileall passed"
+  },
+  "known_limits": [
+    "HGM-1 uses deterministic heuristic binding and scoring, not learned graph neural binding.",
+    "Conflict/opportunity graph detection relies on candidate metadata and simple naming inference.",
+    "Geometry-aware routing and distance kernels are deferred to HGM-2."
+  ],
+  "created_utc": 1780556159.7143657
+}

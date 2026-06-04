@@ -60,9 +60,12 @@ class HyperedgeKind(_CoercibleEnum):
 
 class ProbabilityNormalizationMode(_CoercibleEnum):
     NONE = "none"
-    GLOBAL = "global"
-    ROW = "row"
-    MUTATION_AXIS = "mutation_axis"
+    GLOBAL = "global"  # HGM-0A compatibility alias
+    GLOBAL_SUM = "global_sum"
+    ROW = "row"  # HGM-0A compatibility alias
+    MUTATION_AXIS = "mutation_axis"  # HGM-0A compatibility alias
+    ROW_STOCHASTIC = "row_stochastic"
+    SOFTMAX = "softmax"
 
 
 class ValidationSeverity(_CoercibleEnum):
