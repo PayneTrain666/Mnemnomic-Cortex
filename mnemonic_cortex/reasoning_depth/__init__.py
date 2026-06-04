@@ -77,3 +77,53 @@ __all__ = list(__all__) + [
     "ltm_depth_adapter_contract",
     "shared_depth_registry_contract",
 ]
+
+from .mann_ltm_shared_slot_geometry import (
+    SharedGeometrySlotConfig,
+    MANNLTMSharedSlotGeometry,
+    MANNLTMSharedSlotGeometryError,
+    mann_ltm_shared_slot_geometry_contract,
+)
+
+__all__ = list(__all__) + [
+    "SharedGeometrySlotConfig",
+    "MANNLTMSharedSlotGeometry",
+    "MANNLTMSharedSlotGeometryError",
+    "mann_ltm_shared_slot_geometry_contract",
+]
+
+from .reasoning_policy_router import ReasoningPolicyRouterConfig
+from .evidence_reasoning_pass import EvidenceReasoningConfig
+from .counterfactual_reasoning_probe import CounterfactualProbeConfig
+from .conflict_aware_consolidation import ConflictAwareConsolidationConfig
+from .reasoning_controller import (
+    SharedGeometryRoutingPolicyConfig,
+    ReasoningControllerConfig,
+    ReasoningPassResult,
+    ReasoningController,
+    reasoning_controller_contract,
+)
+from .reasoning_controller_api import (
+    ReasoningControllerAPIError,
+    ReasoningControllerAPIConfig,
+    ReasoningControllerAPIResult,
+    ReasoningControllerAPI,
+    reasoning_controller_api_contract,
+)
+
+__all__ = list(__all__) + [
+    "ReasoningPolicyRouterConfig",
+    "EvidenceReasoningConfig",
+    "CounterfactualProbeConfig",
+    "ConflictAwareConsolidationConfig",
+    "SharedGeometryRoutingPolicyConfig",
+    "ReasoningControllerConfig",
+    "ReasoningPassResult",
+    "ReasoningController",
+    "reasoning_controller_contract",
+    "ReasoningControllerAPIError",
+    "ReasoningControllerAPIConfig",
+    "ReasoningControllerAPIResult",
+    "ReasoningControllerAPI",
+    "reasoning_controller_api_contract",
+]

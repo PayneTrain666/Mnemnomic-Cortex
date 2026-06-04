@@ -18,10 +18,51 @@ from .reasoning_policy_router import ReasoningPolicyRouter, ReasoningPolicyRoute
 from .evidence_reasoning_pass import EvidenceReasoningPass, EvidenceReasoningConfig
 from .counterfactual_reasoning_probe import CounterfactualReasoningProbe, CounterfactualProbeConfig
 from .conflict_aware_consolidation import ConflictAwareConsolidationEvaluator, ConflictAwareConsolidationConfig
+from .mann_ltm_shared_slot_geometry import MANNLTMSharedSlotGeometry, SharedGeometrySlotConfig
 
 
 class ReasoningControllerError(ValueError):
     """Raised when the reasoning controller receives invalid input."""
+
+
+@dataclass(frozen=True)
+class SharedGeometryRoutingPolicyConfig:
+    """Routing policy for shared MANN/LTM geometry hops."""
+
+    mann_slot_strategy: str = "hop_mod"
+    ltm_slot_strategy: str = "hop_mod"
+    ltm_depth_strategy: str = "fixed"
+    fixed_mann_slot_index: int = 0
+    fixed_ltm_slot_index: int = 0
+    fixed_ltm_depth_index: int = 5
+    mann_geometry_map: Optional[str] = None
+    ltm_geometry_map: Optional[str] = None
+
+    def validate(self) -> None:
+        if self.mann_slot_strategy not in {"hop_mod", "fixed", "content_hash"}:
+            raise ReasoningControllerError("invalid mann_slot_strategy")
+        if self.ltm_slot_strategy not in {"hop_mod", "fixed", "content_hash"}:
+            raise ReasoningControllerError("invalid ltm_slot_strategy")
+        if self.ltm_depth_strategy not in {"fixed", "hop_mod"}:
+            raise ReasoningControllerError("invalid ltm_depth_strategy")
+        if self.fixed_mann_slot_index < 0:
+            raise ReasoningControllerError("fixed_mann_slot_index must be >= 0")
+        if self.fixed_ltm_slot_index < 0:
+            raise ReasoningControllerError("fixed_ltm_slot_index must be >= 0")
+        if not (0 <= self.fixed_ltm_depth_index < 8):
+            raise ReasoningControllerError("fixed_ltm_depth_index must be in [0,7]")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "mann_slot_strategy": self.mann_slot_strategy,
+            "ltm_slot_strategy": self.ltm_slot_strategy,
+            "ltm_depth_strategy": self.ltm_depth_strategy,
+            "fixed_mann_slot_index": self.fixed_mann_slot_index,
+            "fixed_ltm_slot_index": self.fixed_ltm_slot_index,
+            "fixed_ltm_depth_index": self.fixed_ltm_depth_index,
+            "mann_geometry_map": self.mann_geometry_map,
+            "ltm_geometry_map": self.ltm_geometry_map,
+        }
 
 
 @dataclass(frozen=True)
@@ -49,6 +90,9 @@ class ReasoningControllerConfig:
     counterfactual_config: Optional[CounterfactualProbeConfig] = None
     use_conflict_aware_consolidation: bool = False
     conflict_config: Optional[ConflictAwareConsolidationConfig] = None
+    use_shared_mann_ltm_geometry: bool = False
+    shared_geometry_config: Optional[SharedGeometrySlotConfig] = None
+    shared_geometry_routing_policy: Optional[SharedGeometryRoutingPolicyConfig] = None
 
     def validate(self) -> None:
         if self.key_dim <= 0 or self.value_dim <= 0:
@@ -59,9 +103,13 @@ class ReasoningControllerConfig:
             raise ReasoningControllerError("max_reasoning_hops must be in [1,16]")
         if not (8 <= self.max_trace_events <= 2048):
             raise ReasoningControllerError("max_trace_events must be in [8,2048]")
+        if self.use_shared_mann_ltm_geometry and self.key_dim != self.value_dim:
+            raise ReasoningControllerError("shared MANN/LTM geometry requires key_dim == value_dim")
         for cfg in (self.policy_router_config, self.evidence_config, self.counterfactual_config, self.conflict_config):
             if cfg is not None:
                 cfg.validate()
+        if self.shared_geometry_routing_policy is not None:
+            self.shared_geometry_routing_policy.validate()
 
     @classmethod
     def disabled(cls, key_dim: int = 32, value_dim: Optional[int] = None) -> "ReasoningControllerConfig":
@@ -90,6 +138,9 @@ class ReasoningControllerConfig:
             "counterfactual_config": self.counterfactual_config.to_dict() if self.counterfactual_config is not None else None,
             "use_conflict_aware_consolidation": self.use_conflict_aware_consolidation,
             "conflict_config": self.conflict_config.to_dict() if self.conflict_config is not None else None,
+            "use_shared_mann_ltm_geometry": self.use_shared_mann_ltm_geometry,
+            "shared_geometry_config": self.shared_geometry_config.to_dict() if self.shared_geometry_config is not None else None,
+            "shared_geometry_routing_policy": self.shared_geometry_routing_policy.to_dict() if self.shared_geometry_routing_policy is not None else None,
         }
 
 
@@ -142,6 +193,7 @@ class ReasoningController:
     evidence_pass: Optional[EvidenceReasoningPass] = None
     counterfactual_probe: Optional[CounterfactualReasoningProbe] = None
     conflict_evaluator: Optional[ConflictAwareConsolidationEvaluator] = None
+    shared_geometry_orchestrator: Optional[MANNLTMSharedSlotGeometry] = None
 
     def __post_init__(self) -> None:
         self.config.validate()
@@ -175,6 +227,21 @@ class ReasoningController:
         if self.conflict_evaluator is None:
             conflict_cfg = self.config.conflict_config or ConflictAwareConsolidationConfig(enabled=self.config.use_conflict_aware_consolidation)
             self.conflict_evaluator = ConflictAwareConsolidationEvaluator(conflict_cfg)
+        if self.shared_geometry_orchestrator is None:
+            geometry_cfg = self.config.shared_geometry_config or SharedGeometrySlotConfig(
+                enabled=self.config.use_shared_mann_ltm_geometry,
+                key_dim=self.config.key_dim,
+                value_dim=self.config.value_dim,
+            )
+            self.shared_geometry_orchestrator = MANNLTMSharedSlotGeometry(
+                config=geometry_cfg,
+                mann_adapter=self.mann_adapter,
+                ltm_adapter=self.ltm_adapter,
+                registry=self.registry,
+            )
+
+    def _shared_routing_policy(self) -> SharedGeometryRoutingPolicyConfig:
+        return self.config.shared_geometry_routing_policy or SharedGeometryRoutingPolicyConfig()
 
     @property
     def enabled(self) -> bool:
@@ -247,14 +314,53 @@ class ReasoningController:
         trace.add_event("wm_depth_controller", "WM depth controller processed query", wm_trace)
 
         mann_out = None
+        ltm_out = None
         current = wm_out
-        for hop in range(effective_hops):
-            mann_out, mann_trace = self.mann_adapter.read_hop(current, hop_id=hop, return_trace=True)
-            trace.add_event("mann_depth_adapter", f"MANN hop {hop} completed", mann_trace)
-            current = mann_out.unsqueeze(1)
+        if self.config.use_shared_mann_ltm_geometry:
+            routing_policy = self._shared_routing_policy()
+            for hop in range(effective_hops):
+                mann_slot_index = self._resolve_shared_slot_index(
+                    strategy=routing_policy.mann_slot_strategy,
+                    fixed_index=routing_policy.fixed_mann_slot_index,
+                    hop=hop,
+                    content=content,
+                )
+                ltm_slot_index = self._resolve_shared_slot_index(
+                    strategy=routing_policy.ltm_slot_strategy,
+                    fixed_index=routing_policy.fixed_ltm_slot_index,
+                    hop=hop,
+                    content=content,
+                )
+                ltm_depth_index = self._resolve_ltm_depth_index(
+                    strategy=routing_policy.ltm_depth_strategy,
+                    fixed_depth=routing_policy.fixed_ltm_depth_index,
+                    hop=hop,
+                )
+                shared_out, shared_trace = self.shared_geometry_orchestrator.run_shared_reasoning(
+                    current,
+                    content=content or "reasoning_pass",
+                    mann_slot_index=mann_slot_index,
+                    ltm_slot_index=ltm_slot_index,
+                    hop_id=hop,
+                    ltm_bank_name=ltm_bank_name,
+                    ltm_depth_index=ltm_depth_index,
+                    mann_geometry_map=routing_policy.mann_geometry_map,
+                    ltm_geometry_map=routing_policy.ltm_geometry_map,
+                    canonical_slot_id=f"{self._canonical_slot_id(content or 'reasoning_pass', project_id, chat_id, episode_id)}.h{hop}",
+                    return_trace=True,
+                )
+                trace.add_event("mann_ltm_shared_slot_geometry", f"shared geometry hop {hop} completed", shared_trace)
+                current = shared_out.unsqueeze(1)
+            mann_out = current.squeeze(1)
+            ltm_out = mann_out
+        else:
+            for hop in range(effective_hops):
+                mann_out, mann_trace = self.mann_adapter.read_hop(current, hop_id=hop, return_trace=True)
+                trace.add_event("mann_depth_adapter", f"MANN hop {hop} completed", mann_trace)
+                current = mann_out.unsqueeze(1)
 
-        ltm_out, ltm_trace = self.ltm_adapter.read_ltm(mann_out, bank_name=ltm_bank_name, return_trace=True)
-        trace.add_event("ltm_depth_adapter", "LTM depth read completed", ltm_trace)
+            ltm_out, ltm_trace = self.ltm_adapter.read_ltm(mann_out, bank_name=ltm_bank_name, return_trace=True)
+            trace.add_event("ltm_depth_adapter", "LTM depth read completed", ltm_trace)
 
         readiness = evaluate_depth_integration_readiness(
             DepthCapacityValidationConfig(
@@ -327,6 +433,19 @@ class ReasoningController:
         digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
         return f"reason2a.{digest}"
 
+    def _resolve_shared_slot_index(self, *, strategy: str, fixed_index: int, hop: int, content: str) -> int:
+        if strategy == "fixed":
+            return int(fixed_index % max(1, self.config.slot_count))
+        if strategy == "content_hash":
+            content_digest = hashlib.sha256((content or "reasoning_pass").encode("utf-8")).hexdigest()
+            return int(content_digest[:8], 16) % max(1, self.config.slot_count)
+        return int(hop % max(1, self.config.slot_count))
+
+    def _resolve_ltm_depth_index(self, *, strategy: str, fixed_depth: int, hop: int) -> int:
+        if strategy == "hop_mod":
+            return int(hop % 8)
+        return int(fixed_depth)
+
 
 def reasoning_controller_contract() -> Dict[str, Any]:
     return {
@@ -352,5 +471,11 @@ def reasoning_controller_contract() -> Dict[str, Any]:
         "optional_evidence_reasoning": True,
         "optional_counterfactual_probe": True,
         "optional_conflict_aware_consolidation": True,
+        "optional_shared_mann_ltm_geometry": True,
+        "shared_geometry_routing_policy": {
+            "mann_slot_strategy": ["hop_mod", "fixed", "content_hash"],
+            "ltm_slot_strategy": ["hop_mod", "fixed", "content_hash"],
+            "ltm_depth_strategy": ["fixed", "hop_mod"],
+        },
         "canonical_slot_prefix_compatibility": "reason2a.",
     }

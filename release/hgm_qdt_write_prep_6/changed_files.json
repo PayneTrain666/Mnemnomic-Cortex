@@ -1,0 +1,14 @@
+{
+  "added": [
+    "docs/hgm_hpme/HGM_QDT_WRITE_PREP_6.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep6_result.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_real_shared_slot_store_parity.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_qh_storage_record_sandbox.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_rollback_snapshot_binding_dryrun.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep6_pipeline.py",
+    "tests/test_hgm_qdt_write_prep_6.py"
+  ],
+  "modified": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ]
+}

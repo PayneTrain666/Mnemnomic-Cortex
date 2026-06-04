@@ -11,6 +11,8 @@ from .reasoning_policy_router import ReasoningPolicyRouterConfig
 from .evidence_reasoning_pass import EvidenceReasoningConfig
 from .counterfactual_reasoning_probe import CounterfactualProbeConfig
 from .conflict_aware_consolidation import ConflictAwareConsolidationConfig
+from .mann_ltm_shared_slot_geometry import SharedGeometrySlotConfig
+from .reasoning_controller import SharedGeometryRoutingPolicyConfig
 from .reasoning_orchestration_trace import _safe_jsonable
 from .multi_pass_thought_planner import MultiPassThoughtPlannerConfig, MultiPassThoughtPlanner
 from .controller_planner_integration import ControllerPlannerIntegration, ControllerPlannerIntegrationConfig
@@ -40,6 +42,8 @@ class ReasoningControllerAPIConfig:
     allow_evidence_reasoning: bool = False
     allow_counterfactual_probe: bool = False
     allow_conflict_aware_consolidation: bool = False
+    allow_shared_mann_ltm_geometry: bool = False
+    shared_mann_ltm_geometry_routing_policy: Optional[Dict[str, Any]] = None
     allow_multi_pass_planner: bool = False
     allow_controller_planner_integration: bool = False
     finite_checks: bool = True
@@ -75,6 +79,8 @@ class ReasoningControllerAPIConfig:
             "allow_evidence_reasoning": self.allow_evidence_reasoning,
             "allow_counterfactual_probe": self.allow_counterfactual_probe,
             "allow_conflict_aware_consolidation": self.allow_conflict_aware_consolidation,
+            "allow_shared_mann_ltm_geometry": self.allow_shared_mann_ltm_geometry,
+            "shared_mann_ltm_geometry_routing_policy": _safe_jsonable(self.shared_mann_ltm_geometry_routing_policy),
             "allow_multi_pass_planner": self.allow_multi_pass_planner,
             "allow_controller_planner_integration": self.allow_controller_planner_integration,
             "finite_checks": self.finite_checks,
@@ -155,6 +161,17 @@ class ReasoningControllerAPI:
             counterfactual_config=CounterfactualProbeConfig.enabled_default() if config.enabled and config.allow_counterfactual_probe else None,
             use_conflict_aware_consolidation=bool(config.enabled and config.allow_conflict_aware_consolidation),
             conflict_config=ConflictAwareConsolidationConfig.enabled_default() if config.enabled and config.allow_conflict_aware_consolidation else None,
+            use_shared_mann_ltm_geometry=bool(config.enabled and config.allow_shared_mann_ltm_geometry),
+            shared_geometry_config=(
+                SharedGeometrySlotConfig.enabled_default(key_dim=config.key_dim, value_dim=config.value_dim)
+                if config.enabled and config.allow_shared_mann_ltm_geometry
+                else None
+            ),
+            shared_geometry_routing_policy=(
+                SharedGeometryRoutingPolicyConfig(**dict(config.shared_mann_ltm_geometry_routing_policy))
+                if config.enabled and config.allow_shared_mann_ltm_geometry and config.shared_mann_ltm_geometry_routing_policy is not None
+                else None
+            ),
         )
         return ReasoningController(controller_config)
 
@@ -227,6 +244,7 @@ def reasoning_controller_api_contract() -> Dict[str, Any]:
         "optional_evidence_reasoning": "opt_in_only",
         "optional_counterfactual_probe": "opt_in_only",
         "optional_conflict_aware_consolidation": "opt_in_only",
+        "optional_shared_mann_ltm_geometry": "opt_in_only",
         "optional_multi_pass_planner": "opt_in_only",
         "optional_controller_planner_integration": "opt_in_only",
     }

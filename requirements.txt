@@ -1,20 +1,3 @@
-# Mnemonic Cortex — core runtime + test dependencies
-# Python 3.10+ recommended (see .github/workflows/ci.yml)
-#
-# Install:
-#   pip install -r requirements.txt
-#
-# Optional HuggingFace tooling (bAbI eval, dataset loaders):
-#   pip install -r requirements-tools.txt
-
-# ── Core runtime (required) ──────────────────────────────────────────────────
-# torch: mnemonic_cortex, working_memory, benchmark, topology, geometry, tests
-# numpy: mnemonic_cortex/utils.py (seed_everything), tools/eval_ahg.py
-# PyYAML: mnemonic_cortex/config_loader.py (cm_config.yaml via cortex.py)
 torch>=2.1
 numpy>=1.23
-PyYAML>=6.0
-
-# ── Test suite (required for pytest / CI) ────────────────────────────────────
-# Used across tests/ (WM guards, HGM, REASON, QSPIN PROD, real-backend guards)
-pytest>=7.4
+tqdm>=4.66

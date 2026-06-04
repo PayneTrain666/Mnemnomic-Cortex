@@ -410,3 +410,232 @@ __all__.extend([
     "build_hgm_integration_roadmap",
     "build_hgm10_release_consolidation",
 ])
+
+from .hgm_qdt_write_prep_result import (
+    HGMQDTWritePrepOptions,
+    QDTContractSymbolProbe,
+    QDTWriteContractProbeResult,
+    TensorProposalPreview,
+    ProposalMaterializationContract,
+    SlotIDMappingRecord,
+    SlotIDMappingPlan,
+    QSpinQHConversionRecord,
+    QSpinQHConversionContract,
+    RollbackSnapshotRequirement,
+    RollbackSnapshotHandshake,
+    HGMQDTWritePrepResult,
+)
+from .qdt_write_contract_probe import probe_qdt_wm_write_contracts
+from .qdt_proposal_materialization import build_proposal_materialization_contract
+from .qdt_slot_mapping_plan import build_slot_id_mapping_plan, sanitize_hgm_slot_id_for_wm, canonical_css_preview
+from .qdt_qspin_qh_contract import build_qspin_qh_conversion_contract, depth_to_qdt_index, geometry_to_qdt_map
+from .qdt_rollback_handshake import build_rollback_snapshot_handshake
+from .hgm_qdt_write_prep_pipeline import build_hgm_qdt_write_prep_contracts
+
+__all__.extend([
+    "HGMQDTWritePrepOptions",
+    "QDTContractSymbolProbe",
+    "QDTWriteContractProbeResult",
+    "TensorProposalPreview",
+    "ProposalMaterializationContract",
+    "SlotIDMappingRecord",
+    "SlotIDMappingPlan",
+    "QSpinQHConversionRecord",
+    "QSpinQHConversionContract",
+    "RollbackSnapshotRequirement",
+    "RollbackSnapshotHandshake",
+    "HGMQDTWritePrepResult",
+    "probe_qdt_wm_write_contracts",
+    "build_proposal_materialization_contract",
+    "build_slot_id_mapping_plan",
+    "sanitize_hgm_slot_id_for_wm",
+    "canonical_css_preview",
+    "build_qspin_qh_conversion_contract",
+    "depth_to_qdt_index",
+    "geometry_to_qdt_map",
+    "build_rollback_snapshot_handshake",
+    "build_hgm_qdt_write_prep_contracts",
+])
+
+from .hgm_qdt_write_prep2_result import (
+    HGMQDTWritePrep2Options,
+    DryRunSystemWriteProposalPreview,
+    DryRunProposalBuilderResult,
+    CommitGatePreflightCheck,
+    CommitGatePreflightResult,
+    EndToEndWriteSimulationReport,
+    HGMQDTWritePrep2Result,
+)
+from .qdt_dry_run_proposal_builder import build_dry_run_system_write_proposal_previews
+from .qdt_commitgate_preflight import run_commitgate_preflight
+from .qdt_end_to_end_write_simulation import simulate_end_to_end_hgm_qdt_write, build_hgm_qdt_write_prep_2
+
+__all__.extend([
+    "HGMQDTWritePrep2Options",
+    "DryRunSystemWriteProposalPreview",
+    "DryRunProposalBuilderResult",
+    "CommitGatePreflightCheck",
+    "CommitGatePreflightResult",
+    "EndToEndWriteSimulationReport",
+    "HGMQDTWritePrep2Result",
+    "build_dry_run_system_write_proposal_previews",
+    "run_commitgate_preflight",
+    "simulate_end_to_end_hgm_qdt_write",
+    "build_hgm_qdt_write_prep_2",
+])
+
+from .hgm_qdt_write_prep3_result import (
+    HGMQDTWritePrep3Options,
+    SyntheticSlotRecord,
+    SyntheticSharedSlotStoreSandbox,
+    InMemoryCommitGateSimulationOperation,
+    InMemoryCommitGateSimulationResult,
+    RollbackReplayRecord,
+    RollbackReplayVerificationResult,
+    HGMQDTWritePrep3Result,
+)
+from .qdt_synthetic_slot_store import (
+    build_synthetic_shared_slot_store_sandbox,
+    apply_synthetic_slot_writes,
+    restore_synthetic_slot_store_from_previous_state,
+)
+from .qdt_in_memory_commitgate_simulation import simulate_in_memory_commitgate
+from .qdt_rollback_replay_verification import verify_rollback_replay
+from .hgm_qdt_write_prep3_pipeline import build_hgm_qdt_write_prep_3
+
+__all__.extend([
+    "HGMQDTWritePrep3Options",
+    "SyntheticSlotRecord",
+    "SyntheticSharedSlotStoreSandbox",
+    "InMemoryCommitGateSimulationOperation",
+    "InMemoryCommitGateSimulationResult",
+    "RollbackReplayRecord",
+    "RollbackReplayVerificationResult",
+    "HGMQDTWritePrep3Result",
+    "build_synthetic_shared_slot_store_sandbox",
+    "apply_synthetic_slot_writes",
+    "restore_synthetic_slot_store_from_previous_state",
+    "simulate_in_memory_commitgate",
+    "verify_rollback_replay",
+    "build_hgm_qdt_write_prep_3",
+])
+
+from .hgm_qdt_write_prep4_result import (
+    HGMQDTWritePrep4Options,
+    RealContractObjectPreview,
+    RealContractObjectConstructionResult,
+    SyntheticCommitGateBoundaryCheck,
+    SyntheticCommitGateAdapterBoundary,
+    RollbackSnapshotBindingRecord,
+    RollbackSnapshotBindingPlan,
+    HGMQDTWritePrep4Result,
+)
+from .qdt_real_contract_object_dryrun import build_real_contract_object_previews
+from .qdt_synthetic_commitgate_adapter_boundary import build_synthetic_commitgate_adapter_boundary
+from .qdt_rollback_snapshot_binding_plan import build_rollback_snapshot_binding_plan
+from .hgm_qdt_write_prep4_pipeline import build_hgm_qdt_write_prep_4
+
+__all__.extend([
+    "HGMQDTWritePrep4Options",
+    "RealContractObjectPreview",
+    "RealContractObjectConstructionResult",
+    "SyntheticCommitGateBoundaryCheck",
+    "SyntheticCommitGateAdapterBoundary",
+    "RollbackSnapshotBindingRecord",
+    "RollbackSnapshotBindingPlan",
+    "HGMQDTWritePrep4Result",
+    "build_real_contract_object_previews",
+    "build_synthetic_commitgate_adapter_boundary",
+    "build_rollback_snapshot_binding_plan",
+    "build_hgm_qdt_write_prep_4",
+])
+
+from .hgm_qdt_write_prep5_result import (
+    HGMQDTWritePrep5Options,
+    LiveShapeContractCheck,
+    LiveShapeContractHarnessResult,
+    PermissionBoundaryAuditCheck,
+    PermissionedCommitBoundaryAuditResult,
+    ProductionWriteBlocker,
+    ProductionWriteBlockerBurnDownResult,
+    HGMQDTWritePrep5Result,
+)
+from .qdt_live_shape_contract_harness import build_live_shape_contract_harness
+from .qdt_permission_boundary_audit import audit_permissioned_commit_boundary
+from .qdt_production_write_blocker_burndown import build_production_write_blocker_burndown
+from .hgm_qdt_write_prep5_pipeline import build_hgm_qdt_write_prep_5
+
+__all__.extend([
+    "HGMQDTWritePrep5Options",
+    "LiveShapeContractCheck",
+    "LiveShapeContractHarnessResult",
+    "PermissionBoundaryAuditCheck",
+    "PermissionedCommitBoundaryAuditResult",
+    "ProductionWriteBlocker",
+    "ProductionWriteBlockerBurnDownResult",
+    "HGMQDTWritePrep5Result",
+    "build_live_shape_contract_harness",
+    "audit_permissioned_commit_boundary",
+    "build_production_write_blocker_burndown",
+    "build_hgm_qdt_write_prep_5",
+])
+
+from .hgm_qdt_write_prep6_result import (
+    HGMQDTWritePrep6Options,
+    SharedSlotStoreParityRecord,
+    SharedSlotStoreParityHarnessResult,
+    QHStorageRecordSandboxRecord,
+    QHStorageRecordSandboxResult,
+    RollbackSnapshotBindingDryRunRecord,
+    RollbackSnapshotBindingDryRunResult,
+    HGMQDTWritePrep6Result,
+)
+from .qdt_real_shared_slot_store_parity import build_real_shared_slot_store_parity_harness
+from .qdt_qh_storage_record_sandbox import build_qh_storage_record_sandbox
+from .qdt_rollback_snapshot_binding_dryrun import build_rollback_snapshot_binding_dry_run
+from .hgm_qdt_write_prep6_pipeline import build_hgm_qdt_write_prep_6
+
+__all__.extend([
+    "HGMQDTWritePrep6Options",
+    "SharedSlotStoreParityRecord",
+    "SharedSlotStoreParityHarnessResult",
+    "QHStorageRecordSandboxRecord",
+    "QHStorageRecordSandboxResult",
+    "RollbackSnapshotBindingDryRunRecord",
+    "RollbackSnapshotBindingDryRunResult",
+    "HGMQDTWritePrep6Result",
+    "build_real_shared_slot_store_parity_harness",
+    "build_qh_storage_record_sandbox",
+    "build_rollback_snapshot_binding_dry_run",
+    "build_hgm_qdt_write_prep_6",
+])
+
+from .hgm_qdt_write_prep7_result import (
+    HGMQDTWritePrep7Options,
+    PermissionTokenContractRecord,
+    PermissionTokenContractResult,
+    ShadowCommitSandboxOperation,
+    ShadowCommitSandboxResult,
+    FinalProductionWriteBlocker,
+    FinalProductionWriteReadinessReview,
+    HGMQDTWritePrep7Result,
+)
+from .qdt_permission_token_contract import build_permission_token_contract
+from .qdt_shadow_commit_sandbox import build_shadow_commit_sandbox
+from .qdt_final_blocker_review import build_final_production_write_readiness_review
+from .hgm_qdt_write_prep7_pipeline import build_hgm_qdt_write_prep_7
+
+__all__.extend([
+    "HGMQDTWritePrep7Options",
+    "PermissionTokenContractRecord",
+    "PermissionTokenContractResult",
+    "ShadowCommitSandboxOperation",
+    "ShadowCommitSandboxResult",
+    "FinalProductionWriteBlocker",
+    "FinalProductionWriteReadinessReview",
+    "HGMQDTWritePrep7Result",
+    "build_permission_token_contract",
+    "build_shadow_commit_sandbox",
+    "build_final_production_write_readiness_review",
+    "build_hgm_qdt_write_prep_7",
+])
