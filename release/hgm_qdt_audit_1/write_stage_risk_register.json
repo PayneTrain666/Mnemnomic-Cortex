@@ -1,0 +1,101 @@
+[
+  {
+    "area": "payload materialization",
+    "finding": "HGM bridge payloads currently carry content_summary strings and metadata, while QDT/WM SystemWriteProposal requires a finite torch.Tensor content vector with a configured dimension.",
+    "id": "HGM-QDT-R1",
+    "impact": "No safe write-stage adapter can construct a real commit proposal without an explicit vector/tensor materialization contract.",
+    "mitigation": "Add a read-only materialization adapter stage that maps HGMBridgePayload / HGMEmbeddingRecord / SPCPProcedureEmbedding into bounded torch.Tensor proposals with dim negotiation and finite checks.",
+    "severity": "HIGH",
+    "status": "open"
+  },
+  {
+    "area": "slot identity",
+    "finding": "HGM SharedSlotLatticeHook.target_slot_id uses hgm_slot_* IDs, while WM SharedSlotRegistry.canonical_slot_id creates css-* IDs from namespace/local_slot/fingerprint.",
+    "id": "HGM-QDT-R2",
+    "impact": "Direct commit would create mismatched or duplicated slot identities.",
+    "mitigation": "Add a canonical-slot mapping adapter that treats HGM target_slot_id as local_slot_id and lets WM generate css-* canonical IDs, then records both IDs in lineage.",
+    "severity": "HIGH",
+    "status": "open"
+  },
+  {
+    "area": "depth mapping",
+    "finding": "HGM DepthLayer enum carries semantic depth labels; WM write APIs expect integer depth_index.",
+    "id": "HGM-QDT-R3",
+    "impact": "Depth routing can be off-by-one or semantically wrong if converted implicitly.",
+    "mitigation": "Freeze an explicit mapping D0_OBSERVATION=0 through D7_STRATEGIC=7 and validate all write plans before proposal generation.",
+    "severity": "MEDIUM",
+    "status": "open"
+  },
+  {
+    "area": "geometry mapping",
+    "finding": "HGM GeometryType enum must be converted to WM geometry_map strings.",
+    "id": "HGM-QDT-R4",
+    "impact": "Geometry-specific memory policy may be lost or misrouted.",
+    "mitigation": "Add a geometry-map translation table with fail-closed behavior for unsupported geometries.",
+    "severity": "MEDIUM",
+    "status": "open"
+  },
+  {
+    "area": "q-spin / QH code",
+    "finding": "HGM-4 generates qspin_placeholder_* values when q-spin is missing; WM QuantumHolographicStorage expects QH code/record semantics, not placeholder identity alone.",
+    "id": "HGM-QDT-R5",
+    "impact": "Write-stage integration could incorrectly treat placeholder IDs as real QH addressing codes.",
+    "mitigation": "Introduce QSpin/QH-code conversion and require real QHCodeSchema compatibility before write enablement.",
+    "severity": "HIGH",
+    "status": "open"
+  },
+  {
+    "area": "write permission semantics",
+    "finding": "HGM write permission records are preview-only, while WM SystemCommitGate uses SystemWriteProposal.write_permission and require_write_permission at commit time.",
+    "id": "HGM-QDT-R6",
+    "impact": "Granting HGM preview permission must not be confused with WM commit permission.",
+    "mitigation": "Add explicit two-key handshake: HGM write execution approval + WM SystemWriteProposal.write_permission, both recorded in audit trace.",
+    "severity": "HIGH",
+    "status": "open"
+  },
+  {
+    "area": "rollback semantics",
+    "finding": "HGM rollback manifests currently describe rollback coverage, while WM SystemCommitGate.rollback_stack stores actual pre-commit snapshots after real commit.",
+    "id": "HGM-QDT-R7",
+    "impact": "Rollback readiness cannot be certified until HGM can verify actual snapshot references.",
+    "mitigation": "Add a pre-commit snapshot reference protocol and require WM rollback_stack linkage in any live write stage.",
+    "severity": "HIGH",
+    "status": "open"
+  },
+  {
+    "area": "adapter detection",
+    "finding": "HGM adapter detection checks package paths/specs without heavy imports; this proves presence, not callable API compatibility.",
+    "id": "HGM-QDT-R8",
+    "impact": "Runtime integration may fail after passing path-based detection.",
+    "mitigation": "Add a contract probe that inspects signatures for SystemWriteProposal, SystemCommitGate, SharedSlotStore, QuantumHolographicStorage, and QDTWorkingMemory without executing writes.",
+    "severity": "MEDIUM",
+    "status": "open"
+  },
+  {
+    "area": "dependency boundary",
+    "finding": "QDT/WM write surfaces depend on torch; HGM bridge/evaluation layers intentionally avoid hard torch dependency.",
+    "id": "HGM-QDT-R9",
+    "impact": "Write stage needs controlled optional dependency handling.",
+    "mitigation": "Add torch availability preflight and dependency-isolated adapter module; fail closed when torch is unavailable.",
+    "severity": "MEDIUM",
+    "status": "open"
+  },
+  {
+    "area": "trace redaction",
+    "finding": "HGM traces are redaction-compatible, but WM proposal metadata and shared-slot metadata can carry arbitrary dictionaries.",
+    "id": "HGM-QDT-R10",
+    "impact": "Secrets could leak if HGM metadata is passed through unchanged.",
+    "mitigation": "Redact metadata before SystemWriteProposal creation and store full sensitive payloads nowhere in HGM traces.",
+    "severity": "MEDIUM",
+    "status": "open"
+  },
+  {
+    "area": "read-only status",
+    "finding": "HGM-4 through HGM-9 correctly preserve dry-run/evaluation-first behavior.",
+    "id": "HGM-QDT-R11",
+    "impact": "Good safety posture; no remediation required.",
+    "mitigation": "Keep this invariant in HGM-QDT-AUDIT-2 and any write-prep stage.",
+    "severity": "LOW",
+    "status": "monitor"
+  }
+]

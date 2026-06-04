@@ -17,6 +17,8 @@ pytest outputs, and ship checks live under [`release/`](../../release/).
 
 Implementation package: `mnemonic_cortex/hypergraph_manifold/` (56 modules, 176 API symbols at v0.1).
 
+**HGM-QDT-AUDIT-1** (read-only bridge audit): [`docs/hgm_hpme/HGM_QDT_AUDIT_1_*`](../hgm_hpme/HGM_QDT_AUDIT_1_READ_ONLY_CONTRACT_AUDIT.md), [`release/hgm_qdt_audit_1/`](../../release/hgm_qdt_audit_1/). Verdict: bridge planning compatible; write-stage blocked. Tests: 153 HGM + 22 QDT/WM passed.
+
 ## Mnemonic Reasoning Engine
 
 **Current closure:** REASON-4C (persistence line closure)

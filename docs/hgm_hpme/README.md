@@ -33,6 +33,25 @@ Hypergraph Manifold / Hyperset Probability Matrix Expansion (HGM/HPME) stage doc
 
 Also see [`release/HGM_V0_1_FINALIZATION_RECORD.md`](../../release/HGM_V0_1_FINALIZATION_RECORD.md).
 
+## HGM-QDT-AUDIT-1 (read-only bridge audit)
+
+Post-v0.1 read-only audit of HGM bridge compatibility against QDT/WM contract surfaces.
+No runtime source modifications; `live_writes_enabled=false`.
+
+| Doc | Purpose |
+|---|---|
+| [`HGM_QDT_AUDIT_1_READ_ONLY_CONTRACT_AUDIT.md`](HGM_QDT_AUDIT_1_READ_ONLY_CONTRACT_AUDIT.md) | Contract surface inventory and audit scope |
+| [`HGM_QDT_AUDIT_1_BRIDGE_COMPATIBILITY_REVIEW.md`](HGM_QDT_AUDIT_1_BRIDGE_COMPATIBILITY_REVIEW.md) | Bridge compatibility review |
+| [`HGM_QDT_AUDIT_1_WRITE_STAGE_RISK_REGISTER.md`](HGM_QDT_AUDIT_1_WRITE_STAGE_RISK_REGISTER.md) | Write-stage risk register |
+| [`HGM_QDT_AUDIT_1_NEXT_STAGE_COMMAND.md`](HGM_QDT_AUDIT_1_NEXT_STAGE_COMMAND.md) | Next exact command |
+
+Manifest and artifacts: [`release/hgm_qdt_audit_1/`](../../release/hgm_qdt_audit_1/).
+
+**Verdict:** read-only bridge planning compatible; write-stage blocked pending
+materialization/mapping/QH/rollback contracts.
+
+**Tests:** HGM-0A…HGM-10 compatibility **153 passed**; QDT/WM targeted **22 passed**.
+
 ## Test chain (HGM-10 compatibility)
 
 Per `release/HGM_V0_1_FINALIZATION_RECORD.json`:
@@ -59,5 +78,5 @@ HGM v0.1 is **additive and evaluation-first**:
 ## Next recommended command
 
 ```text
-DEV-FLOW RUN HGM-QDT-AUDIT-1 — Read-Only QDT/WM Contract Audit, Bridge Compatibility Review, and Write-Stage Risk Register
+DEV-FLOW RUN HGM-QDT-WRITE-PREP-1 — Read-Only Proposal Materialization Contract, Slot-ID Mapping Plan, QH/Q-Spin Conversion Contract, and Rollback Snapshot Handshake
 ```

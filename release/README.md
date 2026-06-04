@@ -9,6 +9,7 @@ truth for its stage scope, safety posture, and test results.
 | Track | Stages | Manifest(s) | Status |
 |---|---|---|---|
 | **HGM / HPME** | HGM-0A … HGM-10, HGM v0.1 | `hgm_*/manifest.json`, `HGM_V0_1_*` | SHIP — additive, evaluation-first |
+| **HGM-QDT bridge audit** | HGM-QDT-AUDIT-1 | `hgm_qdt_audit_1/manifest.json` | SHIP — read-only audit; write-stage blocked |
 | **Mnemonic Reasoning** | REASON-1A … REASON-4C | `reason*_manifest.json` | SHIP — disabled-by-default, no real writes |
 | **Backend authorization** | FUTURE-BACKEND-AUTH, REAL-BACKEND-A | `future_backend_*`, `real_backend_*` | HOLD — dry-run only |
 | **QSPIN bridge (QD6A)** | PROD-4 … PROD-8 | `qspin_prod*_qd6a_release_manifest.json` | PROD-8 on final pre-activation hold |
@@ -37,6 +38,20 @@ Package path: `mnemonic_cortex/hypergraph_manifold/`
 **HGM v0.1 finalization:** see `HGM_V0_1_FINALIZATION_RECORD.json`, `HGM_V0_1_RELEASE_NOTES.md`.
 
 Per-stage docs: `docs/hgm_hpme/00_` … `11_` plus `HGM_V0_1_*`.
+
+## HGM-QDT-AUDIT-1 (read-only bridge audit)
+
+Post-v0.1 audit against QDT/WM contract surfaces. No runtime source modifications.
+
+| Result | Value |
+|---|---|
+| Mode | `read_only_audit` |
+| Verdict | Read-only bridge planning compatible; write-stage blocked |
+| HGM compatibility | 153 passed |
+| QDT/WM targeted | 22 passed |
+| Live writes | `false` |
+
+Docs: `docs/hgm_hpme/HGM_QDT_AUDIT_1_*`. Artifacts: `release/hgm_qdt_audit_1/`.
 
 ## HGM v0.1 safety boundaries (all stages)
 
@@ -73,8 +88,8 @@ REASON-4C compatibility: **106 passed**. Defaults inert; no real store writes.
 
 Docs: `docs/reasoning_engine/`.
 
-## Next recommended command (HGM v0.1)
+## Next recommended command (HGM bridge)
 
 ```text
-DEV-FLOW RUN HGM-QDT-AUDIT-1 — Read-Only QDT/WM Contract Audit, Bridge Compatibility Review, and Write-Stage Risk Register
+DEV-FLOW RUN HGM-QDT-WRITE-PREP-1 — Read-Only Proposal Materialization Contract, Slot-ID Mapping Plan, QH/Q-Spin Conversion Contract, and Rollback Snapshot Handshake
 ```
