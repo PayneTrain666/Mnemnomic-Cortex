@@ -1,0 +1,47 @@
+{
+  "release_id": "HGM-6",
+  "title": "Write-Permission Gate, Transactional Memory Integration Preview, and Rollback-Safe QDT/WM Commit Plan",
+  "source_baseline": "/mnt/data/current-branch-HGM-5-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "safety": {
+    "dry_run": true,
+    "preview_only": true,
+    "live_writes": false,
+    "qdt_wm_mutation": false
+  },
+  "added_files": [
+    "docs/hgm_hpme/07_hgm_6_write_permission_gate.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm6_result.py",
+    "mnemonic_cortex/hypergraph_manifold/write_permission_gate.py",
+    "mnemonic_cortex/hypergraph_manifold/transaction_preview.py",
+    "mnemonic_cortex/hypergraph_manifold/rollback_plan.py",
+    "mnemonic_cortex/hypergraph_manifold/commit_readiness.py",
+    "release/hgm_6/changed_files.json",
+    "release/hgm_6/compatibility_pytest_output.txt",
+    "release/hgm_6/compile_output.txt",
+    "release/hgm_6/manifest.json",
+    "release/hgm_6/pytest_output.txt",
+    "release/hgm_6/ship_check.md",
+    "tests/test_hgm_6_write_permission_gate.py"
+  ],
+  "modified_files": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "tests": {
+    "targeted": "python -m pytest tests/test_hgm_6_write_permission_gate.py -q",
+    "compatibility": "python -m pytest tests/test_hgm_0a_foundation_types.py tests/test_hgm_0b_probability_expander.py tests/test_hgm_1_hyperedge_binder.py tests/test_hgm_2_manifold_router.py tests/test_hgm_3_spcp_procedural_memory.py tests/test_hgm_4_qdt_wm_bridge.py tests/test_hgm_5_embedding_evaluation.py tests/test_hgm_6_write_permission_gate.py -q",
+    "compileall": "python -m compileall -q mnemonic_cortex/hypergraph_manifold"
+  },
+  "results": {
+    "targeted_tests": "12 passed",
+    "compatibility_tests": "106 passed",
+    "compileall": "passed"
+  },
+  "known_limits": [
+    "HGM-6 is preview-only.",
+    "It does not execute memory writes.",
+    "It does not mutate QDT/WM memory.",
+    "It does not perform live commit.",
+    "Actual write execution requires a later explicit permission stage."
+  ]
+}

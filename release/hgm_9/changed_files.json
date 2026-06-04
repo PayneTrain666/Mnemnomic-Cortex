@@ -1,0 +1,21 @@
+{
+  "added": [
+    "docs/hgm_hpme/10_hgm_9_runtime_integration_readiness.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm9_pipeline.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm9_result.py",
+    "mnemonic_cortex/hypergraph_manifold/production_readiness_gate.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_runtime_evaluation.py",
+    "mnemonic_cortex/hypergraph_manifold/slot_lattice_replay_benchmark.py",
+    "release/hgm_9/changed_files.json",
+    "release/hgm_9/compatibility_pytest_output.txt",
+    "release/hgm_9/compile_output.txt",
+    "release/hgm_9/manifest.json",
+    "release/hgm_9/pytest_output.txt",
+    "release/hgm_9/ship_check.md",
+    "tests/test_hgm_9_runtime_integration_readiness.py"
+  ],
+  "modified": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "deleted": []
+}

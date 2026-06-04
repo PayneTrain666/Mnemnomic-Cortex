@@ -1,0 +1,12 @@
+{
+  "changed_files": [
+    "docs/hgm_hpme/05_hgm_4_qdt_wm_bridge.md",
+    "mnemonic_cortex/hypergraph_manifold/bridge_payloads.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm4_result.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_wm_bridge.py",
+    "mnemonic_cortex/hypergraph_manifold/slot_lattice_hooks.py",
+    "mnemonic_cortex/hypergraph_manifold/trace_safe_memory_integration.py",
+    "tests/test_hgm_4_qdt_wm_bridge.py",
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ]
+}

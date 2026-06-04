@@ -1,0 +1,16 @@
+{
+  "release_id": "HGM-8",
+  "title": "Learned Runtime Embedding Trainer, Safe Write Replay Evaluation, and End-to-End HGM Pipeline Benchmark",
+  "baseline": "/mnt/data/current-branch-HGM-7-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "additive_only": true,
+  "live_qdt_wm_writes": false,
+  "targeted_tests": "13 passed",
+  "compatibility_tests": "130 passed",
+  "compileall": "passed",
+  "created_at_utc_epoch": 1780561434.4434154,
+  "artifacts": [
+    "/mnt/data/HGM-8-pipeline-benchmark-release-pack.zip",
+    "/mnt/data/current-branch-HGM-8-patched.zip"
+  ]
+}

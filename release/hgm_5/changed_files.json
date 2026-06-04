@@ -1,0 +1,21 @@
+{
+  "added": [
+    "docs/hgm_hpme/06_hgm_5_embedding_evaluation.md",
+    "mnemonic_cortex/hypergraph_manifold/bridge_evaluation.py",
+    "mnemonic_cortex/hypergraph_manifold/embedding_trainer.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm5_result.py",
+    "mnemonic_cortex/hypergraph_manifold/integration_scoring.py",
+    "mnemonic_cortex/hypergraph_manifold/quality_metrics.py",
+    "release/hgm_5/changed_files.json",
+    "release/hgm_5/compatibility_pytest_output.txt",
+    "release/hgm_5/compile_output.txt",
+    "release/hgm_5/manifest.json",
+    "release/hgm_5/pytest_output.txt",
+    "release/hgm_5/ship_check.md",
+    "tests/test_hgm_5_embedding_evaluation.py"
+  ],
+  "modified": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "removed": []
+}
