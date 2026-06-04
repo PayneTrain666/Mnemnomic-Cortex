@@ -104,6 +104,40 @@ __all__ = [
     "build_hgm1_scenario_graph",
     "detect_conflict_edges",
     "detect_opportunity_edges",
+    "ManifoldRoutingOptions",
+    "ManifoldRoutingInput",
+    "GeometryDistanceResult",
+    "ManifoldRouteAssignment",
+    "ManifoldRoutingResult",
+    "DepthRetrievalTarget",
+    "DepthRetrievalBridgeResult",
+    "HGM2ManifoldRoutingResult",
+    "compute_geometry_distance",
+    "route_hyperedges_to_manifold_charts",
+    "build_hgm2_manifold_routing",
+    "assign_depth_retrieval_targets",
+    "SPCPProceduralOptions",
+    "ActionPrimitive",
+    "ProceduralActionSequence",
+    "ActionSequenceBuildResult",
+    "SPCPProcedureEmbedding",
+    "SPCPEmbeddingResult",
+    "SPCPSimilarityResult",
+    "ProceduralMemoryStoreResult",
+    "ProceduralMemoryRetrievalCandidate",
+    "ProceduralMemoryRetrievalResult",
+    "RoboticsPlanningActionOption",
+    "RoboticsPlanningBridgeResult",
+    "HGM3ProceduralMemoryResult",
+    "validate_action_primitive",
+    "validate_action_sequence",
+    "build_action_sequence_from_hgm2_route",
+    "compute_spcp_procedure_embedding",
+    "spcp_procedure_similarity",
+    "store_procedural_sequences",
+    "retrieve_similar_procedures",
+    "build_robotics_planning_options",
+    "build_hgm3_spcp_procedural_memory",
 ]
 
 from .hgm1_result import (
@@ -122,3 +156,37 @@ from .coherence import score_hyperedge_coherence
 from .hyperedge_binder import bind_scenario_candidates, build_hgm1_scenario_graph
 from .conflict_graph import detect_conflict_edges
 from .opportunity_graph import detect_opportunity_edges
+
+from .hgm2_result import (
+    ManifoldRoutingOptions,
+    ManifoldRoutingInput,
+    GeometryDistanceResult,
+    ManifoldRouteAssignment,
+    ManifoldRoutingResult,
+    DepthRetrievalTarget,
+    DepthRetrievalBridgeResult,
+    HGM2ManifoldRoutingResult,
+)
+from .geometry_distance import compute_geometry_distance
+from .manifold_router import route_hyperedges_to_manifold_charts, build_hgm2_manifold_routing
+from .depth_retrieval import assign_depth_retrieval_targets
+
+from .hgm3_result import (
+    SPCPProceduralOptions,
+    ActionPrimitive,
+    ProceduralActionSequence,
+    ActionSequenceBuildResult,
+    SPCPProcedureEmbedding,
+    SPCPEmbeddingResult,
+    SPCPSimilarityResult,
+    ProceduralMemoryStoreResult,
+    ProceduralMemoryRetrievalCandidate,
+    ProceduralMemoryRetrievalResult,
+    RoboticsPlanningActionOption,
+    RoboticsPlanningBridgeResult,
+    HGM3ProceduralMemoryResult,
+)
+from .action_sequence import validate_action_primitive, validate_action_sequence, build_action_sequence_from_hgm2_route
+from .spcp_procedural import compute_spcp_procedure_embedding, spcp_procedure_similarity
+from .procedural_memory import store_procedural_sequences, retrieve_similar_procedures
+from .robotics_planning_bridge import build_robotics_planning_options, build_hgm3_spcp_procedural_memory

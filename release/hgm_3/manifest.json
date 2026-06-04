@@ -1,0 +1,46 @@
+{
+  "release_id": "HGM-3",
+  "title": "SPCP Procedural Memory Adapter, Action-Sequence Storage, and Robotics Planning Bridge",
+  "source_baseline": "/mnt/data/current-branch-HGM-2-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "created_at_unix": 1780557422.6347919,
+  "safety": "dry-run safe; additive only; advisory robotics output only; no hardware calls",
+  "files": {
+    "added": [
+      "docs/hgm_hpme/04_hgm_3_spcp_procedural_memory.md",
+      "mnemonic_cortex/hypergraph_manifold/action_sequence.py",
+      "mnemonic_cortex/hypergraph_manifold/hgm3_result.py",
+      "mnemonic_cortex/hypergraph_manifold/procedural_memory.py",
+      "mnemonic_cortex/hypergraph_manifold/robotics_planning_bridge.py",
+      "mnemonic_cortex/hypergraph_manifold/spcp_procedural.py",
+      "release/hgm_3/changed_files.json",
+      "release/hgm_3/compatibility_pytest_output.txt",
+      "release/hgm_3/compile_output.txt",
+      "release/hgm_3/manifest.json",
+      "release/hgm_3/pytest_output.txt",
+      "release/hgm_3/ship_check.md",
+      "tests/test_hgm_3_spcp_procedural_memory.py"
+    ],
+    "modified": [
+      "mnemonic_cortex/hypergraph_manifold/__init__.py"
+    ],
+    "deleted": []
+  },
+  "commands_run": [
+    "python -m pytest tests/test_hgm_3_spcp_procedural_memory.py -q",
+    "python -m pytest tests/test_hgm_0a_foundation_types.py tests/test_hgm_0b_probability_expander.py tests/test_hgm_1_hyperedge_binder.py tests/test_hgm_2_manifold_router.py tests/test_hgm_3_spcp_procedural_memory.py -q",
+    "python -m compileall -q mnemonic_cortex/hypergraph_manifold"
+  ],
+  "results": {
+    "targeted": "15 passed",
+    "compatibility": "63 passed",
+    "compileall": "passed"
+  },
+  "known_limits": [
+    "dependency-light deterministic embeddings only",
+    "no live robotics-control execution",
+    "no QDT/WM runtime bridge yet",
+    "no learned procedural embeddings yet",
+    "no embodied policy execution"
+  ]
+}
