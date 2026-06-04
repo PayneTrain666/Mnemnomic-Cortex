@@ -1,0 +1,46 @@
+{
+  "release_id": "HGM-0A",
+  "title": "Hypergraph Manifold + Hyperset Probability Matrix Foundation Types",
+  "created_utc": "2026-06-04T06:38:44.918732Z",
+  "lineage": [
+    "MnemonicCortex",
+    "HGM",
+    "HPME",
+    "HGM-0A"
+  ],
+  "safety_level": "dry-run safe, additive only",
+  "modified_existing_files": [],
+  "added_files": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "mnemonic_cortex/hypergraph_manifold/config.py",
+    "mnemonic_cortex/hypergraph_manifold/enums.py",
+    "mnemonic_cortex/hypergraph_manifold/shapes.py",
+    "mnemonic_cortex/hypergraph_manifold/types.py",
+    "mnemonic_cortex/hypergraph_manifold/validation.py",
+    "tests/test_hgm_0a_foundation_types.py",
+    "docs/hgm_hpme/00_hgm_0a_foundation_types.md",
+    "release/hgm_0a/manifest.json",
+    "release/hgm_0a/pytest_output.txt",
+    "release/hgm_0a/compile_output.txt",
+    "release/hgm_0a/ship_check.md"
+  ],
+  "test_command": "python -m pytest tests/test_hgm_0a_foundation_types.py -q",
+  "next_exact_command": "DEV-FLOW RUN HGM-0B \u2014 Hyperset Probability Expander, Normalization Runtime, and Scenario Top-K Extraction",
+  "ship_check": "PASS",
+  "pytest_return_code": 0,
+  "compile_return_code": 0,
+  "file_sha256": {
+    "mnemonic_cortex/hypergraph_manifold/__init__.py": "7a29443ca3cb0414ed367a69f439e9276fe25a1e6737cc1572601e0614e1bbaa",
+    "mnemonic_cortex/hypergraph_manifold/config.py": "effff29bc4db669f27cbf4db4f80bffb4a3fadcfc99faa3c416aad46aac58366",
+    "mnemonic_cortex/hypergraph_manifold/enums.py": "d1fe789adf0ca63db24f5445f85ebb9300b7a483209b5c6a55b468b839a394a5",
+    "mnemonic_cortex/hypergraph_manifold/shapes.py": "018211e3fe699a61c5152ae2325643ca83c66b91d69b1b3327019c384ae48dd0",
+    "mnemonic_cortex/hypergraph_manifold/types.py": "134c2809323cfcd546642f492d2370564546a4788231597cfd2f4af5ffbb5528",
+    "mnemonic_cortex/hypergraph_manifold/validation.py": "183c479b1b03e869c8b87aa5d4f86484e25c32ee84b82dec3d97e671102fa561",
+    "tests/test_hgm_0a_foundation_types.py": "bd65aefced5530a5d8452c38c443778b223861a798f4aa8873ab19833473e7b5",
+    "docs/hgm_hpme/00_hgm_0a_foundation_types.md": "efcaaf6f48811172a51e334a834f303e2054a417f16f8b2034254eb9c80fd599",
+    "release/hgm_0a/manifest.json": "c1d9170a5ec4603c6903fbb8a6dc5e3ea37f76ba0b3082b5694d53d13e7c8b26",
+    "release/hgm_0a/pytest_output.txt": "0699f27a57117a61856dac022656af0fc9d7e745c5c8f8af3ea444beaf9036c6",
+    "release/hgm_0a/compile_output.txt": "b9a7a7bdf18f0940bd1e4f2a0af1284a0286a3c6256b77f010dadfe940fead1a",
+    "release/hgm_0a/ship_check.md": "f28b873560917d09501e3a06c8a2ba628214cdcecf0f82f975c2d7a74e43dbef"
+  }
+}
