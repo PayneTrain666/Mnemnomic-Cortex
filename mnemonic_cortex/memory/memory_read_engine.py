@@ -6,8 +6,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
 
-from .shared_slot_schema import SlotMetadata, slot_state_to_code
+from .shared_slot_schema import SlotMetadata, slot_state_to_code, validate_system_id
 from .shared_slot_store import SharedSlotStore
+from .shared_slot_arbitrator import SharedSlotArbitrator, SlotReadRequest
 
 
 @dataclass
@@ -21,6 +22,11 @@ class MemoryReadRequest:
     use_geometry: bool = True
     geometry_family: Optional[str] = None
     geometry_depth: Optional[int] = None
+
+    def validate(self) -> None:
+        validate_system_id(self.requester_system)
+        if int(self.top_k) <= 0:
+            raise ValueError("top_k must be positive")
 
 
 @dataclass
@@ -49,11 +55,13 @@ class MemoryReadEngine(nn.Module):
         store: SharedSlotStore,
         geometry_runtime: Any = None,
         reranker: Any = None,
+        arbitrator: Optional[SharedSlotArbitrator] = None,
     ) -> None:
         super().__init__()
         self.store = store  # shared slot substrate
         self.geometry_runtime = geometry_runtime  # geometry runtime dependency
         self.reranker = reranker  # retrieval reranker transformer dependency
+        self.arbitrator = arbitrator
 
     def filter_candidate_slots(self, request: MemoryReadRequest) -> torch.Tensor:
         # Returns candidate slot ids [C] on store device.
@@ -147,6 +155,7 @@ class MemoryReadEngine(nn.Module):
         return reranked
 
     def retrieve(self, request: MemoryReadRequest) -> MemoryReadOutput:
+        request.validate()
         query = request.query.to(self.store.slot_values.device, dtype=self.store.slot_values.dtype)
         if query.dim() != 2:
             raise ValueError("request.query must be [B, D]")
@@ -189,21 +198,73 @@ class MemoryReadEngine(nn.Module):
         )
 
         k = min(max(1, int(request.top_k)), c)
-        top_scores, top_indices = torch.topk(candidate_scores, k=k, dim=1)
-        top_slot_ids = candidate_slot_ids.index_select(0, top_indices.reshape(-1)).reshape(bsz, k)
+        if self.arbitrator is None:
+            top_scores, top_indices = torch.topk(candidate_scores, k=k, dim=1)
+            top_slot_ids = candidate_slot_ids.index_select(0, top_indices.reshape(-1)).reshape(bsz, k)
+            gather_idx = top_indices.unsqueeze(-1).expand(-1, -1, d)
+            out_values = batched_candidate_values.gather(1, gather_idx)  # [B, K, D]
+            out_metadata: List[List[SlotMetadata | Any]] = []
+            for batch_row in top_slot_ids.tolist():
+                out_metadata.append([self.store.metadata.get(int(slot_id)) for slot_id in batch_row])
+        else:
+            chosen_by_batch: List[List[int]] = []
+            chosen_scores_by_batch: List[List[float]] = []
+            for b in range(bsz):
+                sid_list = [int(x) for x in candidate_slot_ids.tolist()]
+                score_list = [float(x) for x in candidate_scores[b].tolist()]
+                dec = self.arbitrator.decide_read(
+                    request=SlotReadRequest(
+                        requester_system=request.requester_system,
+                        max_results=k,
+                        min_confidence=0.0,
+                        allow_quarantined=False,
+                    ),
+                    candidate_slot_ids=sid_list,
+                    existing_scores=score_list,
+                )
+                chosen = [int(x) for x in dec.chosen_slot_ids[:k]]
+                if not chosen:
+                    fallback_scores, fallback_indices = torch.topk(candidate_scores[b], k=k, dim=0)
+                    chosen = [int(candidate_slot_ids[int(i)].item()) for i in fallback_indices.tolist()]
+                    chosen_scores = [float(x) for x in fallback_scores.tolist()]
+                else:
+                    score_map = {int(s): float(v) for s, v in zip(sid_list, score_list)}
+                    chosen_scores = [score_map.get(int(s), 0.0) for s in chosen]
+                chosen_by_batch.append(chosen)
+                chosen_scores_by_batch.append(chosen_scores)
 
-        gather_idx = top_indices.unsqueeze(-1).expand(-1, -1, d)
-        out_values = batched_candidate_values.gather(1, gather_idx)  # [B, K, D]
-
-        out_metadata: List[List[SlotMetadata | Any]] = []
-        for batch_row in top_slot_ids.tolist():
-            out_metadata.append([self.store.metadata.get(int(slot_id)) for slot_id in batch_row])
+            # Harmonize row length to smallest available.
+            k_eff = min(len(row) for row in chosen_by_batch) if chosen_by_batch else 0
+            if k_eff <= 0:
+                top_slot_ids = torch.zeros(bsz, 0, device=query.device, dtype=torch.long)
+                top_scores = torch.zeros(bsz, 0, device=query.device, dtype=query.dtype)
+                out_values = torch.zeros(bsz, 0, d, device=query.device, dtype=query.dtype)
+                out_metadata = [[] for _ in range(bsz)]
+            else:
+                top_slot_ids = torch.tensor(
+                    [row[:k_eff] for row in chosen_by_batch],
+                    device=query.device,
+                    dtype=torch.long,
+                )
+                top_scores = torch.tensor(
+                    [row[:k_eff] for row in chosen_scores_by_batch],
+                    device=query.device,
+                    dtype=query.dtype,
+                )
+                row_values = []
+                out_metadata = []
+                for row in top_slot_ids.tolist():
+                    ids = torch.tensor(row, device=query.device, dtype=torch.long)
+                    row_values.append(self.store.slot_values.index_select(0, ids).unsqueeze(0))
+                    out_metadata.append([self.store.metadata.get(int(slot_id)) for slot_id in row])
+                out_values = torch.cat(row_values, dim=0)
 
         diagnostics = {
             "candidate_count": c,
-            "top_k": k,
+            "top_k": int(top_slot_ids.size(1)),
             "used_geometry": bool(request.use_geometry and self.geometry_runtime is not None),
             "used_reranker": self.reranker is not None,
+            "used_read_arbitrator": self.arbitrator is not None,
             "global_shape": list(self.store.slot_values.shape),  # [N, D]
             "candidate_shape": list(candidate_values.shape),  # [C, D]
             "batched_candidate_shape": list(batched_candidate_values.shape),  # [B, C, D]

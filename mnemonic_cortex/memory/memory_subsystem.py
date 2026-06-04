@@ -31,13 +31,32 @@ def build_shared_memory_subsystem(
     geometry_runtime: Any = None,
     reranker: Any = None,
     truth_runtime: Any = None,
+    overwrite_threshold: float = 0.35,
+    merge_threshold: float = 0.65,
+    quarantine_interference_threshold: float = 0.85,
+    contradiction_split_threshold: int = 3,
 ) -> SharedMemorySubsystem:
     allocator = SharedSlotAllocator(store=store)
-    arbitrator = SharedSlotArbitrator(store=store)
+    arbitrator = SharedSlotArbitrator(
+        store=store,
+        overwrite_threshold=overwrite_threshold,
+        merge_threshold=merge_threshold,
+        quarantine_interference_threshold=quarantine_interference_threshold,
+    )
     retention = SharedSlotRetention(store=store)
-    read_engine = MemoryReadEngine(store=store, geometry_runtime=geometry_runtime, reranker=reranker)
+    read_engine = MemoryReadEngine(
+        store=store,
+        geometry_runtime=geometry_runtime,
+        reranker=reranker,
+        arbitrator=arbitrator,
+    )
     write_engine = MemoryWriteEngine(store=store, allocator=allocator, arbitrator=arbitrator)
-    update_engine = MemoryUpdateEngine(store=store, write_engine=write_engine, arbitrator=arbitrator)
+    update_engine = MemoryUpdateEngine(
+        store=store,
+        write_engine=write_engine,
+        arbitrator=arbitrator,
+        contradiction_split_threshold=contradiction_split_threshold,
+    )
     lifecycle_manager = MemoryLifecycleManager(
         store=store,
         retention=retention,

@@ -10,6 +10,13 @@ class CortexSeqModel(nn.Module):
         self,
         vocab_size: int,
         d_model: int = 144,
+        fusion: str = "weighted",
+        sensory_buffer_size: int = 5,
+        wm_slots: int = 7,
+        wm_slot_dim: int = 256,
+        ltm_hg_slots: int = 2048,
+        ltm_cgmn_slots: int = 1024,
+        ltm_curved_slots: int = 512,
         recall_loss_weight: float = 0.1,
         cms_enabled: bool = True,
         cms_senses: int = 3,
@@ -23,7 +30,18 @@ class CortexSeqModel(nn.Module):
     ):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.cortex = EnhancedMnemonicCortex(input_dim=d_model, output_dim=d_model)
+        self.cortex = EnhancedMnemonicCortex(
+            input_dim=d_model,
+            output_dim=d_model,
+            sensory_buffer_size=sensory_buffer_size,
+            wm_slots=wm_slots,
+            wm_slot_dim=wm_slot_dim,
+            ltm_hg_slots=ltm_hg_slots,
+            ltm_cgmn_slots=ltm_cgmn_slots,
+            ltm_curved_slots=ltm_curved_slots,
+            fusion=fusion,
+        )
+        self.cms_enabled = bool(cms_enabled)
         if cms_enabled:
             self.cortex.enable_consolidated_lexicon(vocab_size=vocab_size, senses=cms_senses)
             if cms_multi_store:
@@ -40,6 +58,10 @@ class CortexSeqModel(nn.Module):
         self.cms_consolidation_intent = str(cms_consolidation_intent)
         self.ahg_enabled = bool(ahg_enabled)
         self.hallucination_guard = None
+
+    def topology_step(self, loss_value: float):
+        if hasattr(self.cortex, "topology_step"):
+            self.cortex.topology_step(float(loss_value))
 
     def flush_cms_logger(self):
         if hasattr(self.cortex, "flush_cms_logger"):
@@ -153,7 +175,7 @@ class CortexSeqModel(nn.Module):
                 operation='process',
                 return_aux_losses=True,
                 token_ids=src,
-                use_consolidated_memory=True,
+                use_consolidated_memory=self.cms_enabled,
                 context_features=emb,
                 consolidation_intent=self.cms_consolidation_intent,
             )
@@ -168,7 +190,7 @@ class CortexSeqModel(nn.Module):
                 ctx,
                 operation='process',
                 token_ids=src,
-                use_consolidated_memory=True,
+                use_consolidated_memory=self.cms_enabled,
                 context_features=emb,
                 consolidation_intent=self.cms_consolidation_intent,
             )  # (B,T,d)
@@ -227,7 +249,9 @@ def get_model(name: str, vocab_size: int, **kwargs):
     if name == 'cortex':
         return CortexSeqModel(vocab_size, **kwargs)
     if name == 'lstm':
-        return LSTMSeq2Seq(vocab_size)
+        filtered = {k: v for k, v in kwargs.items() if k in {"d_model", "num_layers"}}
+        return LSTMSeq2Seq(vocab_size, **filtered)
     if name == 'transformer':
-        return TinyTransformer(vocab_size)
+        filtered = {k: v for k, v in kwargs.items() if k in {"d_model", "nhead", "num_layers"}}
+        return TinyTransformer(vocab_size, **filtered)
     raise ValueError(f"Unknown model {name}")

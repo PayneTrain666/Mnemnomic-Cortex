@@ -7,7 +7,15 @@ import torch
 
 from .shared_slot_allocator import SharedSlotAllocator
 from .shared_slot_arbitrator import SharedSlotArbitrator
-from .shared_slot_schema import SlotMetadata, SlotProvenance, SlotWriteRequest, slot_state_to_code
+from .shared_slot_schema import (
+    SYSTEM_TO_CODE,
+    SlotMetadata,
+    SlotProvenance,
+    SlotWriteRequest,
+    code_to_slot_state,
+    slot_state_to_code,
+    validate_system_id,
+)
 from .shared_slot_store import SharedSlotStore
 
 
@@ -126,6 +134,59 @@ class MemoryWriteEngine:
             extra=dict(request.extra or {}),
         )
 
+    def _system_code_for_requester(self, requester_system: str) -> int:
+        try:
+            validate_system_id(requester_system)
+            return int(SYSTEM_TO_CODE[requester_system])
+        except Exception:
+            return 0
+
+    def _default_acl_masks(
+        self,
+        *,
+        count: int,
+        requester_system: str,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        read_mask = torch.zeros(
+            count,
+            self.store.num_systems,
+            device=self.store.slot_values.device,
+            dtype=torch.bool,
+        )
+        write_mask = torch.zeros(
+            count,
+            self.store.num_systems,
+            device=self.store.slot_values.device,
+            dtype=torch.bool,
+        )
+        sys_code = self._system_code_for_requester(requester_system)
+        if 0 <= sys_code < self.store.num_systems:
+            read_mask[:, sys_code] = True
+            write_mask[:, sys_code] = True
+        return read_mask, write_mask
+
+    def _candidate_slot_ids_for_request(self, request: SlotWriteRequest, limit: int) -> List[int]:
+        scored: List[tuple[float, int]] = []
+        req_mem_type = request.requested_memory_type
+        for sid in range(self.store.num_slots):
+            state = code_to_slot_state(int(self.store.slot_state_code[sid].item()))
+            if state in {"free", "deprecated"}:
+                continue
+            meta = self.store.metadata.get(int(sid))
+            if meta is not None and isinstance(meta, SlotMetadata):
+                primary = str(meta.primary_system_id or "")
+                if primary and primary != request.requester_system and state == "durable":
+                    # Protect durable slots owned by other systems.
+                    continue
+                slot_type = getattr(meta, "memory_type", None)
+                if req_mem_type is not None and slot_type not in (None, req_mem_type):
+                    continue
+            conf = float(self.store.slot_confidence[sid].item())
+            usage = float(self.store.slot_usage[sid].item())
+            scored.append((conf + 0.01 * min(usage, 10.0), int(sid)))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [sid for _, sid in scored[: max(1, int(limit))]]
+
     def commit_new_slots(
         self,
         *,
@@ -143,9 +204,16 @@ class MemoryWriteEngine:
             device=self.store.slot_values.device,
             dtype=torch.long,
         )
-        primary = torch.zeros(len(slot_ids), device=self.store.slot_values.device, dtype=torch.long)
-        read_mask = torch.zeros(len(slot_ids), self.store.num_systems, device=self.store.slot_values.device, dtype=torch.bool)
-        write_mask = torch.zeros(len(slot_ids), self.store.num_systems, device=self.store.slot_values.device, dtype=torch.bool)
+        primary = torch.full(
+            (len(slot_ids),),
+            self._system_code_for_requester(request.requester_system),
+            device=self.store.slot_values.device,
+            dtype=torch.long,
+        )
+        read_mask, write_mask = self._default_acl_masks(
+            count=len(slot_ids),
+            requester_system=request.requester_system,
+        )
         usage = torch.ones(len(slot_ids), device=self.store.slot_values.device)
         age = torch.zeros(len(slot_ids), device=self.store.slot_values.device, dtype=torch.long)
 
@@ -171,6 +239,21 @@ class MemoryWriteEngine:
             confidence=torch.full((len(slot_ids),), float(request.confidence), device=self.store.slot_values.device),
         )
         self.store.increment_usage(ids, amount=1.0)
+        self.store.set_slot_primary_system_code(
+            slot_ids=ids,
+            primary_system_code=torch.full(
+                (len(slot_ids),),
+                self._system_code_for_requester(request.requester_system),
+                device=self.store.slot_values.device,
+                dtype=torch.long,
+            ),
+        )
+        read_mask, write_mask = self._default_acl_masks(
+            count=len(slot_ids),
+            requester_system=request.requester_system,
+        )
+        self.store.set_slot_allowed_read_mask(slot_ids=ids, allowed_read_mask=read_mask)
+        self.store.set_slot_allowed_write_mask(slot_ids=ids, allowed_write_mask=write_mask)
         self.store.set_slot_state_code(
             slot_ids=ids,
             state_code=torch.full(
@@ -208,6 +291,7 @@ class MemoryWriteEngine:
         request: SlotWriteRequest,
         values: torch.Tensor,  # [K, D] or [D]
     ) -> MemoryWriteOutput:
+        request.validate()
         values_2d = self.prepare_values(values)
         k = int(values_2d.size(0))
 
@@ -225,7 +309,7 @@ class MemoryWriteEngine:
             )
 
         candidate_count = min(max(4, k), self.store.num_slots)
-        candidate_slot_ids = self.arbitrator.store.slot_confidence.topk(candidate_count).indices.tolist()
+        candidate_slot_ids = self._candidate_slot_ids_for_request(request, candidate_count)
         decision = self.arbitrator.decide_write(request=request, candidate_slot_ids=candidate_slot_ids)
         if bool((request.extra or {}).get("force_allocate_new", False)):
             decision.action = "allocate_new"

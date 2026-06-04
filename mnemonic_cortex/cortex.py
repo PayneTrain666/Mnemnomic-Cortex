@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from typing import Any, Dict, List, Optional
+import warnings
+from dataclasses import asdict, is_dataclass
+from collections import deque
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
@@ -134,6 +137,7 @@ class EnhancedMnemonicCortex(nn.Module):
         self.diagnostics = ModelDiagnostics(enabled=False)
         self.shared_memory_subsystem = None
         self.hg_episodic_ltm = None
+        self.episodic_write_mode = "legacy"  # legacy | mirror | shared_only
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
 
@@ -154,25 +158,37 @@ class EnhancedMnemonicCortex(nn.Module):
         self,
         *,
         num_slots: int = 2048,
-        num_systems: int = 8,
+        num_systems: Optional[int] = None,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         geometry_runtime: Any = None,
         reranker: Any = None,
         truth_runtime: Any = None,
+        overwrite_threshold: float = 0.35,
+        merge_threshold: float = 0.65,
+        quarantine_interference_threshold: float = 0.85,
+        contradiction_split_threshold: int = 3,
     ):
         """
         Attach the shared-slot memory stack (store/allocator/arbitrator/retention/read/write).
         This is optional and does not alter the main forward path unless used explicitly.
         """
         from .memory import SharedSlotStore, build_shared_memory_subsystem
+        from .memory.shared_slot_schema import MEMORY_SYSTEM_IDS
 
         device = device or self.ctx_proj.weight.device
         dtype = dtype or self.ctx_proj.weight.dtype
+        resolved_num_systems = int(len(MEMORY_SYSTEM_IDS) if num_systems is None else num_systems)
+        if resolved_num_systems <= 0:
+            raise ValueError("num_systems must be positive")
+        if resolved_num_systems > len(MEMORY_SYSTEM_IDS):
+            raise ValueError(
+                f"num_systems ({resolved_num_systems}) cannot exceed schema registry size ({len(MEMORY_SYSTEM_IDS)})"
+            )
         store = SharedSlotStore(
             num_slots=int(num_slots),
             slot_dim=int(self.input_dim),
-            num_systems=int(num_systems),
+            num_systems=resolved_num_systems,
             device=str(device),
             dtype=dtype,
         )
@@ -181,28 +197,36 @@ class EnhancedMnemonicCortex(nn.Module):
             geometry_runtime=geometry_runtime,
             reranker=reranker,
             truth_runtime=truth_runtime,
+            overwrite_threshold=overwrite_threshold,
+            merge_threshold=merge_threshold,
+            quarantine_interference_threshold=quarantine_interference_threshold,
+            contradiction_split_threshold=contradiction_split_threshold,
         )
         self.diagnostics.log(
             "shared_memory_subsystem_enabled",
             {
                 "num_slots": int(num_slots),
                 "slot_dim": int(self.input_dim),
-                "num_systems": int(num_systems),
+                "num_systems": int(resolved_num_systems),
+                "overwrite_threshold": float(overwrite_threshold),
+                "merge_threshold": float(merge_threshold),
+                "quarantine_interference_threshold": float(quarantine_interference_threshold),
+                "contradiction_split_threshold": int(contradiction_split_threshold),
             },
         )
         return self
 
-    def memory_write(self, request, values):
+    def memory_write(self, request: Any, values: torch.Tensor):
         if self.shared_memory_subsystem is None:
             raise RuntimeError("shared memory subsystem not enabled")
         return self.shared_memory_subsystem.write_engine.write(request=request, values=values)
 
-    def memory_read(self, request):
+    def memory_read(self, request: Any):
         if self.shared_memory_subsystem is None:
             raise RuntimeError("shared memory subsystem not enabled")
         return self.shared_memory_subsystem.read_engine.retrieve(request)
 
-    def memory_update(self, request):
+    def memory_update(self, request: Any):
         if self.shared_memory_subsystem is None:
             raise RuntimeError("shared memory subsystem not enabled")
         return self.shared_memory_subsystem.update_engine.update(request)
@@ -260,6 +284,7 @@ class EnhancedMnemonicCortex(nn.Module):
         long_episode_threshold: int = 16,
         summary_stride: int = 8,
         promotion_retrieval_threshold: int = 3,
+        write_mode: str = "mirror",
     ):
         """
         Attach HG episodic LTM on top of the shared-memory subsystem.
@@ -268,7 +293,7 @@ class EnhancedMnemonicCortex(nn.Module):
         if self.shared_memory_subsystem is None:
             self.enable_shared_memory_subsystem(
                 num_slots=2048,
-                num_systems=8,
+                num_systems=None,
                 device=self.ctx_proj.weight.device,
                 dtype=self.ctx_proj.weight.dtype,
             )
@@ -288,12 +313,17 @@ class EnhancedMnemonicCortex(nn.Module):
             summary_stride=summary_stride,
             promotion_retrieval_threshold=promotion_retrieval_threshold,
         )
+        mode = str(write_mode).lower().strip()
+        if mode not in {"legacy", "mirror", "shared_only"}:
+            raise ValueError(f"unsupported write_mode '{write_mode}'")
+        self.episodic_write_mode = mode
         self.diagnostics.log(
             "hg_episodic_ltm_enabled",
             {
                 "long_episode_threshold": int(long_episode_threshold),
                 "summary_stride": int(summary_stride),
                 "promotion_retrieval_threshold": int(promotion_retrieval_threshold),
+                "write_mode": mode,
             },
         )
         return self
@@ -449,9 +479,15 @@ class EnhancedMnemonicCortex(nn.Module):
             gcfg = load_yaml_config(config_path)
             apply_config_to_broker(self.consolidation_broker, gcfg)
             self.ahg = AntiHallucinationGuard(gcfg.ahg)
-        except Exception:
-            # Keep defaults if config is not present or invalid.
-            pass
+        except FileNotFoundError:
+            warnings.warn(
+                f"Broker config '{config_path}' not found; using default broker/AHG settings.",
+                RuntimeWarning,
+            )
+        except RuntimeError as exc:
+            warnings.warn(f"Broker config load failed: {exc}", RuntimeWarning)
+        except Exception as exc:
+            warnings.warn(f"Broker config apply failed: {exc}", RuntimeWarning)
         return self
 
     def enable_ahg(self, cfg: AHGConfig = None):
@@ -837,7 +873,17 @@ class EnhancedMnemonicCortex(nn.Module):
             cue = self.cue_to_input(cue)
 
         if mtype == 'episodic':
-            self.long_term_memory.hg(cue, operation='write')
+            if self.episodic_write_mode in {"legacy", "mirror"}:
+                self.long_term_memory.hg(cue, operation='write')
+            if self.hg_episodic_ltm is not None and self.episodic_write_mode in {"mirror", "shared_only"}:
+                for b in range(B):
+                    self.store_episodic_trace(
+                        episode_id=f"auto-ep-{int(self.shared_memory_subsystem.store.version_counter if self.shared_memory_subsystem is not None else 0)}-{int(b)}",
+                        episode_vectors=info[b],
+                        step_range=(0, int(S - 1)),
+                        trace_ids=[f"cortex:auto:{int(b)}"],
+                        tags=["auto", "episodic", "cortex"],
+                    )
         elif mtype == 'semantic':
             self.long_term_memory.cgmn(cue, operation='write')
         else:
@@ -1086,13 +1132,54 @@ class EnhancedMnemonicCortex(nn.Module):
                 'hg_usage': self.long_term_memory.hg.usage_counts.clone(),
                 'cgmn_usage': self.long_term_memory.cgmn.usage_counts.clone(),
                 'curved_usage': self.long_term_memory.curved.usage_counts.clone(),
-            }
+            },
         }
+        if self.shared_memory_subsystem is not None:
+            store = self.shared_memory_subsystem.store
+            ser_meta = {}
+            for k, v in store.metadata.items():
+                if is_dataclass(v):
+                    ser_meta[int(k)] = asdict(v)
+                elif isinstance(v, dict):
+                    ser_meta[int(k)] = dict(v)
+                else:
+                    ser_meta[int(k)] = v
+            checkpoint["shared_memory_state"] = {
+                "num_slots": int(store.num_slots),
+                "slot_dim": int(store.slot_dim),
+                "num_systems": int(store.num_systems),
+                "version_counter": int(store.version_counter),
+                "free_slot_ids": list(store.free_slot_ids),
+                "slot_values": store.slot_values.detach().cpu(),
+                "slot_confidence": store.slot_confidence.detach().cpu(),
+                "slot_usage": store.slot_usage.detach().cpu(),
+                "slot_age": store.slot_age.detach().cpu(),
+                "slot_state_code": store.slot_state_code.detach().cpu(),
+                "primary_system_code": store.primary_system_code.detach().cpu(),
+                "allowed_read_mask": store.allowed_read_mask.detach().cpu(),
+                "allowed_write_mask": store.allowed_write_mask.detach().cpu(),
+                "metadata": ser_meta,
+            }
+        if self.hg_episodic_ltm is not None:
+            ep = self.hg_episodic_ltm
+            checkpoint["hg_episodic_state"] = {
+                "episodic_write_mode": str(self.episodic_write_mode),
+                "episode_records": {
+                    eid: (asdict(rec) if is_dataclass(rec) else dict(rec))
+                    for eid, rec in ep.episode_records.items()
+                },
+                "episode_index_by_trace_id": dict(ep.episode_index_by_trace_id),
+                "episode_index_by_time": list(ep.episode_index_by_time),
+                "episode_index_by_tag": dict(ep.episode_index_by_tag),
+                "slot_retrieval_hits": dict(ep.slot_retrieval_hits),
+            }
         torch.save(checkpoint, path)
 
     def load_checkpoint(self, path: str, strict: bool = True):
         """Load checkpoint with version validation."""
         import torch
+        from .memory.shared_slot_schema import SlotMetadata, SlotProvenance
+        from .ltm.hg_episodic_ltm import EpisodeRecord
         checkpoint = torch.load(path, map_location='cpu')
         
         # Version check
@@ -1127,6 +1214,53 @@ class EnhancedMnemonicCortex(nn.Module):
                 self.long_term_memory.cgmn.usage_counts.copy_(mem['cgmn_usage'])
             if 'curved_usage' in mem:
                 self.long_term_memory.curved.usage_counts.copy_(mem['curved_usage'])
+        if "shared_memory_state" in checkpoint:
+            sm = checkpoint["shared_memory_state"]
+            if self.shared_memory_subsystem is None:
+                self.enable_shared_memory_subsystem(
+                    num_slots=int(sm.get("num_slots", 2048)),
+                    num_systems=int(sm.get("num_systems", 8)),
+                    device=self.ctx_proj.weight.device,
+                    dtype=self.ctx_proj.weight.dtype,
+                )
+            store = self.shared_memory_subsystem.store
+            store.slot_values.copy_(sm["slot_values"].to(device=store.slot_values.device, dtype=store.slot_values.dtype))
+            store.slot_confidence.copy_(sm["slot_confidence"].to(device=store.slot_confidence.device, dtype=store.slot_confidence.dtype))
+            store.slot_usage.copy_(sm["slot_usage"].to(device=store.slot_usage.device, dtype=store.slot_usage.dtype))
+            store.slot_age.copy_(sm["slot_age"].to(device=store.slot_age.device, dtype=store.slot_age.dtype))
+            store.slot_state_code.copy_(sm["slot_state_code"].to(device=store.slot_state_code.device, dtype=store.slot_state_code.dtype))
+            store.primary_system_code.copy_(sm["primary_system_code"].to(device=store.primary_system_code.device, dtype=store.primary_system_code.dtype))
+            store.allowed_read_mask.copy_(sm["allowed_read_mask"].to(device=store.allowed_read_mask.device, dtype=store.allowed_read_mask.dtype))
+            store.allowed_write_mask.copy_(sm["allowed_write_mask"].to(device=store.allowed_write_mask.device, dtype=store.allowed_write_mask.dtype))
+            store.version_counter = int(sm.get("version_counter", 0))
+            store.free_slot_ids = deque(int(x) for x in sm.get("free_slot_ids", []))
+            restored_meta = {}
+            for key, val in (sm.get("metadata") or {}).items():
+                sid = int(key)
+                if isinstance(val, dict) and {"slot_id", "state", "confidence", "usage_score", "age_steps", "primary_system_id"}.issubset(val.keys()):
+                    prov = val.get("provenance")
+                    if isinstance(prov, dict):
+                        val["provenance"] = SlotProvenance(**prov)
+                    restored_meta[sid] = SlotMetadata(**val)
+                else:
+                    restored_meta[sid] = val
+            store.metadata = restored_meta
+        if "hg_episodic_state" in checkpoint:
+            hs = checkpoint["hg_episodic_state"]
+            if self.hg_episodic_ltm is None:
+                self.enable_hg_episodic_ltm(write_mode=str(hs.get("episodic_write_mode", "mirror")))
+            else:
+                self.episodic_write_mode = str(hs.get("episodic_write_mode", self.episodic_write_mode))
+            ep = self.hg_episodic_ltm
+            recs = {}
+            for eid, raw in (hs.get("episode_records") or {}).items():
+                if isinstance(raw, dict):
+                    recs[eid] = EpisodeRecord(**raw)
+            ep.episode_records = recs
+            ep.episode_index_by_trace_id = {k: list(v) for k, v in (hs.get("episode_index_by_trace_id") or {}).items()}
+            ep.episode_index_by_time = [tuple(x) for x in (hs.get("episode_index_by_time") or [])]
+            ep.episode_index_by_tag = {k: list(v) for k, v in (hs.get("episode_index_by_tag") or {}).items()}
+            ep.slot_retrieval_hits = {int(k): int(v) for k, v in (hs.get("slot_retrieval_hits") or {}).items()}
 
     def compute_recall_loss(self, cue, context):
         """InfoNCE contrastive loss: cue vs. retrieved memory.

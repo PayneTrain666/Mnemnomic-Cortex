@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence, List
 
 import torch
 import torch.nn as nn
+from .shared_slot_schema import (
+    CODE_TO_SYSTEM,
+    SlotMetadata,
+    code_to_slot_state,
+    slot_state_to_code,
+    validate_system_id,
+)
 
 
 class SharedSlotStore(nn.Module):
@@ -57,6 +64,45 @@ class SharedSlotStore(nn.Module):
 
         self.metadata: Dict[int, Any] = {}
         self.free_slot_ids: deque[int] = deque(range(self.num_slots))
+
+    def _system_code_for(self, system_id: str) -> int:
+        try:
+            validate_system_id(system_id)
+            from .shared_slot_schema import SYSTEM_TO_CODE
+
+            return int(SYSTEM_TO_CODE[system_id])
+        except Exception:
+            return 0
+
+    def _sync_metadata_to_tensors(self, slot_id: int, meta: Any) -> None:
+        if not isinstance(meta, SlotMetadata):
+            return
+        sid = int(slot_id)
+        self.slot_state_code[sid] = int(slot_state_to_code(meta.state))
+        self.slot_confidence[sid] = float(meta.confidence)
+        self.slot_usage[sid] = float(meta.usage_score)
+        self.slot_age[sid] = int(meta.age_steps)
+        self.primary_system_code[sid] = int(self._system_code_for(str(meta.primary_system_id)))
+
+        self.allowed_read_mask[sid] = False
+        self.allowed_write_mask[sid] = False
+        read_allowed = [x for x in (meta.allowed_read_systems or []) if isinstance(x, str)]
+        write_allowed = [x for x in (meta.allowed_write_systems or []) if isinstance(x, str)]
+        if read_allowed:
+            for sys_id in read_allowed:
+                code = self._system_code_for(sys_id)
+                if 0 <= code < self.num_systems:
+                    self.allowed_read_mask[sid, code] = True
+        else:
+            # Empty ACL means no explicit restriction.
+            self.allowed_read_mask[sid] = True
+        if write_allowed:
+            for sys_id in write_allowed:
+                code = self._system_code_for(sys_id)
+                if 0 <= code < self.num_systems:
+                    self.allowed_write_mask[sid, code] = True
+        else:
+            self.allowed_write_mask[sid] = True
 
     def _normalize_slot_ids(self, slot_ids: torch.Tensor | Sequence[int]) -> torch.Tensor:
         ids = torch.as_tensor(slot_ids, device=self.slot_values.device, dtype=torch.long).reshape(-1)
@@ -143,6 +189,7 @@ class SharedSlotStore(nn.Module):
         if metadata:
             for slot_id, meta in metadata.items():
                 self.metadata[int(slot_id)] = meta
+                self._sync_metadata_to_tensors(int(slot_id), meta)
 
         self._refresh_free_list_for_ids(ids)
         self.version_counter += 1
@@ -225,7 +272,9 @@ class SharedSlotStore(nn.Module):
         ids = self._normalize_slot_ids(slot_ids)
         for slot_id in ids.tolist():
             if int(slot_id) in metadata:
-                self.metadata[int(slot_id)] = metadata[int(slot_id)]
+                item = metadata[int(slot_id)]
+                self.metadata[int(slot_id)] = item
+                self._sync_metadata_to_tensors(int(slot_id), item)
         self.version_counter += 1
 
     def set_slot_allowed_read_mask(
@@ -274,9 +323,14 @@ class SharedSlotStore(nn.Module):
 
     def set_slot_state_code(self, *, slot_ids: torch.Tensor | Sequence[int], state_code: torch.Tensor) -> None:
         ids = self._normalize_slot_ids(slot_ids)
-        self.slot_state_code[ids] = self._coerce_tensor(
+        codes = self._coerce_tensor(
             state_code, dtype=self.slot_state_code.dtype, shape=(ids.numel(),), name="state_code"
         )
+        self.slot_state_code[ids] = codes
+        for sid, code in zip(ids.tolist(), codes.tolist()):
+            meta = self.metadata.get(int(sid))
+            if isinstance(meta, SlotMetadata):
+                meta.state = code_to_slot_state(int(code))
         self._refresh_free_list_for_ids(ids)
         self.version_counter += 1
 
@@ -321,6 +375,42 @@ class SharedSlotStore(nn.Module):
             return
         self.slot_age[ids] += int(amount)
         self.version_counter += 1
+
+    # Compatibility helpers for older call sites.
+    def get_slot_state(self, slot_id: int) -> str:
+        return code_to_slot_state(int(self.slot_state_code[int(slot_id)].item()))
+
+    def get_primary_system(self, slot_id: int) -> Optional[str]:
+        code = int(self.primary_system_code[int(slot_id)].item())
+        return CODE_TO_SYSTEM.get(code)
+
+    def mark_slot_state(self, *, slot_ids: Sequence[int], state: str) -> None:
+        code = slot_state_to_code(state)  # type: ignore[arg-type]
+        slot_ids_list = [int(x) for x in slot_ids]
+        self.set_slot_state_code(
+            slot_ids=slot_ids_list,
+            state_code=torch.full(
+                (len(slot_ids_list),),
+                int(code),
+                device=self.slot_values.device,
+                dtype=torch.long,
+            ),
+        )
+
+    def release_slots(self, slot_ids: Sequence[int]) -> None:
+        self.deallocate_slots(slot_ids)
+
+    def age_all_slots(self, delta_steps: int = 1) -> None:
+        if delta_steps <= 0:
+            return
+        active = self.active_slot_ids()
+        if not active:
+            return
+        self.increment_age(active, amount=int(delta_steps))
+
+    def active_slot_ids(self) -> List[int]:
+        mask = self.slot_state_code != self.FREE_STATE_CODE
+        return torch.nonzero(mask, as_tuple=False).reshape(-1).detach().cpu().tolist()
 
     def summarize(self) -> Dict[str, Any]:
         free_count = sum(1 for x in self.slot_state_code.tolist() if int(x) == self.FREE_STATE_CODE)

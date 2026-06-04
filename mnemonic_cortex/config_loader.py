@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict
+import warnings
 
 import torch
 
@@ -62,3 +63,11 @@ def apply_config_to_broker(broker, gcfg: GlobalConfig):
                         dtype=store.w.dtype,
                     )
                 )
+                if hasattr(store, "b"):
+                    store.b.copy_(torch.tensor(float(sc.conformal_b), device=store.b.device, dtype=store.b.dtype))
+                if hasattr(store, "k") and int(getattr(store, "k")) != int(sc.senses):
+                    warnings.warn(
+                        f"Store '{name}' built with senses={int(getattr(store, 'k'))}, "
+                        f"config requests senses={int(sc.senses)}; rebuild required for sense-count changes.",
+                        RuntimeWarning,
+                    )
