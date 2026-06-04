@@ -22,6 +22,8 @@ class CortexWorkingMemoryIntegrationConfig:
     num_heads: int = 4
     transformer_layers: int = 1
     use_compatibility_wrapper: bool = True
+    default_operation: str = "process"
+    return_trace_by_default: bool = False
     preserve_old_reference: bool = True
     old_reference_attr: str = "legacy_working_memory"
 
@@ -38,6 +40,8 @@ class CortexWorkingMemoryIntegrationConfig:
             raise ValueError("num_heads must be positive")
         if self.input_dim % self.num_heads != 0:
             raise ValueError("input_dim must be divisible by num_heads")
+        if self.default_operation not in {"read", "process", "write"}:
+            raise ValueError("default_operation must be read/process/write")
         if not self.old_reference_attr:
             raise ValueError("old_reference_attr must be non-empty")
 
@@ -59,6 +63,8 @@ class CortexWorkingMemoryIntegrationConfig:
             num_slots=self.num_slots,
             num_heads=self.num_heads,
             transformer_layers=self.transformer_layers,
+            default_operation=self.default_operation,
+            return_trace_by_default=bool(self.return_trace_by_default),
         )
 
 
@@ -179,6 +185,8 @@ replace_cortex_working_memory(
         num_heads={config.num_heads},
         transformer_layers={config.transformer_layers},
         use_compatibility_wrapper={config.use_compatibility_wrapper},
+        default_operation="{config.default_operation}",
+        return_trace_by_default={config.return_trace_by_default},
         preserve_old_reference={config.preserve_old_reference},
     ),
 )

@@ -93,6 +93,37 @@ class QDTWMCompatibilityWrapper(nn.Module):
     def hidden_dim(self) -> int:
         return self.config.hidden_dim
 
+    @property
+    def memory_importance(self) -> Optional[torch.Tensor]:
+        # Legacy cortex paths may touch this for decay.
+        return getattr(self.qdt_working_memory, "memory_importance", None)
+
+    def set_temperature(self, temperature: torch.Tensor | float) -> None:
+        # Legacy cortex paths expect WM to accept temperature scaling.
+        if hasattr(self.qdt_working_memory, "set_temperature"):
+            self.qdt_working_memory.set_temperature(temperature)  # type: ignore[misc]
+            return
+        # Safe no-op fallback to preserve compatibility contract.
+        return
+
+    def get_metrics(self) -> Dict[str, Any]:
+        if hasattr(self.qdt_working_memory, "get_metrics"):
+            try:
+                out = self.qdt_working_memory.get_metrics()  # type: ignore[misc]
+                if isinstance(out, dict):
+                    return out
+            except Exception:
+                pass
+        trace = None if self.last_compatibility_trace is None else self.last_compatibility_trace.to_dict()
+        return {
+            "qdt_wrapper_enabled": True,
+            "input_dim": float(self.config.input_dim),
+            "hidden_dim": float(self.config.hidden_dim),
+            "num_depths": float(self.config.num_depths),
+            "has_memory_importance": 1.0 if self.memory_importance is not None else 0.0,
+            "last_trace_present": 1.0 if trace is not None else 0.0,
+        }
+
     def _validate_x(self, x: torch.Tensor) -> None:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
             raise ValueError(f"Expected x [B,T,{self.config.input_dim}], got {tuple(x.shape)}")

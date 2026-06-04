@@ -28,6 +28,24 @@ def test_replace_cortex_working_memory_preserves_old_reference():
     assert result.trace["dimensional_depth_preserved"]["system_commit_gate"] is True
 
 
+def test_integration_config_propagates_wrapper_runtime_defaults():
+    cortex = LegacyCortexShell()
+    cfg = CortexWorkingMemoryIntegrationConfig(
+        input_dim=32,
+        hidden_dim=64,
+        num_depths=8,
+        num_slots=8,
+        num_heads=4,
+        default_operation="read",
+        return_trace_by_default=True,
+    )
+    _ = replace_cortex_working_memory(cortex, cfg)
+    wrapped = cortex.working_memory
+    assert isinstance(wrapped, QDTWMCompatibilityWrapper)
+    assert wrapped.config.default_operation == "read"
+    assert wrapped.config.return_trace_by_default is True
+
+
 def test_enhanced_mnemonic_cortex_qdt_adapter_routes_operations_and_trace():
     cfg = CortexWorkingMemoryIntegrationConfig(input_dim=32, hidden_dim=64, num_depths=8, num_slots=8, num_heads=4)
     cortex = EnhancedMnemonicCortexQDTAdapter(cfg)
@@ -55,6 +73,7 @@ def test_migration_patch_template_is_explicit_template_not_fake_patch():
     assert "QDT-WM-MAAE WM-6A patch template" in template
     assert "replace_cortex_working_memory" in template
     assert "input_dim=32" in template
+    assert 'default_operation="process"' in template
 
 
 def test_cortex_adapter_rejects_bad_operation():

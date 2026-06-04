@@ -48,6 +48,23 @@ def test_compatibility_wrapper_and_cortex_adapter_still_route_read_process_write
     assert cortex.last_trace["operation"] == "write"
 
 
+def test_compatibility_wrapper_exposes_legacy_temperature_and_metrics_hooks():
+    wrapper = QDTWMCompatibilityWrapper(
+        QDTWMCompatibilityConfig(
+            input_dim=32,
+            hidden_dim=64,
+            num_depths=8,
+            num_slots=8,
+            num_heads=4,
+            default_operation="process",
+        )
+    )
+    wrapper.set_temperature(torch.tensor([0.9, 1.1]))
+    metrics = wrapper.get_metrics()
+    assert isinstance(metrics, dict)
+    assert metrics.get("qdt_wrapper_enabled") == True
+
+
 def test_replace_cortex_working_memory_preserves_legacy_reference_after_qd5a():
     cortex = LegacyCortex()
     result = replace_cortex_working_memory(
