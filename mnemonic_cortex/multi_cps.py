@@ -39,9 +39,15 @@ class MultiCPSManager(nn.Module):
             raise ValueError("MultiCPSManager has no registered domains")
         return next(iter(self.cps.keys()))
 
-    def ensure(self, key: str, domain: Optional[str] = None):
+    def ensure(
+        self,
+        key: str,
+        domain: Optional[str] = None,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ):
         d = domain or self.route(key)
-        return self.cps[d].ensure(key)
+        return self.cps[d].ensure(key, device=device, dtype=dtype)
 
     def make_param_groups(self, lr_base=2e-3, lr_phase=8e-4):
         groups = []

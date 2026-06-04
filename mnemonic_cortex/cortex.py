@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
@@ -66,7 +66,7 @@ class EnhancedMnemonicCortex(nn.Module):
                 activation="gelu",
                 batch_first=True,
             ),
-            num_layers=1,
+            num_layers=2,
         )
         self.ctx_norm = nn.LayerNorm(input_dim)
         self.query_ctx_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
@@ -132,6 +132,7 @@ class EnhancedMnemonicCortex(nn.Module):
         self.advanced_router_feat_proj = None
         self.last_router_decision = None
         self.diagnostics = ModelDiagnostics(enabled=False)
+        self.shared_memory_subsystem = None
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
 
@@ -147,6 +148,109 @@ class EnhancedMnemonicCortex(nn.Module):
         self.energy_mode = enable
         self.long_term_memory.enable_energy_efficient_mode(enable)
         self.working_memory.enable_energy_efficient_mode(enable)
+
+    def enable_shared_memory_subsystem(
+        self,
+        *,
+        num_slots: int = 2048,
+        num_systems: int = 8,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+        geometry_runtime: Any = None,
+        reranker: Any = None,
+        truth_runtime: Any = None,
+    ):
+        """
+        Attach the shared-slot memory stack (store/allocator/arbitrator/retention/read/write).
+        This is optional and does not alter the main forward path unless used explicitly.
+        """
+        from .memory import SharedSlotStore, build_shared_memory_subsystem
+
+        device = device or self.ctx_proj.weight.device
+        dtype = dtype or self.ctx_proj.weight.dtype
+        store = SharedSlotStore(
+            num_slots=int(num_slots),
+            slot_dim=int(self.input_dim),
+            num_systems=int(num_systems),
+            device=str(device),
+            dtype=dtype,
+        )
+        self.shared_memory_subsystem = build_shared_memory_subsystem(
+            store=store,
+            geometry_runtime=geometry_runtime,
+            reranker=reranker,
+            truth_runtime=truth_runtime,
+        )
+        self.diagnostics.log(
+            "shared_memory_subsystem_enabled",
+            {
+                "num_slots": int(num_slots),
+                "slot_dim": int(self.input_dim),
+                "num_systems": int(num_systems),
+            },
+        )
+        return self
+
+    def memory_write(self, request, values):
+        if self.shared_memory_subsystem is None:
+            raise RuntimeError("shared memory subsystem not enabled")
+        return self.shared_memory_subsystem.write_engine.write(request=request, values=values)
+
+    def memory_read(self, request):
+        if self.shared_memory_subsystem is None:
+            raise RuntimeError("shared memory subsystem not enabled")
+        return self.shared_memory_subsystem.read_engine.retrieve(request)
+
+    def memory_update(self, request):
+        if self.shared_memory_subsystem is None:
+            raise RuntimeError("shared memory subsystem not enabled")
+        return self.shared_memory_subsystem.update_engine.update(request)
+
+    def flush_memory_write_trace(self) -> List[Dict[str, Any]]:
+        """
+        Pull and clear shared-memory write trace events in one call.
+        Returns an empty list when the shared-memory subsystem is not enabled.
+        """
+        if self.shared_memory_subsystem is None:
+            return []
+        write_engine = self.shared_memory_subsystem.write_engine
+        events = write_engine.get_write_trace()
+        write_engine.clear_write_trace()
+        return events
+
+    def flush_memory_update_trace(self) -> List[Dict[str, Any]]:
+        """
+        Pull and clear shared-memory update trace events in one call.
+        Returns an empty list when the shared-memory subsystem is not enabled.
+        """
+        if self.shared_memory_subsystem is None:
+            return []
+        update_engine = self.shared_memory_subsystem.update_engine
+        events = update_engine.get_update_trace()
+        update_engine.clear_update_trace()
+        return events
+
+    def memory_retention_summary(self, demotions: int = 0, evictions: int = 0) -> Dict[str, Any]:
+        if self.shared_memory_subsystem is None:
+            return {"enabled": False}
+        retention = self.shared_memory_subsystem.retention
+        out: Dict[str, Any] = {"enabled": True}
+        if demotions > 0:
+            out["demotion_candidates"] = retention.select_demotions(int(demotions))
+        if evictions > 0:
+            out["eviction_candidates"] = retention.select_evictions(int(evictions))
+        out["store"] = self.shared_memory_subsystem.store.summarize()
+        return out
+
+    def memory_lifecycle_step(self, slot_ids: List[int], apply: bool = True):
+        if self.shared_memory_subsystem is None:
+            raise RuntimeError("shared memory subsystem not enabled")
+        manager = self.shared_memory_subsystem.lifecycle_manager
+        decisions = manager.evaluate_cycle([int(x) for x in slot_ids])
+        if apply:
+            for decision in decisions:
+                manager.apply_decision(decision)
+        return decisions
 
     @torch.no_grad()
     def apply_topology_policy(self, name: str):
@@ -352,7 +456,11 @@ class EnhancedMnemonicCortex(nn.Module):
         embs = []
         for t in token_list:
             key = f"token:{t}"
-            up = self.cps.ensure(key)
+            up = self.cps.ensure(
+                key,
+                device=self.ctx_proj.weight.device,
+                dtype=self.ctx_proj.weight.dtype,
+            )
             fused, _ = self.cps_fuser.fuse(up.view())
             embs.append(fused.unsqueeze(0))
         return torch.cat(embs, dim=0)
@@ -362,7 +470,11 @@ class EnhancedMnemonicCortex(nn.Module):
             return torch.tensor(0.0, device=self.ctx_proj.weight.device)
         total = None
         for t in token_list:
-            up = self.cps.ensure(f"token:{t}")
+            up = self.cps.ensure(
+                f"token:{t}",
+                device=self.ctx_proj.weight.device,
+                dtype=self.ctx_proj.weight.dtype,
+            )
             _, agree = self.cps_fuser.fuse(up.view())
             total = agree if total is None else (total + agree)
         return total / max(1, len(token_list))
@@ -558,10 +670,10 @@ class EnhancedMnemonicCortex(nn.Module):
                 dom = domain_names[dom_idx]
                 cps_store, cps_fuser = self.multi_cps.get(dom)
                 routed_counts[dom] = routed_counts.get(dom, 0) + 1
-                up = cps_store.ensure(key)
+                up = cps_store.ensure(key, device=fused.device, dtype=fused.dtype)
                 v, loss = cps_fuser.fuse(up.view())
             else:
-                up = self.cps.ensure(key)
+                up = self.cps.ensure(key, device=fused.device, dtype=fused.dtype)
                 v, loss = self.cps_fuser.fuse(up.view())
             cps_fused.append(v)
             cps_loss = cps_loss + loss
@@ -839,6 +951,14 @@ class EnhancedMnemonicCortex(nn.Module):
         # Cortex-level
         metrics['energy_mode'] = self.energy_mode
         metrics['forgetting_threshold'] = self.forgetting_threshold
+        if self.shared_memory_subsystem is not None:
+            ss = self.shared_memory_subsystem.store.summarize()
+            metrics["shared_mem_enabled"] = 1.0
+            metrics["shared_mem_used_slots"] = float(ss.get("used_slots", 0))
+            metrics["shared_mem_free_slots"] = float(ss.get("free_slots", 0))
+            metrics["shared_mem_mean_confidence"] = float(ss.get("mean_confidence", 0.0))
+        else:
+            metrics["shared_mem_enabled"] = 0.0
         return metrics
 
     @torch.no_grad()

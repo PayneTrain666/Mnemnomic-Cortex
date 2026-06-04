@@ -112,10 +112,33 @@ class ConsolidatedParamStore(nn.Module):
             "preview": [float(x) for x in pv],
         }
 
-    def ensure(self, key: str, cfg: UnifiedParamCfg = None) -> UnifiedParam:
+    @staticmethod
+    def _align_param_module(
+        up: UnifiedParam,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> UnifiedParam:
+        if device is None and dtype is None:
+            return up
+        kwargs = {}
+        if device is not None:
+            kwargs["device"] = device
+        if dtype is not None:
+            kwargs["dtype"] = dtype
+        up.to(**kwargs)
+        return up
+
+    def ensure(
+        self,
+        key: str,
+        cfg: UnifiedParamCfg = None,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> UnifiedParam:
         if key in self._registry:
-            return self._registry[key]
+            return self._align_param_module(self._registry[key], device=device, dtype=dtype)
         up = UnifiedParam(cfg or self.default_cfg)
+        up = self._align_param_module(up, device=device, dtype=dtype)
         self._registry[key] = up
         if self._creation_hooks:
             payload = {
