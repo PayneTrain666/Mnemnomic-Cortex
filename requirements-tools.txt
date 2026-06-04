@@ -1,0 +1,13 @@
+# Optional tooling — training / evaluation scripts (not required for core library or CI)
+#
+# Install after core deps:
+#   pip install -r requirements.txt
+#   pip install -r requirements-tools.txt
+#
+# Used by:
+#   load_all_babi.py
+#   tools/babi_train_eval.py
+#   tools/eval_ahg.py
+
+-r requirements.txt
+datasets>=2.14
