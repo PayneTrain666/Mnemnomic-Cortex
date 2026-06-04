@@ -133,6 +133,7 @@ class EnhancedMnemonicCortex(nn.Module):
         self.last_router_decision = None
         self.diagnostics = ModelDiagnostics(enabled=False)
         self.shared_memory_subsystem = None
+        self.hg_episodic_ltm = None
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
 
@@ -251,6 +252,89 @@ class EnhancedMnemonicCortex(nn.Module):
             for decision in decisions:
                 manager.apply_decision(decision)
         return decisions
+
+    def enable_hg_episodic_ltm(
+        self,
+        *,
+        geometry_policy_runtime: Any = None,
+        long_episode_threshold: int = 16,
+        summary_stride: int = 8,
+        promotion_retrieval_threshold: int = 3,
+    ):
+        """
+        Attach HG episodic LTM on top of the shared-memory subsystem.
+        If shared memory is not enabled yet, it is enabled with defaults first.
+        """
+        if self.shared_memory_subsystem is None:
+            self.enable_shared_memory_subsystem(
+                num_slots=2048,
+                num_systems=8,
+                device=self.ctx_proj.weight.device,
+                dtype=self.ctx_proj.weight.dtype,
+            )
+
+        from .ltm.hg_episodic_ltm import HGEpisodicLTM
+
+        s = self.shared_memory_subsystem
+        self.hg_episodic_ltm = HGEpisodicLTM(
+            slot_store=s.store,
+            read_engine=s.read_engine,
+            write_engine=s.write_engine,
+            update_engine=s.update_engine,
+            lifecycle=s.lifecycle_manager,
+            slot_dim=self.input_dim,
+            geometry_policy_runtime=geometry_policy_runtime,
+            long_episode_threshold=long_episode_threshold,
+            summary_stride=summary_stride,
+            promotion_retrieval_threshold=promotion_retrieval_threshold,
+        )
+        self.diagnostics.log(
+            "hg_episodic_ltm_enabled",
+            {
+                "long_episode_threshold": int(long_episode_threshold),
+                "summary_stride": int(summary_stride),
+                "promotion_retrieval_threshold": int(promotion_retrieval_threshold),
+            },
+        )
+        return self
+
+    def store_episodic_trace(
+        self,
+        *,
+        episode_id: str,
+        episode_vectors: torch.Tensor,
+        step_range,
+        anchor_time: Optional[float] = None,
+        trace_ids: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+    ):
+        if self.hg_episodic_ltm is None:
+            raise RuntimeError("hg episodic ltm not enabled")
+        return self.hg_episodic_ltm.store_episode(
+            episode_id=episode_id,
+            episode_vectors=episode_vectors,
+            step_range=step_range,
+            anchor_time=anchor_time,
+            trace_ids=trace_ids,
+            tags=tags,
+        )
+
+    def retrieve_episodic_trace(
+        self,
+        *,
+        query: torch.Tensor,
+        top_k: int = 16,
+        tags: Optional[List[str]] = None,
+        time_window=None,
+    ):
+        if self.hg_episodic_ltm is None:
+            raise RuntimeError("hg episodic ltm not enabled")
+        return self.hg_episodic_ltm.retrieve_episode_fragments(
+            query=query,
+            top_k=top_k,
+            tags=tags,
+            time_window=time_window,
+        )
 
     @torch.no_grad()
     def apply_topology_policy(self, name: str):
@@ -959,6 +1043,11 @@ class EnhancedMnemonicCortex(nn.Module):
             metrics["shared_mem_mean_confidence"] = float(ss.get("mean_confidence", 0.0))
         else:
             metrics["shared_mem_enabled"] = 0.0
+        if self.hg_episodic_ltm is not None:
+            metrics["hg_episodic_enabled"] = 1.0
+            metrics["hg_episodic_records"] = float(len(self.hg_episodic_ltm.episode_records))
+        else:
+            metrics["hg_episodic_enabled"] = 0.0
         return metrics
 
     @torch.no_grad()

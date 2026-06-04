@@ -79,3 +79,29 @@ def test_cortex_flush_memory_update_trace_pull_and_clear():
     assert events[-1]["action"] == "append_split"
     assert events[-1]["split_reason"] == "no_existing_targets"
     assert model.flush_memory_update_trace() == []
+
+
+def test_cortex_enable_hg_episodic_ltm_and_use_episode_api():
+    torch.manual_seed(0)
+    model = EnhancedMnemonicCortex(input_dim=16, output_dim=16)
+    model.enable_shared_memory_subsystem(num_slots=96, num_systems=4, device=torch.device("cpu"), dtype=torch.float32)
+    model.enable_hg_episodic_ltm(long_episode_threshold=6, summary_stride=3, promotion_retrieval_threshold=2)
+
+    record = model.store_episodic_trace(
+        episode_id="cfg-ep-1",
+        episode_vectors=torch.randn(7, 16),
+        step_range=(100, 106),
+        trace_ids=["trace-cfg-1"],
+        tags=["episodic", "config"],
+    )
+    assert record.episode_id == "cfg-ep-1"
+    assert len(record.slot_ids) == 7
+    assert len(record.summary_slot_ids) >= 1
+
+    out = model.retrieve_episodic_trace(query=torch.randn(1, 16), top_k=4, tags=["episodic"])
+    assert out.values.shape[0] == 1
+    assert out.values.shape[2] == 16
+
+    metrics = model.get_metrics()
+    assert metrics["hg_episodic_enabled"] == 1.0
+    assert metrics["hg_episodic_records"] >= 1.0
