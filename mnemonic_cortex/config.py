@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict, Any
 
 @dataclass
 class CortexConfig:
@@ -39,21 +38,3 @@ class CortexConfig:
     # Consolidated lexicon (optional)
     cms_vocab_size: int = 0
     cms_senses: int = 3
-    fusion: str = "weighted"
-    hgm_enabled: bool = False
-
-    def to_cortex_kwargs(self) -> Dict[str, Any]:
-        return {
-            "input_dim": int(self.input_dim),
-            "output_dim": int(self.output_dim),
-            "sensory_buffer_size": int(self.sensory_buffer_size),
-            "wm_slots": int(self.wm_slots),
-            "wm_slot_dim": int(self.wm_slot_dim),
-            "ltm_hg_slots": int(self.hg_mem_slots),
-            "ltm_cgmn_slots": int(self.cgmn_mem_slots),
-            "ltm_curved_slots": int(self.curved_mem_slots),
-            "cms_vocab_size": int(self.cms_vocab_size),
-            "cms_senses": int(self.cms_senses),
-            "fusion": str(self.fusion),
-            "hgm_enabled": bool(self.hgm_enabled),
-        }

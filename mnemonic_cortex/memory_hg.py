@@ -29,6 +29,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
                  quantum_qubits: int = 8, topk: int = 32, fractal_scales: int = 4,
                  holo_dim: int = 256, holo_lr: float = 0.1, holo_decay: float = 0.98,
                  ann_centroids: int = 256, ann_top_centroids: int = 8,
+                 transformer_layers: int = 2, transformer_heads: int = 0, transformer_dropout: float = 0.1,
                  ):
         super().__init__()
         self.input_dim = input_dim
@@ -40,6 +41,8 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.holo_dim = int(2 ** math.ceil(math.log2(max(64, holo_dim))))
         self.holo_lr = float(holo_lr)
         self.holo_decay = float(holo_decay)
+        self.transformer_layers = int(max(0, transformer_layers))
+        self.transformer_dropout = float(transformer_dropout)
 
         # ---------- Micro-batch update buffers ----------
         self._upd_idx_buffer = []   # list[Tensor]
@@ -163,6 +166,53 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.hol_probe = HolonomyProbe(
             lambda m: self.spin_conn(m.reshape(m.size(0), -1))
         )
+        self.transformer_heads = int(transformer_heads) if int(transformer_heads) > 0 else self._pick_num_heads(self.input_dim)
+        if self.transformer_layers > 0:
+            self.input_transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=self.input_dim,
+                    nhead=self.transformer_heads,
+                    dim_feedforward=max(128, self.input_dim * 2),
+                    dropout=self.transformer_dropout,
+                    activation="gelu",
+                    batch_first=True,
+                ),
+                num_layers=self.transformer_layers,
+            )
+            self.input_transformer_norm = nn.LayerNorm(self.input_dim)
+        else:
+            self.input_transformer = None
+            self.input_transformer_norm = None
+        self.external_attention_context = None
+        self.external_memory_attn = nn.MultiheadAttention(
+            self.input_dim,
+            num_heads=self.transformer_heads,
+            batch_first=True,
+        )
+        self.external_memory_attn_norm = nn.LayerNorm(self.input_dim)
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
+
+    def set_external_attention_context(self, context: torch.Tensor) -> None:
+        if context is None:
+            self.external_attention_context = None
+            return
+        ctx = torch.as_tensor(context, device=self.keys.device, dtype=self.keys.dtype)
+        if ctx.dim() == 2:
+            ctx = ctx.unsqueeze(0)
+        elif ctx.dim() != 3:
+            raise ValueError("external attention context must be [T,D], [B,D], or [B,S,D]")
+        if ctx.size(-1) != self.input_dim:
+            raise ValueError(f"external attention context dim must be {self.input_dim}")
+        self.external_attention_context = ctx.detach()
+
+    def clear_external_attention_context(self) -> None:
+        self.external_attention_context = None
 
     @torch.no_grad()
     def _recompute_centroids(self, iters: int = 10):
@@ -276,7 +326,6 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
     def get_metrics(self):
         """Return dict of diagnostic metrics."""
-        self.flush_hologram_updates()
         M = self.active_slots
         holo_rms = self.holograms_fft[:M].abs().mean(dim=-1)  # (M,)
         m = {
@@ -299,6 +348,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
             for k in ("hyperbolic", "spherical", "euclidean", "fractal", "torus", "cp"):
                 if k in self.last_geom_weights:
                     m[f"hg_geom_w_{k}"] = float(self.last_geom_weights[k])
+        m["hg_transformer_layers"] = float(self.transformer_layers)
         return m
 
     # -------------------- Core ops --------------------
@@ -493,11 +543,6 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.holograms_fft[:M].mul_(scale)
         self._sync_buffers_ddp()
 
-    @torch.no_grad()
-    def flush_hologram_updates(self, lr_mult: float = 1.0):
-        """Force-apply buffered hologram writes."""
-        self._flush_pending_updates(lr_mult=lr_mult)
-
     def _holo_read(self, x: torch.Tensor, indices: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
         """Unbind with conj(key) from selected holograms; weight and sum.
         Returns a (B,S,2*holo_dim) real feature (real||imag of time-domain retrieval).
@@ -515,8 +560,20 @@ class EnhancedHyperGeometricMemory(nn.Module):
         return feat
 
     def forward(self, x: torch.Tensor, operation: str = 'read', fire_mask=None, recall_boost: float = 0.3):
+        x_in = x
+        if self.input_transformer is not None:
+            tx = self.input_transformer(x_in)
+            x_in = self.input_transformer_norm(x_in + tx)
+        if self.external_attention_context is not None:
+            ctx = self.external_attention_context.to(device=x_in.device, dtype=x_in.dtype)
+            if ctx.size(0) == 1 and x_in.size(0) > 1:
+                ctx = ctx.expand(x_in.size(0), -1, -1)
+            elif ctx.size(0) != x_in.size(0):
+                ctx = ctx.mean(dim=0, keepdim=True).expand(x_in.size(0), -1, -1)
+            x_ext, _ = self.external_memory_attn(x_in, ctx, ctx, need_weights=False)
+            x_in = self.external_memory_attn_norm(x_in + x_ext)
         B, S, _ = x.shape
-        z = self.encode_to_manifold(x)           # (B,S,D,3)
+        z = self.encode_to_manifold(x_in)           # (B,S,D,3)
         q = z.mean(dim=3)                        # (B,S,D)
         q_query = self._query_quat_from_manifold(z)  # (B,S,4)
         q_query = self._parallel_transport_spin(q_query, z)  # (B,S,4)
@@ -608,12 +665,11 @@ class EnhancedHyperGeometricMemory(nn.Module):
 
         if operation == 'write':
             lr_mult = 1.0 + (0.5 if any_fire else 0.0)
-            self._holo_write(x, itop, w, lr_mult=lr_mult)
+            self._holo_write(x_in, itop, w, lr_mult=lr_mult)
             self._update_spin_slots(q_query, itop)
             return x
 
-        self.flush_hologram_updates()
-        holo_feat = self._holo_read(x, itop, w)                 # (B,S,2H)
+        holo_feat = self._holo_read(x_in, itop, w)                 # (B,S,2H)
         triplet = self.readout(holo_feat)                       # (B,S,3D)
         out = self.output_projection(triplet)                   # (B,S,input_dim)
 
@@ -622,3 +678,27 @@ class EnhancedHyperGeometricMemory(nn.Module):
         if any_fire:
             gain = gain * (1.0 + recall_boost)
         return out * gain
+
+    # --------- Bridge adapters (TripleHybrid / HG Episodic LTM) ----------
+    @torch.no_grad()
+    def ingest_external_vectors(self, vectors: torch.Tensor, *, write_scale: float = 1.0) -> None:
+        """
+        Ingest external episodic vectors into HG memory.
+        Accepts [T,D], [B,D], or [B,S,D] tensors in input_dim space.
+        """
+        x = torch.as_tensor(vectors, device=self.keys.device, dtype=self.keys.dtype)
+        if x.dim() == 2:
+            x = x.unsqueeze(0)  # [1,T,D]
+        elif x.dim() != 3:
+            raise ValueError("vectors must be [T,D], [B,D], or [B,S,D]")
+        if x.size(-1) != self.input_dim:
+            raise ValueError(f"vectors last dim must be input_dim={self.input_dim}")
+        if not torch.isfinite(x).all():
+            raise ValueError("vectors contains NaN/Inf")
+        if float(write_scale) != 1.0:
+            x = x * float(write_scale)
+        _ = self.forward(x, operation="write")
+
+    def read_batch(self, x: torch.Tensor, *, fire_mask=None, recall_boost: float = 0.3) -> torch.Tensor:
+        """Compatibility wrapper used by TripleHybrid bridge helpers."""
+        return self.forward(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)

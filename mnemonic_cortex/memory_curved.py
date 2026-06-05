@@ -7,7 +7,6 @@ from .geometry_merger import GeometryMergerV3
 from .geometry_utils import qexp, qmul, qnormalize
 from .holo_head import HoloHead
 from .lightbulb_controller import LightbulbController
-from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 from .memory.conformal import ConformalMLP, warp_knn_with_stats
 from geometry.blend import GeometryBlender
 from geometry.manifold_utils import product_et_distance, symplectic_leapfrog, wrap_angles
@@ -27,11 +26,16 @@ class EnhancedCurvedMemory(nn.Module):
         curvature_dim: int = 8,
         mem_slots: int = 128,
         topk: int = 16,
+        transformer_layers: int = 2,
+        transformer_heads: int = 0,
+        transformer_dropout: float = 0.1,
     ):
         super().__init__()
         self.input_dim = input_dim
         self.H, self.M = hidden_dim, mem_slots
         self.K_base = min(topk, mem_slots)
+        self.transformer_layers = int(max(0, transformer_layers))
+        self.transformer_dropout = float(transformer_dropout)
         self.encoder = nn.Sequential(nn.Linear(input_dim, self.H), nn.Tanh())
         self.curvature = nn.Parameter(torch.randn(curvature_dim))
         self.curv_proj = nn.Linear(self.H, 1)  # scalar gate
@@ -108,19 +112,53 @@ class EnhancedCurvedMemory(nn.Module):
         # Usage + active slots
         self.register_buffer("usage_counts", torch.zeros(self.M, dtype=torch.float32))
         self.active_slots = self.M
-        self.register_buffer("lb_top1_avg", torch.tensor(1.0))
-        self.lb_momentum = 0.99
-        self.lb_drop_ratio = 0.7
-        self.qh_config = QuantumHologramConfig(
-            enabled=True,
-            hrr_dim=self.H,
-            num_slots=self.M,
-            num_depths=8,
-            bank_name="wm_curved",
-            interference_threshold=0.90,
-            max_triplets_per_slot=8,
+        self.transformer_heads = int(transformer_heads) if int(transformer_heads) > 0 else self._pick_num_heads(self.input_dim)
+        if self.transformer_layers > 0:
+            self.input_transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=self.input_dim,
+                    nhead=self.transformer_heads,
+                    dim_feedforward=max(128, self.input_dim * 2),
+                    dropout=self.transformer_dropout,
+                    activation="gelu",
+                    batch_first=True,
+                ),
+                num_layers=self.transformer_layers,
+            )
+            self.input_transformer_norm = nn.LayerNorm(self.input_dim)
+        else:
+            self.input_transformer = None
+            self.input_transformer_norm = None
+        self.external_attention_context = None
+        self.external_memory_attn = nn.MultiheadAttention(
+            self.input_dim,
+            num_heads=self.transformer_heads,
+            batch_first=True,
         )
-        self.qh_slot_bank = QuantumHologramSlotBank(self.qh_config, bank_names=["wm_curved", "ltm_curved"])
+        self.external_memory_attn_norm = nn.LayerNorm(self.input_dim)
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
+
+    def set_external_attention_context(self, context: torch.Tensor) -> None:
+        if context is None:
+            self.external_attention_context = None
+            return
+        ctx = torch.as_tensor(context, device=self.memory_slots.device, dtype=self.memory_slots.dtype)
+        if ctx.dim() == 2:
+            ctx = ctx.unsqueeze(0)
+        elif ctx.dim() != 3:
+            raise ValueError("external attention context must be [T,D], [B,D], or [B,S,D]")
+        if ctx.size(-1) != self.input_dim:
+            raise ValueError(f"external attention context dim must be {self.input_dim}")
+        self.external_attention_context = ctx.detach()
+
+    def clear_external_attention_context(self) -> None:
+        self.external_attention_context = None
 
     # Controls
     def set_temperature(self, t: torch.Tensor):
@@ -192,7 +230,6 @@ class EnhancedCurvedMemory(nn.Module):
             "curved_usage_mean": self.usage_counts[:m].mean().item(),
             "curved_usage_max": self.usage_counts[:m].max().item(),
             "curved_importance_mean": self.memory_importance[:m].mean().item(),
-            "curved_lb_top1_avg": self.lb_top1_avg.item(),
             "curved_conformal_b": float(self.conformal_b),
             "curved_topology_fitness_ema": float(self.topology_v3.fitness_ema or 0.0),
         }
@@ -203,44 +240,21 @@ class EnhancedCurvedMemory(nn.Module):
             for k in ("hyperbolic", "spherical", "euclidean", "fractal", "torus", "cp"):
                 if k in self.last_geom_weights:
                     out[f"curved_geom_w_{k}"] = float(self.last_geom_weights[k])
-        if self.qh_slot_bank is not None:
-            for k, v in self.qh_slot_bank.trace_summary().items():
-                out[f"curved_qh_{k}"] = float(v)
+        out["curved_transformer_layers"] = float(self.transformer_layers)
         return out
 
     # Core ops
-    def content_based_addressing(
-        self,
-        query,
-        return_dist: bool = False,
-        fire_mask=None,
-        recall_boost: float = 0.3,
-    ):  # query: (B,H)
+    def content_based_addressing(self, query, return_dist: bool = False, slots=None):  # query: (B,H)
         m = self.active_slots
+        if slots is None:
+            slots = self.memory_slots[:m].detach().clone()
         qn = F.normalize(query, dim=-1)
-        mem_n = F.normalize(self.memory_slots[:m], dim=-1)
+        mem_n = F.normalize(slots, dim=-1)
         sim = torch.einsum("bd,md->bm", qn, mem_n)                        # (B,M)
         gate = torch.sigmoid(self.curv_proj(query))                       # (B,1)
         sim = sim * (0.5 + gate)                                          # scalar gating
-        dist = 1.0 - sim
-        if isinstance(fire_mask, torch.Tensor) and fire_mask.numel() > 0:
-            fire_f = fire_mask.float().view(-1, 1).to(device=dist.device, dtype=dist.dtype)
-            t_eff = self.temperature / (1.0 + float(recall_boost) * fire_f)
-            dist = dist / t_eff.clamp_min(1e-6)
-            any_ext_fire = bool(fire_mask.any().item())
-        elif isinstance(fire_mask, bool) and fire_mask:
-            dist = dist / (self.temperature / (1.0 + float(recall_boost))).clamp_min(1e-6)
-            any_ext_fire = True
-        else:
-            dist = dist / self.temperature.clamp_min(1e-6)
-            any_ext_fire = False
+        dist = (1.0 - sim) / self.temperature.clamp_min(1e-6)
         k = min(self.K_base, m)
-        with torch.no_grad():
-            top1 = dist.min(dim=-1).values.mean()
-            self.lb_top1_avg = self.lb_momentum * self.lb_top1_avg + (1 - self.lb_momentum) * top1.detach()
-            internal_fire = bool(top1 < self.lb_drop_ratio * self.lb_top1_avg)
-        if internal_fire or any_ext_fire:
-            k = min(m, max(k, int(self.K_base * 1.5)))
         vals, idx = torch.topk(dist, k, dim=-1, largest=False)
         if not return_dist:
             return vals, idx
@@ -318,16 +332,31 @@ class EnhancedCurvedMemory(nn.Module):
         flat = indices.reshape(-1)
         self.usage_counts.index_add_(0, flat, torch.ones_like(flat, dtype=self.usage_counts.dtype))
 
-    def associative_activation(self, query):  # (B,H) -> (B,M)
+    def associative_activation(self, query, slots=None):  # (B,H) -> (B,M)
         m = self.active_slots
-        act = torch.einsum("bd,md->bm", query, self.memory_slots[:m])
+        if slots is None:
+            slots = self.memory_slots[:m].detach().clone()
+        act = torch.einsum("bd,md->bm", query, slots)
+        assoc = self.associative_weights[:m, :m].detach().clone()
         for _ in range(2):
             act = torch.softmax(act, dim=-1)
-            act = torch.einsum("bm,mn->bn", act, self.associative_weights[:m, :m])
+            act = torch.einsum("bm,mn->bn", act, assoc)
         return act
 
-    def forward(self, x, operation="read", importance=None, fire_mask=None, recall_boost: float = 0.3):
-        enc = self.encoder(x)                                            # (B,S,H)
+    def forward(self, x, operation="read", importance=None):
+        x_in = x
+        if self.input_transformer is not None:
+            tx = self.input_transformer(x_in)
+            x_in = self.input_transformer_norm(x_in + tx)
+        if self.external_attention_context is not None:
+            ctx = self.external_attention_context.to(device=x_in.device, dtype=x_in.dtype)
+            if ctx.size(0) == 1 and x_in.size(0) > 1:
+                ctx = ctx.expand(x_in.size(0), -1, -1)
+            elif ctx.size(0) != x_in.size(0):
+                ctx = ctx.mean(dim=0, keepdim=True).expand(x_in.size(0), -1, -1)
+            x_ext, _ = self.external_memory_attn(x_in, ctx, ctx, need_weights=False)
+            x_in = self.external_memory_attn_norm(x_in + x_ext)
+        enc = self.encoder(x_in)                                            # (B,S,H)
         if self.enable_symplectic:
             q_dyn = enc
             p_dyn = torch.zeros_like(enc)
@@ -340,32 +369,20 @@ class EnhancedCurvedMemory(nn.Module):
         q_query = self._query_quat_from_hidden(query)
         q_query = self._parallel_transport_spin(q_query, query)
         if operation == "write":
-            _, idx = self.content_based_addressing(query, fire_mask=fire_mask, recall_boost=recall_boost)
+            _, idx = self.content_based_addressing(query)
             self._record_usage(idx)
-            self.update_memory(x, importance, idx)
+            self.update_memory(x_in, importance, idx)
             self._update_spin_slots(q_query, idx)
-            if self.qh_slot_bank is not None:
-                self.qh_slot_bank.store_batch(
-                    slot_indices=idx,
-                    anchor=query.detach(),
-                    direction=enc.mean(dim=1).detach(),
-                    phase=torch.sin(query.detach()),
-                    depth_index=0,
-                    bank_name="wm_curved",
-                )
             return x
-        vals, idx, dist_top = self.content_based_addressing(
-            query,
-            return_dist=True,
-            fire_mask=fire_mask,
-            recall_boost=recall_boost,
-        )  # (B,K)
+        m = self.active_slots
+        read_slots = self.memory_slots[:m].detach().clone()
+        vals, idx, dist_top = self.content_based_addressing(query, return_dist=True, slots=read_slots)  # (B,K)
         curv_eff, _, mode_wext = self.geom_blender(query)
         self.last_geom_weights = mode_wext
         torus_w = float(mode_wext.get("torus", 0.0))
         alpha_torus = self.alpha_torus_base * (0.75 + 0.5 * torus_w)
         if self.use_product_manifold:
-            topk_keys = self.memory_slots[idx]  # (B,K,H)
+            topk_keys = read_slots[idx]  # (B,K,H)
             q_e = self.split_proj_e(query)
             q_t = wrap_angles(self.split_proj_t(query))
             k_e = self.split_proj_e(topk_keys)
@@ -388,13 +405,12 @@ class EnhancedCurvedMemory(nn.Module):
         )
         qc = self.qc_head(query)
         q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
-        m = self.active_slots
         self.geometry_merger.spd_L = self.spd_L
         geom_w = self.geometry_merger(
             base_dist=dist_top,
             indices=idx,
             q_feat=query,
-            mem_feat=self.memory_slots[:m],
+            mem_feat=read_slots,
             slot_curv=self.memory_curvature[:m],
             q_quat=q_query,
             mem_quat=self.q_memory_slots[:m],
@@ -412,8 +428,32 @@ class EnhancedCurvedMemory(nn.Module):
             "entropy": w_entropy,
         }
         self._record_usage(idx)
-        act = self.associative_activation(query)                         # (B,M_active)
+        act = self.associative_activation(query, slots=read_slots)       # (B,M_active)
         comb = torch.softmax(torch.log(geom_w.clamp_min(1e-9)) + act.gather(1, idx), dim=-1)
-        mem = self.memory_slots[idx]                                     # (B,K,H)
+        mem = read_slots[idx]                                            # (B,K,H)
         read = torch.sum(comb.unsqueeze(-1) * mem, dim=1)               # (B,H)
         return self.decoder(read).unsqueeze(1).expand(-1, x.size(1), -1)  # (B,S,input_dim)
+
+    # --------- Bridge adapters (TripleHybrid / HG Episodic LTM) ----------
+    @torch.no_grad()
+    def ingest_external_vectors(self, vectors: torch.Tensor, *, write_scale: float = 1.0) -> None:
+        """
+        Ingest external episodic vectors into curved memory.
+        Accepts [T,D], [B,D], or [B,S,D] tensors in input_dim space.
+        """
+        x = torch.as_tensor(vectors, device=self.memory_slots.device, dtype=self.memory_slots.dtype)
+        if x.dim() == 2:
+            x = x.unsqueeze(0)  # [1,T,D]
+        elif x.dim() != 3:
+            raise ValueError("vectors must be [T,D], [B,D], or [B,S,D]")
+        if x.size(-1) != self.input_dim:
+            raise ValueError(f"vectors last dim must be input_dim={self.input_dim}")
+        if not torch.isfinite(x).all():
+            raise ValueError("vectors contains NaN/Inf")
+        if float(write_scale) != 1.0:
+            x = x * float(write_scale)
+        _ = self.forward(x, operation="write", importance=None)
+
+    def read_batch(self, x: torch.Tensor) -> torch.Tensor:
+        """Compatibility wrapper used by TripleHybrid bridge helpers."""
+        return self.forward(x, operation="read")

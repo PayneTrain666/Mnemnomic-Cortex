@@ -1,13 +1,11 @@
 import math
 import time
-import hashlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 
 
 def _project_sphere(x: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
@@ -131,17 +129,6 @@ class ConsolidatedMemoryStore(nn.Module):
         self.read_norm = nn.LayerNorm(default_cfg.d_model)
         self.sim_temp = nn.Parameter(torch.tensor(1.0))
         self._creation_hooks = []
-        self.qh_config = QuantumHologramConfig(
-            enabled=True,
-            hrr_dim=int(default_cfg.d_model),
-            num_slots=16384,
-            num_depths=8,
-            bank_name="cms",
-            interference_threshold=0.92,
-            max_triplets_per_slot=16,
-        )
-        self.qh_slot_bank = QuantumHologramSlotBank(self.qh_config, bank_names=["cms"])
-        self._qh_key_slot_map: Dict[str, int] = {}
 
     def register_creation_hook(self, hook):
         self._creation_hooks.append(hook)
@@ -188,46 +175,6 @@ class ConsolidatedMemoryStore(nn.Module):
     @torch.no_grad()
     def write(self, key: str, candidate_view: Dict[str, torch.Tensor], alpha: float, src_info: Optional[Dict] = None):
         self.ensure(key).ema_merge(candidate_view, alpha=alpha, src_info=src_info)
-        if self.qh_slot_bank is not None:
-            slot_idx = self._qh_slot_for_key(key)
-            a, d, p = self._candidate_triplet_for_hologram(candidate_view)
-            self.qh_slot_bank.store_batch(
-                slot_indices=torch.tensor([slot_idx], device=a.device, dtype=torch.long),
-                anchor=a.view(1, -1),
-                direction=d.view(1, -1),
-                phase=p.view(1, -1),
-                depth_index=0,
-                bank_name="cms",
-            )
-
-    def _qh_slot_for_key(self, key: str) -> int:
-        if key in self._qh_key_slot_map:
-            return int(self._qh_key_slot_map[key])
-        digest = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
-        sid = int(digest[:8], 16) % int(self.qh_config.num_slots)
-        self._qh_key_slot_map[str(key)] = int(sid)
-        return int(sid)
-
-    def _candidate_triplet_for_hologram(self, candidate_view: Dict[str, torch.Tensor]):
-        dev = next(self.parameters()).device
-        dt = next(self.parameters()).dtype
-        e = candidate_view.get("E", torch.zeros(self.default_cfg.d_model, device=dev, dtype=dt))
-        if not isinstance(e, torch.Tensor):
-            e = torch.zeros(self.default_cfg.d_model, device=dev, dtype=dt)
-        h = candidate_view.get("H", e)
-        if not isinstance(h, torch.Tensor):
-            h = e
-        if "P" in candidate_view and isinstance(candidate_view["P"], tuple):
-            amp, phi = candidate_view["P"]
-            if isinstance(amp, torch.Tensor) and isinstance(phi, torch.Tensor):
-                p = torch.zeros_like(e)
-                n = min(p.numel(), amp.numel(), phi.numel())
-                p[:n] = (amp[:n] * torch.sin(phi[:n])).to(device=e.device, dtype=e.dtype)
-            else:
-                p = torch.sin(e)
-        else:
-            p = torch.sin(e)
-        return e.to(device=dev, dtype=dt), h.to(device=dev, dtype=dt), p.to(device=dev, dtype=dt)
 
     def _fused(self, unit: ConsolidatedMemoryUnit) -> torch.Tensor:
         if unit.cfg.use_euclid:
@@ -259,12 +206,7 @@ class ConsolidatedMemoryStore(nn.Module):
                 "domain": getattr(u, "domain", "general"),
                 "tags": list(getattr(u, "tags", [])),
             }
-        return {
-            "meta": meta,
-            "version": 1,
-            "qh_key_slot_map": dict(self._qh_key_slot_map),
-            "qh_trace": self.qh_slot_bank.trace_summary() if self.qh_slot_bank is not None else {},
-        }
+        return {"meta": meta, "version": 1}
 
     @torch.no_grad()
     def load_extra_state_dict(self, state: Dict):
@@ -278,7 +220,6 @@ class ConsolidatedMemoryStore(nn.Module):
             u.created_ts = torch.tensor(float(m.get("created_ts", time.time())), device=device)
             u.domain = str(m.get("domain", "general"))
             u.tags = [str(t) for t in m.get("tags", [])]
-        self._qh_key_slot_map = {str(k): int(v) for k, v in state.get("qh_key_slot_map", {}).items()}
 
     @torch.no_grad()
     def filter_keys(self, domain: Optional[str] = None, tag: Optional[str] = None) -> List[str]:

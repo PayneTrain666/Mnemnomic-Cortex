@@ -18,8 +18,8 @@ class QDTWMCompatibilityConfig:
     hidden_dim: int = 128
     num_depths: int = 8
     num_slots: int = 8
-    num_heads: int = 4
-    transformer_layers: int = 1
+    num_heads: int = 0
+    transformer_layers: int = 2
     default_operation: str = "process"
     return_trace_by_default: bool = False
 
@@ -33,7 +33,7 @@ class QDTWMCompatibilityConfig:
         if self.num_slots <= 0:
             raise ValueError("num_slots must be positive")
         if self.num_heads <= 0:
-            raise ValueError("num_heads must be positive")
+            self.num_heads = QDTWorkingMemoryConfig._pick_num_heads(self.input_dim)
         if self.input_dim % self.num_heads != 0:
             raise ValueError("input_dim must be divisible by num_heads")
         if self.default_operation not in {"read", "process", "write"}:
@@ -83,6 +83,7 @@ class QDTWMCompatibilityWrapper(nn.Module):
                 transformer_layers=config.transformer_layers,
             )
         )
+        self._memory_importance = nn.Parameter(torch.ones(config.num_slots))
         self.last_compatibility_trace: Optional[QDTWMCompatibilityTrace] = None
 
     @property
@@ -92,37 +93,6 @@ class QDTWMCompatibilityWrapper(nn.Module):
     @property
     def hidden_dim(self) -> int:
         return self.config.hidden_dim
-
-    @property
-    def memory_importance(self) -> Optional[torch.Tensor]:
-        # Legacy cortex paths may touch this for decay.
-        return getattr(self.qdt_working_memory, "memory_importance", None)
-
-    def set_temperature(self, temperature: torch.Tensor | float) -> None:
-        # Legacy cortex paths expect WM to accept temperature scaling.
-        if hasattr(self.qdt_working_memory, "set_temperature"):
-            self.qdt_working_memory.set_temperature(temperature)  # type: ignore[misc]
-            return
-        # Safe no-op fallback to preserve compatibility contract.
-        return
-
-    def get_metrics(self) -> Dict[str, Any]:
-        if hasattr(self.qdt_working_memory, "get_metrics"):
-            try:
-                out = self.qdt_working_memory.get_metrics()  # type: ignore[misc]
-                if isinstance(out, dict):
-                    return out
-            except Exception:
-                pass
-        trace = None if self.last_compatibility_trace is None else self.last_compatibility_trace.to_dict()
-        return {
-            "qdt_wrapper_enabled": True,
-            "input_dim": float(self.config.input_dim),
-            "hidden_dim": float(self.config.hidden_dim),
-            "num_depths": float(self.config.num_depths),
-            "has_memory_importance": 1.0 if self.memory_importance is not None else 0.0,
-            "last_trace_present": 1.0 if trace is not None else 0.0,
-        }
 
     def _validate_x(self, x: torch.Tensor) -> None:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
@@ -192,6 +162,63 @@ class QDTWMCompatibilityWrapper(nn.Module):
             "qdt_report": qdt_report,
             "last_compatibility_trace": None if self.last_compatibility_trace is None else self.last_compatibility_trace.to_dict(),
         }
+
+    def set_temperature(self, t: torch.Tensor) -> None:
+        core = getattr(self.qdt_working_memory, "curved_core", None)
+        if core is not None and hasattr(core, "set_temperature"):
+            core.set_temperature(t)
+            return
+        if hasattr(self.qdt_working_memory, "set_temperature"):
+            self.qdt_working_memory.set_temperature(t)
+
+    def enable_energy_efficient_mode(self, enable: bool = True) -> None:
+        core = getattr(self.qdt_working_memory, "curved_core", None)
+        if core is not None and hasattr(core, "enable_energy_efficient_mode"):
+            core.enable_energy_efficient_mode(enable)
+
+    def step_topology(self, loss_value: float) -> None:
+        core = getattr(self.qdt_working_memory, "curved_core", None)
+        if core is not None and hasattr(core, "step_topology"):
+            core.step_topology(float(loss_value))
+
+    def get_attention_stack_output(self):
+        if hasattr(self.qdt_working_memory, "get_attention_stack_output"):
+            return self.qdt_working_memory.get_attention_stack_output()
+        return None
+
+    def set_external_attention_context(self, context: Optional[torch.Tensor]) -> None:
+        if hasattr(self.qdt_working_memory, "set_external_attention_context"):
+            self.qdt_working_memory.set_external_attention_context(context)
+
+    def clear_external_attention_context(self) -> None:
+        if hasattr(self.qdt_working_memory, "clear_external_attention_context"):
+            self.qdt_working_memory.clear_external_attention_context()
+
+    def attach_ltm_adapter(self, triple_hybrid, shared_slot_store=None):
+        if hasattr(self.qdt_working_memory, "attach_ltm_adapter"):
+            return self.qdt_working_memory.attach_ltm_adapter(
+                triple_hybrid, shared_slot_store=shared_slot_store
+            )
+        raise AttributeError("underlying QDTWorkingMemory does not support attach_ltm_adapter")
+
+    def get_metrics(self) -> Dict[str, Any]:
+        metrics: Dict[str, Any] = {"wm_wrapper": "QDTWMCompatibilityWrapper"}
+        if hasattr(self.qdt_working_memory, "get_metrics"):
+            try:
+                metrics.update(self.qdt_working_memory.get_metrics())
+            except Exception:
+                pass
+        return metrics
+
+    @property
+    def memory_importance(self) -> nn.Parameter:
+        slot_bank = getattr(self.qdt_working_memory, "slot_bank", None)
+        if slot_bank is not None and hasattr(slot_bank, "slot_importance"):
+            return slot_bank.slot_importance
+        core = getattr(self.qdt_working_memory, "curved_core", None)
+        if core is not None and hasattr(core, "memory_importance"):
+            return core.memory_importance
+        return self._memory_importance
 
 
 # ---------------------------------------------------------------------------

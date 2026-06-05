@@ -12,7 +12,6 @@ from ..memory.memory_update_engine import MemoryUpdateEngine
 from ..memory.memory_write_engine import MemoryWriteEngine
 from ..memory.shared_slot_schema import SlotWriteRequest
 from ..memory.shared_slot_store import SharedSlotStore
-from ..quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 
 
 @dataclass
@@ -58,6 +57,9 @@ class HGEpisodicLTM(nn.Module):
         long_episode_threshold: int = 16,
         summary_stride: int = 8,
         promotion_retrieval_threshold: int = 3,
+        transformer_layers: int = 2,
+        transformer_heads: int = 0,
+        transformer_dropout: float = 0.1,
     ) -> None:
         super().__init__()
         self.slot_store = slot_store
@@ -70,24 +72,95 @@ class HGEpisodicLTM(nn.Module):
         self.long_episode_threshold = int(max(2, long_episode_threshold))
         self.summary_stride = int(max(2, summary_stride))
         self.promotion_retrieval_threshold = int(max(1, promotion_retrieval_threshold))
+        self.transformer_layers = int(max(0, transformer_layers))
+        self.transformer_heads = int(transformer_heads) if int(transformer_heads) > 0 else self._pick_num_heads(self.slot_dim)
+        if self.transformer_layers > 0:
+            self.sequence_transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=self.slot_dim,
+                    nhead=self.transformer_heads,
+                    dim_feedforward=max(128, self.slot_dim * 2),
+                    dropout=float(transformer_dropout),
+                    activation="gelu",
+                    batch_first=True,
+                ),
+                num_layers=self.transformer_layers,
+            )
+            self.sequence_transformer_norm = nn.LayerNorm(self.slot_dim)
+        else:
+            self.sequence_transformer = None
+            self.sequence_transformer_norm = None
 
         self.episode_records: Dict[str, EpisodeRecord] = {}
         self.episode_index_by_trace_id: Dict[str, List[str]] = {}
         self.episode_index_by_time: List[Tuple[int, int, str]] = []
         self.episode_index_by_tag: Dict[str, List[str]] = {}
         self.slot_retrieval_hits: Dict[int, int] = {}
-        self.qh_slot_bank = QuantumHologramSlotBank(
-            QuantumHologramConfig(
-                enabled=True,
-                hrr_dim=self.slot_dim,
-                num_slots=int(self.slot_store.slot_values.size(0)),
-                num_depths=8,
-                bank_name="hg_ep_ltm",
-                interference_threshold=0.92,
-                max_triplets_per_slot=16,
-            ),
-            bank_names=["hg_ep_ltm"],
+        self.external_attention_context = None
+        self.query_context_attn = nn.MultiheadAttention(
+            self.slot_dim,
+            num_heads=self.transformer_heads,
+            batch_first=True,
         )
+        self.query_context_norm = nn.LayerNorm(self.slot_dim)
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
+
+    def _transform_episode_sequence(self, vectors: torch.Tensor) -> torch.Tensor:
+        if self.sequence_transformer is None:
+            return vectors
+        seq = vectors.unsqueeze(0)  # [1,T,D]
+        seq_t = self.sequence_transformer(seq)
+        seq = self.sequence_transformer_norm(seq + seq_t)
+        return seq.squeeze(0)
+
+    def set_external_attention_context(self, context: torch.Tensor) -> None:
+        if context is None:
+            self.external_attention_context = None
+            return
+        ctx = torch.as_tensor(
+            context,
+            device=self.slot_store.slot_values.device,
+            dtype=self.slot_store.slot_values.dtype,
+        )
+        if ctx.dim() == 2:
+            ctx = ctx.unsqueeze(0)
+        elif ctx.dim() != 3:
+            raise ValueError("external attention context must be [T,D], [B,D], or [B,S,D]")
+        if ctx.size(-1) != self.slot_dim:
+            raise ValueError(f"external attention context dim must be {self.slot_dim}")
+        self.external_attention_context = ctx.detach()
+
+    def clear_external_attention_context(self) -> None:
+        self.external_attention_context = None
+
+    @torch.no_grad()
+    def build_episode_attention_context(
+        self,
+        *,
+        episode_id: str,
+        include_summary: bool = True,
+        max_tokens: int = 128,
+    ) -> Optional[torch.Tensor]:
+        rec = self.episode_records.get(str(episode_id))
+        if rec is None:
+            return None
+        slot_ids = list(rec.slot_ids)
+        if include_summary:
+            slot_ids += list(rec.summary_slot_ids)
+        if not slot_ids:
+            return None
+        values = self.slot_store.get_slot_value([int(s) for s in slot_ids])
+        if values.numel() == 0:
+            return None
+        values = values[: max(1, int(max_tokens))]
+        values = self._transform_episode_sequence(values)
+        return values.unsqueeze(0)
 
     def _resolve_geometry_policy(self) -> Tuple[Optional[str], Optional[int]]:
         runtime = self.geometry_policy_runtime
@@ -104,7 +177,6 @@ class HGEpisodicLTM(nn.Module):
     def _index_episode(self, record: EpisodeRecord) -> None:
         self.episode_records[record.episode_id] = record
         self.episode_index_by_time.append((record.start_step, record.end_step, record.episode_id))
-        self.episode_index_by_time.sort(key=lambda x: x[0])
         for trace_id in record.trace_ids:
             self.episode_index_by_trace_id.setdefault(trace_id, []).append(record.episode_id)
         for tag in record.tags:
@@ -130,43 +202,6 @@ class HGEpisodicLTM(nn.Module):
             extra=dict(extra),
         )
 
-    @torch.no_grad()
-    def _store_episode_holograms(
-        self,
-        *,
-        slot_ids: List[int],
-        vectors: torch.Tensor,
-        traces: List[str],
-        depth_index: int,
-        is_summary: bool,
-    ) -> None:
-        if not slot_ids or vectors.numel() == 0:
-            return
-        slots_t = torch.as_tensor(slot_ids, device=vectors.device, dtype=torch.long)
-        direction = torch.roll(vectors, shifts=1, dims=0) if vectors.size(0) > 1 else vectors
-        phase = torch.sin(vectors)
-        self.qh_slot_bank.store_batch(
-            slot_indices=slots_t,
-            anchor=vectors,
-            direction=direction,
-            phase=phase,
-            depth_index=int(depth_index),
-            bank_name="hg_ep_ltm",
-        )
-        # Add lightweight provenance marker for QH-backed slots.
-        for sid in slot_ids:
-            meta_items = self.slot_store.get_slot_metadata([int(sid)])
-            meta = meta_items[0] if meta_items else None
-            if meta is None:
-                continue
-            extra = dict(meta.extra or {})
-            extra["qh_hologram"] = True
-            extra["qh_depth_index"] = int(depth_index)
-            extra["qh_trace_count"] = int(len(traces))
-            extra["qh_is_summary"] = bool(is_summary)
-            meta.extra = extra
-            self.slot_store.set_slot_metadata(slot_ids=[int(sid)], metadata={int(sid): meta})
-
     def store_episode(
         self,
         *,
@@ -176,7 +211,6 @@ class HGEpisodicLTM(nn.Module):
         anchor_time: Optional[float] = None,
         trace_ids: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
-        confidence: float = 0.80,
     ) -> EpisodeRecord:
         vectors = torch.as_tensor(
             episode_vectors,
@@ -187,6 +221,7 @@ class HGEpisodicLTM(nn.Module):
             raise ValueError(f"episode_vectors must be [T, D={self.slot_dim}]")
         if not torch.isfinite(vectors).all():
             raise ValueError("episode_vectors contains NaN or Inf")
+        vectors = self._transform_episode_sequence(vectors)
 
         start_step, end_step = int(step_range[0]), int(step_range[1])
         traces = list(trace_ids or [f"episode:{episode_id}"])
@@ -200,20 +235,13 @@ class HGEpisodicLTM(nn.Module):
 
         write_request = self._episode_write_request(
             vectors=vectors,
-            confidence=float(confidence),
+            confidence=0.80,
             trace_ids=traces,
             tags=ep_tags + [f"episode:{episode_id}"],
             extra=base_extra,
         )
         write_out = self.write_engine.write(request=write_request, values=vectors)
         slot_ids = [int(x) for x in write_out.written_slot_ids]
-        self._store_episode_holograms(
-            slot_ids=slot_ids,
-            vectors=vectors,
-            traces=traces,
-            depth_index=5,
-            is_summary=False,
-        )
 
         summary_slot_ids: List[int] = []
         if vectors.size(0) >= self.long_episode_threshold:
@@ -226,20 +254,13 @@ class HGEpisodicLTM(nn.Module):
             summary_values = torch.cat([global_summary] + chunk_summaries, dim=0)
             summary_request = self._episode_write_request(
                 vectors=summary_values,
-                confidence=max(0.55, float(confidence) - 0.05),
+                confidence=0.75,
                 trace_ids=traces,
                 tags=ep_tags + [f"episode:{episode_id}", "episode_summary"],
                 extra={**base_extra, "is_summary": True},
             )
             summary_out = self.write_engine.write(request=summary_request, values=summary_values)
             summary_slot_ids = [int(x) for x in summary_out.written_slot_ids]
-            self._store_episode_holograms(
-                slot_ids=summary_slot_ids,
-                vectors=summary_values,
-                traces=traces,
-                depth_index=6,
-                is_summary=True,
-            )
 
         record = EpisodeRecord(
             episode_id=episode_id,
@@ -295,35 +316,6 @@ class HGEpisodicLTM(nn.Module):
                 if decision.new_state != decision.old_state:
                     self.lifecycle.apply_decision(decision)
 
-    def _filter_episode_ids(
-        self,
-        *,
-        tags: Optional[List[str]],
-        time_window: Optional[Tuple[int, int]],
-    ) -> Set[str]:
-        tag_filtered: Optional[Set[str]] = None
-        time_filtered: Optional[Set[str]] = None
-
-        if tags:
-            tag_sets = [set(self.episode_index_by_tag.get(tag, [])) for tag in tags]
-            tag_filtered = set.intersection(*tag_sets) if tag_sets else set()
-
-        if time_window is not None:
-            start, end = int(time_window[0]), int(time_window[1])
-            time_filtered = {
-                eid
-                for s, e, eid in self.episode_index_by_time
-                if not (e < start or s > end)
-            }
-
-        if tag_filtered is None and time_filtered is None:
-            return set()
-        if tag_filtered is None:
-            return time_filtered or set()
-        if time_filtered is None:
-            return tag_filtered
-        return tag_filtered & time_filtered
-
     def retrieve_episode_fragments(
         self,
         *,
@@ -331,29 +323,44 @@ class HGEpisodicLTM(nn.Module):
         top_k: int = 16,
         tags: Optional[List[str]] = None,
         time_window: Optional[Tuple[int, int]] = None,
-        geometry_family: Optional[str] = None,
-        geometry_depth: Optional[int] = None,
     ) -> MemoryReadOutput:
         family, depth = self._resolve_geometry_policy()
-        if geometry_family is not None:
-            family = geometry_family
-        if geometry_depth is not None:
-            depth = int(geometry_depth)
-        allowed_episode_ids = self._filter_episode_ids(tags=tags, time_window=time_window)
+        query_in = torch.as_tensor(
+            query,
+            device=self.slot_store.slot_values.device,
+            dtype=self.slot_store.slot_values.dtype,
+        )
+        if query_in.dim() != 2 or query_in.size(1) != self.slot_dim:
+            raise ValueError(f"query must be [B, D={self.slot_dim}]")
+        if not torch.isfinite(query_in).all():
+            raise ValueError("query contains NaN or Inf")
+        if self.sequence_transformer is not None:
+            qseq = query_in.unsqueeze(1)  # [B,1,D]
+            qseq_t = self.sequence_transformer(qseq)
+            query_in = self.sequence_transformer_norm(qseq + qseq_t).squeeze(1)
+        if self.external_attention_context is not None:
+            ctx = self.external_attention_context.to(device=query_in.device, dtype=query_in.dtype)
+            if ctx.size(0) == 1 and query_in.size(0) > 1:
+                ctx = ctx.expand(query_in.size(0), -1, -1)
+            elif ctx.size(0) != query_in.size(0):
+                ctx = ctx.mean(dim=0, keepdim=True).expand(query_in.size(0), -1, -1)
+            q = query_in.unsqueeze(1)
+            qx, _ = self.query_context_attn(q, ctx, ctx, need_weights=False)
+            query_in = self.query_context_norm(q + qx).squeeze(1)
+
         request = MemoryReadRequest(
             requester_system="hg_ep_ltm",
-            query=query,
+            query=query_in,
             memory_type="episodic",
             top_k=int(top_k),
             use_geometry=True,
             geometry_family=family,
             geometry_depth=depth,
-            allowed_states=("provisional", "durable"),
             allowed_primary_systems=["hg_ep_ltm"],
         )
         out = self.read_engine.retrieve(request)
 
-        if tags or time_window or allowed_episode_ids:
+        if tags or time_window:
             filtered_slot_rows: List[torch.Tensor] = []
             filtered_score_rows: List[torch.Tensor] = []
             filtered_value_rows: List[torch.Tensor] = []
@@ -361,17 +368,7 @@ class HGEpisodicLTM(nn.Module):
             for b in range(out.slot_ids.size(0)):
                 keep: List[int] = []
                 for i, meta in enumerate(out.metadata[b]):
-                    slot_id = int(out.slot_ids[b][i].item())
-                    episode_ok = not allowed_episode_ids
-                    if allowed_episode_ids:
-                        for ep_id in allowed_episode_ids:
-                            rec = self.episode_records.get(ep_id)
-                            if rec is not None and (slot_id in rec.slot_ids or slot_id in rec.summary_slot_ids):
-                                episode_ok = True
-                                break
-                    if episode_ok and self._passes_optional_filters(
-                        slot_meta=meta, tags=tags, time_window=time_window
-                    ):
+                    if self._passes_optional_filters(slot_meta=meta, tags=tags, time_window=time_window):
                         keep.append(i)
                 if not keep:
                     keep = list(range(out.slot_ids.size(1)))
@@ -463,41 +460,4 @@ class HGEpisodicLTM(nn.Module):
         )
         out = self.write_engine.write(request=summary_request, values=summary_value)
         record.summary_slot_ids = [int(x) for x in out.written_slot_ids]
-        self._store_episode_holograms(
-            slot_ids=record.summary_slot_ids,
-            vectors=summary_value,
-            traces=list(record.trace_ids),
-            depth_index=6,
-            is_summary=True,
-        )
         return list(record.summary_slot_ids)
-
-    def retrieve_episode_sequence(
-        self,
-        *,
-        episode_id: str,
-    ) -> torch.Tensor:
-        record = self.episode_records.get(episode_id)
-        if record is None or not record.slot_ids:
-            return torch.zeros(
-                0,
-                self.slot_dim,
-                device=self.slot_store.slot_values.device,
-                dtype=self.slot_store.slot_values.dtype,
-            )
-        slot_ids_t = torch.as_tensor(record.slot_ids, device=self.slot_store.slot_values.device, dtype=torch.long)
-        return self.slot_store.get_slot_value(slot_ids_t)
-
-    def add_causal_link(self, src_episode_id: str, dst_episode_id: str) -> None:
-        src = self.episode_records.get(src_episode_id)
-        if src is None:
-            return
-        if dst_episode_id not in src.causal_links:
-            src.causal_links.append(dst_episode_id)
-        self.episode_records[src_episode_id] = src
-
-    def maintenance_pass(self, max_slots: Optional[int] = None):
-        return self.lifecycle.maintenance_pass(max_slots=max_slots)
-
-    def qh_trace_summary(self) -> Dict[str, float]:
-        return self.qh_slot_bank.trace_summary()

@@ -15,13 +15,16 @@ from topology.manager_v3 import DynamicTopologyManagerV2
 class EnhancedCGMNMemory(nn.Module):
     """Curved Geometric Memory Network (CGMN) with lightbulb-aware temperature & plasticity."""
     def __init__(self, input_dim: int, manifold_dim: int = 16, mem_slots: int = 512,
-                 slot_dim: int = 256, topk: int = 32, use_per_sample_temp: bool = False):
+                 slot_dim: int = 256, topk: int = 32, use_per_sample_temp: bool = False,
+                 transformer_layers: int = 2, transformer_heads: int = 0, transformer_dropout: float = 0.1):
         super().__init__()
         self.input_dim = input_dim
         self.D, self.M, self.H = manifold_dim, mem_slots, slot_dim
         self.K_base = min(topk, mem_slots)
         self.use_per_sample_temp = use_per_sample_temp
         self.temp_variance_threshold = 0.3  # fallback to scalar if variance > this
+        self.transformer_layers = int(max(0, transformer_layers))
+        self.transformer_dropout = float(transformer_dropout)
 
         self.manifold_projection = nn.Sequential(
             nn.Linear(input_dim, self.D * 3),
@@ -109,6 +112,53 @@ class EnhancedCGMNMemory(nn.Module):
         self.hol_probe = HolonomyProbe(
             lambda m: self.spin_conn(m.reshape(m.size(0), -1))
         )
+        self.transformer_heads = int(transformer_heads) if int(transformer_heads) > 0 else self._pick_num_heads(self.input_dim)
+        if self.transformer_layers > 0:
+            self.input_transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=self.input_dim,
+                    nhead=self.transformer_heads,
+                    dim_feedforward=max(128, self.input_dim * 2),
+                    dropout=self.transformer_dropout,
+                    activation="gelu",
+                    batch_first=True,
+                ),
+                num_layers=self.transformer_layers,
+            )
+            self.input_transformer_norm = nn.LayerNorm(self.input_dim)
+        else:
+            self.input_transformer = None
+            self.input_transformer_norm = None
+        self.external_attention_context = None
+        self.external_memory_attn = nn.MultiheadAttention(
+            self.input_dim,
+            num_heads=self.transformer_heads,
+            batch_first=True,
+        )
+        self.external_memory_attn_norm = nn.LayerNorm(self.input_dim)
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
+
+    def set_external_attention_context(self, context: torch.Tensor) -> None:
+        if context is None:
+            self.external_attention_context = None
+            return
+        ctx = torch.as_tensor(context, device=self.memory_slots.device, dtype=self.memory_slots.dtype)
+        if ctx.dim() == 2:
+            ctx = ctx.unsqueeze(0)
+        elif ctx.dim() != 3:
+            raise ValueError("external attention context must be [T,D], [B,D], or [B,S,D]")
+        if ctx.size(-1) != self.input_dim:
+            raise ValueError(f"external attention context dim must be {self.input_dim}")
+        self.external_attention_context = ctx.detach()
+
+    def clear_external_attention_context(self) -> None:
+        self.external_attention_context = None
 
     # ---------------- Controls ----------------
     def set_temperature(self, t: torch.Tensor):
@@ -202,6 +252,7 @@ class EnhancedCGMNMemory(nn.Module):
             for k in ("hyperbolic", "spherical", "euclidean", "fractal", "torus", "cp"):
                 if k in self.last_geom_weights:
                     m[f"cgmn_geom_w_{k}"] = float(self.last_geom_weights[k])
+        m["cgmn_transformer_layers"] = float(self.transformer_layers)
         return m
 
     # ---------------- Core ----------------
@@ -377,11 +428,7 @@ class EnhancedCGMNMemory(nn.Module):
         counts = torch.zeros(self.M, device=accum.device).index_add_(0, flat_idx, torch.ones_like(flat_idx, dtype=accum.dtype))
         counts = counts.clamp_min_(1.0).unsqueeze(-1)
         avg_upd = accum / counts
-        touched = torch.unique(flat_idx)
-        # Only update touched slots; avoid global decay of untouched memory.
-        old_touched = self.memory_slots.index_select(0, touched)
-        new_touched = ema * old_touched + (1 - ema) * avg_upd.index_select(0, touched)
-        self.memory_slots.index_copy_(0, touched, new_touched)
+        self.memory_slots.mul_(ema).add_((1 - ema) * avg_upd)
         # DDP sync
         self._sync_buffers_ddp()
 
@@ -390,6 +437,19 @@ class EnhancedCGMNMemory(nn.Module):
         fire_mask: optional (B,) bool Tensor. If any True, we sharpen attention by lowering temperature
                    and we also write with a lower EMA (more plastic).
         """
+        x_in = x
+        if self.input_transformer is not None:
+            tx = self.input_transformer(x_in)
+            x_in = self.input_transformer_norm(x_in + tx)
+        if self.external_attention_context is not None:
+            ctx = self.external_attention_context.to(device=x_in.device, dtype=x_in.dtype)
+            if ctx.size(0) == 1 and x_in.size(0) > 1:
+                ctx = ctx.expand(x_in.size(0), -1, -1)
+            elif ctx.size(0) != x_in.size(0):
+                ctx = ctx.mean(dim=0, keepdim=True).expand(x_in.size(0), -1, -1)
+            x_ext, _ = self.external_memory_attn(x_in, ctx, ctx, need_weights=False)
+            x_in = self.external_memory_attn_norm(x_in + x_ext)
+
         B,S,_ = x.shape
 
         # --- Lower temperature if any batch fires ---
@@ -402,7 +462,7 @@ class EnhancedCGMNMemory(nn.Module):
         if any_ext_fire:
             self.temperature = (self.temperature / (1.0 + recall_boost)).detach()
 
-        man = self.manifold_projection(x).view(B,S,self.D,3)
+        man = self.manifold_projection(x_in).view(B,S,self.D,3)
         evolved = self._evolve(man)
         query = evolved.mean(dim=3)                                  # (B,S,D)
         attended, wi, internal_fire, q_query = self._attend(query, evolved)
@@ -420,3 +480,27 @@ class EnhancedCGMNMemory(nn.Module):
         out = self.output_projection(attended)                      # (B,S,input_dim)
         self.temperature = saved_temp
         return out
+
+    # --------- Bridge adapters (TripleHybrid / HG Episodic LTM) ----------
+    @torch.no_grad()
+    def ingest_external_vectors(self, vectors: torch.Tensor, *, write_scale: float = 1.0) -> None:
+        """
+        Ingest external episodic vectors into CGMN memory.
+        Accepts [T,D], [B,D], or [B,S,D] tensors in input_dim space.
+        """
+        x = torch.as_tensor(vectors, device=self.memory_slots.device, dtype=self.memory_slots.dtype)
+        if x.dim() == 2:
+            x = x.unsqueeze(0)  # [1,T,D]
+        elif x.dim() != 3:
+            raise ValueError("vectors must be [T,D], [B,D], or [B,S,D]")
+        if x.size(-1) != self.input_dim:
+            raise ValueError(f"vectors last dim must be input_dim={self.input_dim}")
+        if not torch.isfinite(x).all():
+            raise ValueError("vectors contains NaN/Inf")
+        if float(write_scale) != 1.0:
+            x = x * float(write_scale)
+        _ = self.forward(x, operation="write")
+
+    def read_batch(self, x: torch.Tensor, *, fire_mask=None, recall_boost: float = 0.3) -> torch.Tensor:
+        """Compatibility wrapper used by TripleHybrid bridge helpers."""
+        return self.forward(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)

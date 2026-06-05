@@ -28,7 +28,6 @@ from .wm_dual_fusion import WMDualFusionController, WMDualFusionConfig
 from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 from .wm_quantum_holographic_storage import QuantumHolographicStorage, QuantumHolographicStorageConfig
 from .wm_system_commit_gate import SystemCommitGate, SystemWriteProposal
-from .wm_context_mount import GeometryMountedContextBuffer
 
 
 class QDTWorkingMemory(nn.Module):
@@ -119,7 +118,18 @@ class QDTWorkingMemory(nn.Module):
             WMMemoryAugmentedAttentionConfig(dim=config.input_dim, top_k=min(4, config.num_slots)),
             slot_bank=self.slot_bank,
         )
-        self.context_buffer = GeometryMountedContextBuffer(dim=config.input_dim, num_depths=config.num_depths)
+        self.maae_stack = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=config.input_dim,
+                nhead=config.num_heads,
+                dim_feedforward=max(128, config.input_dim * 2),
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=max(1, int(config.maae_transformer_layers)),
+        )
+        self.maae_stack_norm = nn.LayerNorm(config.input_dim)
 
         self.dual_fusion = WMDualFusionController(
             WMDualFusionConfig(dim=config.input_dim, top_k=min(4, config.num_slots))
@@ -137,6 +147,55 @@ class QDTWorkingMemory(nn.Module):
         )
 
         self.last_trace = None
+        self.external_attention_context = None
+        self.cross_model_attn = nn.MultiheadAttention(config.input_dim, num_heads=config.num_heads, batch_first=True)
+        self.cross_model_stack = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=config.input_dim,
+                nhead=config.num_heads,
+                dim_feedforward=max(128, config.input_dim * 2),
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=max(1, int(config.cross_model_attention_layers)),
+        )
+        self.cross_model_norm = nn.LayerNorm(config.input_dim)
+        self.last_attention_stack_tokens = None
+        self._ltm_adapter = None
+
+    def attach_ltm_adapter(self, triple_hybrid, shared_slot_store=None):
+        """Replace synthetic LTM bank with live triple-hybrid adapter."""
+        from .wm_triple_hybrid_ltm_adapter import TripleHybridLTMExternalMemoryBank
+
+        bank = TripleHybridLTMExternalMemoryBank(
+            dim=self.config.input_dim,
+            triple_hybrid=triple_hybrid,
+            shared_slot_store=shared_slot_store or self.shared_slot_store,
+        )
+        self.dual_fusion.ltm.external_bank = bank
+        self._ltm_adapter = bank
+        return bank
+
+    def set_external_attention_context(self, context: Optional[torch.Tensor]) -> None:
+        if context is None:
+            self.external_attention_context = None
+            return
+        ref = next(self.parameters())
+        ctx = torch.as_tensor(context, device=ref.device, dtype=ref.dtype)
+        if ctx.dim() == 2:
+            ctx = ctx.unsqueeze(0)
+        elif ctx.dim() != 3:
+            raise ValueError("external attention context must be [T,D], [B,D], or [B,S,D]")
+        if ctx.size(-1) != self.config.input_dim:
+            raise ValueError(f"external attention context dim must be {self.config.input_dim}")
+        self.external_attention_context = ctx.detach()
+
+    def clear_external_attention_context(self) -> None:
+        self.external_attention_context = None
+
+    def get_attention_stack_output(self) -> Optional[torch.Tensor]:
+        return self.last_attention_stack_tokens
 
     def _validate_input(self, x: torch.Tensor) -> None:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
@@ -207,31 +266,6 @@ class QDTWorkingMemory(nn.Module):
         depth_state, q_trace = self.quaternion_depth(triplet_fused, return_trace=True)
         trace.merge_dict("quaternion_depth", q_trace)
 
-        if context is not None:
-            if context.dim() == 2 and context.size(-1) == self.config.input_dim:
-                context_for_mount = context.unsqueeze(1)
-            elif context.dim() == 3 and context.size(-1) == self.config.input_dim:
-                context_for_mount = context
-            else:
-                raise ValueError(
-                    f"context must be [B,D] or [B,C,D={self.config.input_dim}], got {tuple(context.shape)}"
-                )
-            if context_for_mount.size(0) != depth_state.size(0):
-                raise ValueError("context batch must match input batch")
-            depth_state, mounted = self.context_buffer.mount(
-                context_for_mount,
-                depth_state,
-                requested_map=context_map_name,
-            )
-            trace.add(
-                "context_buffer",
-                "context_mounted",
-                selected_map=str(getattr(mounted, "name", "auto")),
-                mount_trace=getattr(mounted, "trace", None).to_dict()
-                if getattr(mounted, "trace", None) is not None and hasattr(getattr(mounted, "trace", None), "to_dict")
-                else None,
-            )
-
         depth_state, intra_trace = self.intra_depth(depth_state, return_trace=True)
         trace.merge_dict("intra_depth", intra_trace)
 
@@ -256,7 +290,13 @@ class QDTWorkingMemory(nn.Module):
             prior_trace=trace.to_dict(),
             return_trace=True,
         )
+        maae_tokens = self.maae_stack_norm(maae_tokens + self.maae_stack(maae_tokens))
         trace.merge_dict("memory_augmented_attention", maae_trace)
+        trace.add(
+            "memory_augmented_attention",
+            "maae_stack_applied",
+            layers=int(self.config.maae_transformer_layers),
+        )
 
         dual_tokens, dual_fusion_trace = self.dual_fusion(
             maae_tokens,
@@ -264,6 +304,21 @@ class QDTWorkingMemory(nn.Module):
             context=context,
             return_trace=True,
         )
+        if self.external_attention_context is not None:
+            ctx = self.external_attention_context.to(device=dual_tokens.device, dtype=dual_tokens.dtype)
+            if ctx.size(0) == 1 and dual_tokens.size(0) > 1:
+                ctx = ctx.expand(dual_tokens.size(0), -1, -1)
+            elif ctx.size(0) != dual_tokens.size(0):
+                ctx = ctx.mean(dim=0, keepdim=True).expand(dual_tokens.size(0), -1, -1)
+            dx, _ = self.cross_model_attn(dual_tokens, ctx, ctx, need_weights=False)
+            dual_tokens = self.cross_model_norm(dual_tokens + dx)
+            dual_tokens = self.cross_model_norm(dual_tokens + self.cross_model_stack(dual_tokens))
+            trace.add(
+                "dual_fusion",
+                "cross_model_attention_stack_applied",
+                layers=int(self.config.cross_model_attention_layers),
+            )
+        self.last_attention_stack_tokens = dual_tokens.detach()
         trace.merge_dict("dual_fusion", dual_fusion_trace)
         trace.add("shared_slot_store", "shared_slot_registry_updated", registry=self.shared_slot_store.registry.trace_summary())
 

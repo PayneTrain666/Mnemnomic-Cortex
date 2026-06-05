@@ -9,14 +9,8 @@ from .memory_update_engine import MemoryUpdateEngine, MemoryUpdateRequest
 from .memory_write_engine import MemoryWriteEngine, MemoryWriteOutput
 from .memory_subsystem import SharedMemorySubsystem, build_shared_memory_subsystem
 from .shared_slot_schema import (
-    CODE_TO_SYSTEM,
     CODE_TO_SLOT_STATE,
-    MEMORY_SYSTEM_IDS,
-    SLOT_STATES,
-    SYSTEM_TO_CODE,
     SLOT_STATE_TO_CODE,
-    CODE_TO_STATE,
-    STATE_TO_CODE,
     MemorySystemID,
     SlotMetadata,
     SlotProvenance,
@@ -32,14 +26,8 @@ from .shared_slot_store import SharedSlotStore
 __all__ = [
     "ArbitrationDecision",
     "CODE_TO_SLOT_STATE",
-    "CODE_TO_SYSTEM",
     "MemorySystemID",
-    "MEMORY_SYSTEM_IDS",
-    "SLOT_STATES",
     "SLOT_STATE_TO_CODE",
-    "SYSTEM_TO_CODE",
-    "CODE_TO_STATE",
-    "STATE_TO_CODE",
     "SharedSlotAllocator",
     "SharedSlotArbitrator",
     "SharedSlotStore",

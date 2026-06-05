@@ -19,11 +19,11 @@ class CortexWorkingMemoryIntegrationConfig:
     hidden_dim: int = 128
     num_depths: int = 8
     num_slots: int = 8
-    num_heads: int = 4
-    transformer_layers: int = 1
+    num_heads: int = 0
+    transformer_layers: int = 2
+    maae_transformer_layers: int = 2
+    cross_model_attention_layers: int = 4
     use_compatibility_wrapper: bool = True
-    default_operation: str = "process"
-    return_trace_by_default: bool = False
     preserve_old_reference: bool = True
     old_reference_attr: str = "legacy_working_memory"
 
@@ -37,11 +37,9 @@ class CortexWorkingMemoryIntegrationConfig:
         if self.num_slots <= 0:
             raise ValueError("num_slots must be positive")
         if self.num_heads <= 0:
-            raise ValueError("num_heads must be positive")
+            self.num_heads = QDTWorkingMemoryConfig._pick_num_heads(self.input_dim)
         if self.input_dim % self.num_heads != 0:
             raise ValueError("input_dim must be divisible by num_heads")
-        if self.default_operation not in {"read", "process", "write"}:
-            raise ValueError("default_operation must be read/process/write")
         if not self.old_reference_attr:
             raise ValueError("old_reference_attr must be non-empty")
 
@@ -53,6 +51,8 @@ class CortexWorkingMemoryIntegrationConfig:
             num_slots=self.num_slots,
             num_heads=self.num_heads,
             transformer_layers=self.transformer_layers,
+            maae_transformer_layers=self.maae_transformer_layers,
+            cross_model_attention_layers=self.cross_model_attention_layers,
         )
 
     def compatibility_config(self) -> QDTWMCompatibilityConfig:
@@ -63,8 +63,6 @@ class CortexWorkingMemoryIntegrationConfig:
             num_slots=self.num_slots,
             num_heads=self.num_heads,
             transformer_layers=self.transformer_layers,
-            default_operation=self.default_operation,
-            return_trace_by_default=bool(self.return_trace_by_default),
         )
 
 
@@ -127,6 +125,34 @@ def build_qdt_working_memory_for_cortex(config: CortexWorkingMemoryIntegrationCo
     return QDTWorkingMemory(config.qdt_config())
 
 
+def _resolve_unified_shared_slot_store(cortex: Any) -> Any:
+    """Prefer cortex hg-episodic shared store over QDT-local registry when both exist."""
+    subsystem = getattr(cortex, "shared_memory_subsystem", None)
+    if subsystem is not None and getattr(subsystem, "store", None) is not None:
+        return subsystem.store
+    wm = getattr(cortex, "working_memory", None)
+    qdt = getattr(wm, "qdt_working_memory", wm)
+    return getattr(qdt, "shared_slot_store", None)
+
+
+def wire_qdt_ltm_adapter(cortex: Any) -> bool:
+    """Attach live triple-hybrid LTM to QDT dual-fusion cross-attention."""
+    ltm = getattr(cortex, "long_term_memory", None)
+    wm = getattr(cortex, "working_memory", None)
+    if ltm is None or wm is None:
+        return False
+
+    qdt = getattr(wm, "qdt_working_memory", wm)
+    shared = _resolve_unified_shared_slot_store(cortex)
+    if hasattr(wm, "attach_ltm_adapter"):
+        wm.attach_ltm_adapter(ltm, shared_slot_store=shared)
+        return True
+    if hasattr(qdt, "attach_ltm_adapter"):
+        qdt.attach_ltm_adapter(ltm, shared_slot_store=shared)
+        return True
+    return False
+
+
 def replace_cortex_working_memory(
     cortex: Any,
     config: CortexWorkingMemoryIntegrationConfig,
@@ -185,8 +211,6 @@ replace_cortex_working_memory(
         num_heads={config.num_heads},
         transformer_layers={config.transformer_layers},
         use_compatibility_wrapper={config.use_compatibility_wrapper},
-        default_operation="{config.default_operation}",
-        return_trace_by_default={config.return_trace_by_default},
         preserve_old_reference={config.preserve_old_reference},
     ),
 )

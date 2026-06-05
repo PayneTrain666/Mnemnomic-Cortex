@@ -7,7 +7,7 @@ import torch
 
 from .memory_write_engine import MemoryWriteEngine, MemoryWriteOutput
 from .shared_slot_arbitrator import SharedSlotArbitrator
-from .shared_slot_schema import SlotMetadata, SlotWriteRequest, validate_system_id
+from .shared_slot_schema import SlotMetadata, SlotWriteRequest
 from .shared_slot_store import SharedSlotStore
 
 UpdateMode = Literal["merge", "overwrite", "append_split"]
@@ -26,11 +26,6 @@ class MemoryUpdateRequest:
     semantic_tags: List[str] = field(default_factory=list)
     provenance_trace_ids: List[str] = field(default_factory=list)
     extra: Dict[str, object] = field(default_factory=dict)
-
-    def validate(self) -> None:
-        validate_system_id(self.requester_system)
-        if not (0.0 <= float(self.confidence) <= 1.0):
-            raise ValueError(f"confidence must be in [0,1], got {self.confidence}")
 
 
 class MemoryUpdateEngine:
@@ -206,7 +201,6 @@ class MemoryUpdateEngine:
         return out
 
     def update(self, request: MemoryUpdateRequest) -> MemoryWriteOutput:
-        request.validate()
         if not request.slot_ids:
             return self.append_split_update(request, split_reason="no_existing_targets")
 

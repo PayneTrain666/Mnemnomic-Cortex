@@ -25,14 +25,25 @@ class QDTWorkingMemoryConfig:
     num_depths: int = 8
     triplet_dim: int = 3
     num_slots: int = 8
-    num_heads: int = 4
-    transformer_layers: int = 1
+    num_heads: int = 0
+    transformer_layers: int = 2
+    maae_transformer_layers: int = 2
+    cross_model_attention_layers: int = 4
     context_tokens: int = 0
     use_shadow_writes: bool = True
     residual_fusion_weight: float = 0.50
     eps: float = 1e-8
 
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
+
     def validate(self) -> None:
+        if self.num_heads <= 0:
+            self.num_heads = self._pick_num_heads(self.input_dim)
         if self.input_dim <= 0:
             raise ValueError("input_dim must be positive")
         if self.hidden_dim <= 0:
@@ -49,6 +60,10 @@ class QDTWorkingMemoryConfig:
             raise ValueError("input_dim must be divisible by num_heads for WM-2C transformers")
         if self.transformer_layers <= 0:
             raise ValueError("transformer_layers must be positive")
+        if self.maae_transformer_layers <= 0:
+            raise ValueError("maae_transformer_layers must be positive")
+        if self.cross_model_attention_layers <= 0:
+            raise ValueError("cross_model_attention_layers must be positive")
         if not 0.0 <= self.residual_fusion_weight <= 1.0:
             raise ValueError("residual_fusion_weight must be in [0,1]")
         if self.eps <= 0:

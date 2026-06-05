@@ -36,17 +36,19 @@ def sph_warp(dist: torch.Tensor, gamma=0.9) -> torch.Tensor:
 # --------- Colored 1/f^alpha noise for exploration ---------
 @torch.no_grad()
 def colored_noise_1f(size: int, device, dtype, alpha=1.0) -> torch.Tensor:
-    size = int(max(1, size))
-    n_freq = size // 2 + 1
-    freqs = torch.arange(1, n_freq + 1, device=device, dtype=torch.float32)
-    mag = (1.0 / freqs.pow(float(alpha) * 0.5)).to(dtype=torch.float32)
-    phase = torch.exp(1j * 2.0 * math.pi * torch.rand(n_freq, device=device))
-    spectrum = (phase * mag.to(phase.dtype)).to(torch.complex64)
-    spectrum[0] = 0.0 + 0.0j
-    noise = torch.fft.irfft(spectrum, n=size).real
-    noise = noise - noise.mean()
-    noise = noise / noise.std(unbiased=False).clamp_min(1e-6)
-    return noise.to(dtype)
+    spectrum = torch.randn(size//2 + 1, device=device, dtype=torch.cfloat)
+    freqs = torch.linspace(1, size//2 + 1, steps=size//2 + 1, device=device, dtype=torch.float32)
+    mag = (1.0 / (freqs**(alpha * 0.5))).to(spectrum.dtype)
+    spectrum = spectrum * mag.unsqueeze(-1)
+
+    full = torch.zeros(size, device=device, dtype=torch.cfloat)
+    if size % 2 == 0:
+        full[:size//2 + 1] = spectrum
+        full[size//2 + 1:] = torch.conj(torch.flip(spectrum[1:-1], dims=[0]))
+    else:
+        full[:size//2 + 1] = spectrum
+        full[size//2 + 1:] = torch.conj(torch.flip(spectrum[1:], dims=[0]))
+    return torch.fft.ifft(full).real.to(dtype)
 
 # ============================================================
 #                  Topology Manager V3
@@ -133,15 +135,7 @@ class TopologyManagerV3(nn.Module):
         if cur == 'euclidean':  return self._t_hyp, self._t_sph, self._t_euc - h
         return self._t_hyp, self._t_sph, self._t_euc  # fractal
 
-    def _resolve_subsystem(self, subsystem: str) -> str:
-        if subsystem in self._topo:
-            return subsystem
-        if not self.subsystems:
-            raise ValueError("TopologyManagerV3 has no registered subsystems")
-        return self.subsystems[0]
-
     def evolve_topology(self, fitness: float, subsystem: str) -> str:
-        subsystem = self._resolve_subsystem(subsystem)
         f_old = self._ema_fit[subsystem]
         f_new = float(fitness) if f_old is None else self.ema_decay * f_old + (1 - self.ema_decay) * float(fitness)
         self._ema_fit[subsystem] = f_new
@@ -168,7 +162,6 @@ class TopologyManagerV3(nn.Module):
         """Nudge GeometryMergerV2 channel logits based on subsystem fitness."""
         if not hasattr(merger, "set_gate_bias"):
             return
-        subsystem = self._resolve_subsystem(subsystem)
         fit = self._ema_fit.get(subsystem, None)
         fit = 0.5 if fit is None else float(fit)
         mode = self._mode_from_fitness(fit)
@@ -184,7 +177,6 @@ class TopologyManagerV3(nn.Module):
 
     @torch.no_grad()
     def mutate_curvature(self, curvature: torch.Tensor, loss_value: float, subsystem: str) -> torch.Tensor:
-        subsystem = self._resolve_subsystem(subsystem)
         orig_shape = curvature.shape
         device, dtype = curvature.device, curvature.dtype
         slot_c = self._ensure_slot_scalar(curvature).clone()
@@ -250,7 +242,6 @@ class TopologyManagerV3(nn.Module):
         """
         B, K = dist.shape
         device, dtype = dist.device, dist.dtype
-        subsystem = self._resolve_subsystem(subsystem)
 
         # Gather per-slot curvature scalar -> [B, K]
         if memory_curvature.dim() == 2:

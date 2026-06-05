@@ -67,7 +67,13 @@ class WMLTMCrossAttention(nn.Module):
         if not torch.isfinite(tokens).all():
             raise ValueError("tokens contain NaN or Inf")
         query_state = self.query_proj(tokens.mean(dim=1))
-        request = ExternalMemoryQuery("ltm", query_state=query_state, depth_state=depth_state, context=context, metadata={"source": "WMLTMCrossAttention"})
+        request = ExternalMemoryQuery(
+            "ltm",
+            query_state=query_state,
+            depth_state=depth_state,
+            context=context if context is not None else tokens,
+            metadata={"source": "WMLTMCrossAttention"},
+        )
         response = self.external_bank.query(request, top_k=self.config.top_k)
         weights = torch.softmax(response.scores, dim=-1)
         memory_context = torch.einsum("bk,bkd->bd", weights, response.memory_state)

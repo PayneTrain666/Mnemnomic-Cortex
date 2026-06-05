@@ -3,7 +3,7 @@ from __future__ import annotations
 from .wm_external_memory_guards import ensure_external_memory_response, ensure_mann_trace_visibility, ensure_fusion_inputs, ensure_shared_slot_id, ensure_shared_slot_record, ensure_qh_code_schema, ensure_qh_storage_record, interference_score, external_memory_contract_trace, external_memory_trace
 
 from dataclasses import dataclass, field, asdict
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import time
 import uuid
 
@@ -223,140 +223,6 @@ class SyntheticExternalMemoryBank:
         )
         response.validate()
         return response
-
-
-class RuntimeExternalMemoryBank:
-    """Runtime adapter that wraps real subsystem query callables.
-
-    This keeps the QDT external-memory contract while letting WM dual-fusion
-    read from actual cortex/LTM/MANN runtime paths.
-    """
-
-    def __init__(
-        self,
-        *,
-        memory_type: str,
-        dim: int,
-        query_fn: Callable[[ExternalMemoryQuery, int], Dict[str, Any]],
-        shared_slot_store: Optional[SharedSlotStore] = None,
-        mann_hops: int = 3,
-    ) -> None:
-        if memory_type not in MEMORY_TYPES:
-            raise ValueError(f"memory_type must be one of {MEMORY_TYPES}")
-        if dim <= 0:
-            raise ValueError("dim must be positive")
-        self.memory_type = memory_type
-        self.dim = int(dim)
-        self.query_fn = query_fn
-        self.shared_slot_store = shared_slot_store
-        self.mann_hops = int(max(1, mann_hops))
-
-    def _normalize_bank_result(
-        self,
-        *,
-        query: ExternalMemoryQuery,
-        top_k: int,
-        payload: Dict[str, Any],
-    ) -> ExternalMemoryResponse:
-        memory_state = torch.as_tensor(payload.get("memory_state"), device=query.query_state.device, dtype=query.query_state.dtype)
-        scores = torch.as_tensor(payload.get("scores"), device=query.query_state.device, dtype=query.query_state.dtype)
-        if memory_state.dim() != 3:
-            raise ValueError("runtime bank memory_state must be [B,K,D]")
-        if scores.dim() != 2:
-            raise ValueError("runtime bank scores must be [B,K]")
-        if memory_state.shape[:2] != scores.shape:
-            raise ValueError("runtime bank memory_state/scores shape mismatch")
-        if memory_state.size(-1) != self.dim:
-            raise ValueError(f"runtime bank D mismatch: expected {self.dim}, got {memory_state.size(-1)}")
-
-        bsz, k = scores.shape
-        slot_ids_raw = payload.get("slot_ids")
-        if isinstance(slot_ids_raw, list) and len(slot_ids_raw) == bsz:
-            slot_ids = [[str(x) for x in row[:k]] + [f"{self.memory_type}_slot_{i:04d}" for i in range(max(0, k - len(row)))] for row in slot_ids_raw]
-            slot_ids = [row[:k] for row in slot_ids]
-        else:
-            slot_ids = [[f"{self.memory_type}_slot_{i:04d}" for i in range(k)] for _ in range(bsz)]
-
-        confidence_raw = payload.get("confidence")
-        if confidence_raw is None:
-            confidence = torch.sigmoid(scores.mean(dim=-1))
-        else:
-            confidence = torch.as_tensor(confidence_raw, device=query.query_state.device, dtype=query.query_state.dtype)
-            if confidence.dim() == 0:
-                confidence = confidence.view(1).expand(bsz)
-            if confidence.dim() != 1 or confidence.size(0) != bsz:
-                raise ValueError("runtime bank confidence must be [B]")
-
-        scratchpad_tokens = payload.get("scratchpad_tokens")
-        per_hop_attention = payload.get("per_hop_attention")
-        if self.memory_type == "mann":
-            if scratchpad_tokens is None:
-                hop_scales = torch.linspace(
-                    0.25,
-                    1.0,
-                    steps=self.mann_hops,
-                    device=query.query_state.device,
-                    dtype=query.query_state.dtype,
-                ).view(1, self.mann_hops, 1)
-                scratchpad_tokens = query.query_state.unsqueeze(1) * hop_scales
-            if per_hop_attention is None:
-                hop_logits = scores.unsqueeze(1).expand(-1, self.mann_hops, -1)
-                per_hop_attention = torch.softmax(hop_logits, dim=-1)
-        if scratchpad_tokens is not None:
-            scratchpad_tokens = torch.as_tensor(scratchpad_tokens, device=query.query_state.device, dtype=query.query_state.dtype)
-        if per_hop_attention is not None:
-            per_hop_attention = torch.as_tensor(per_hop_attention, device=query.query_state.device, dtype=query.query_state.dtype)
-
-        shared_refs = None
-        if self.shared_slot_store is not None:
-            shared_refs = []
-            for b in range(bsz):
-                row_refs = []
-                for i in range(k):
-                    sid = str(slot_ids[b][i])
-                    content = memory_state[b, i].detach()
-                    write_result = self.shared_slot_store.write_slot(
-                        memory_type=self.memory_type,
-                        local_slot_id=sid,
-                        content=content,
-                        owner="shared",
-                        geometry_map=query.metadata.get("geometry_map"),
-                        confidence=float(confidence[b].detach().item()),
-                        write_permission=True,
-                        metadata={"source": "RuntimeExternalMemoryBank.query"},
-                    )
-                    row_refs.append(write_result.canonical_id)
-                shared_refs.append(row_refs)
-
-        response = ExternalMemoryResponse(
-            memory_type=self.memory_type,
-            memory_state=memory_state,
-            scores=scores,
-            slot_ids=slot_ids,
-            confidence=confidence,
-            scratchpad_tokens=scratchpad_tokens,
-            per_hop_attention=per_hop_attention,
-            trace={
-                "trace_type": f"runtime_{self.memory_type}_memory_response",
-                "request": query.to_trace(),
-                "top_k": int(top_k),
-                "shared_slot_refs": shared_refs,
-            },
-            metadata={
-                "adapter_kind": "runtime_contract_adapter",
-                "real_external_adapter": True,
-            },
-            shared_slot_refs=shared_refs,
-        )
-        response.validate()
-        return response
-
-    def query(self, query: ExternalMemoryQuery, top_k: int = 4) -> ExternalMemoryResponse:
-        query.validate()
-        payload = self.query_fn(query, int(top_k))
-        if not isinstance(payload, dict):
-            raise ValueError("runtime query_fn must return a dict payload")
-        return self._normalize_bank_result(query=query, top_k=top_k, payload=payload)
 
 
 # ---------------------------------------------------------------------------

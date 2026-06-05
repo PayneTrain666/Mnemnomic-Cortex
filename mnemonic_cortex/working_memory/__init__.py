@@ -5,15 +5,8 @@ imported independently so one later-stage import issue cannot hide core WM
 classes.
 """
 
-try:
-    from .legacy_enhanced_curved_memory import EnhancedCurvedMemory
-except Exception:
-    EnhancedCurvedMemory = None
-
-try:
-    from .wm_curved_core import WMCurvedAssociativeCore
-except Exception:
-    WMCurvedAssociativeCore = None
+from .legacy_enhanced_curved_memory import EnhancedCurvedMemory
+from .wm_curved_core import WMCurvedAssociativeCore
 
 # Optional architecture-lock exports.
 try:
@@ -221,7 +214,6 @@ __all__ = [
     "ExternalMemoryQuery",
     "ExternalMemoryResponse",
     "SyntheticExternalMemoryBank",
-    "RuntimeExternalMemoryBank",
     "WMLTMCrossAttentionConfig",
     "WMLTMCrossAttentionOutput",
     "WMLTMCrossAttention",
@@ -295,7 +287,7 @@ from .wm_counterfactual_attention import WMCounterfactualAttentionConfig, WMCoun
 from .wm_conflict_attention import WMConflictAttentionConfig, WMConflictAttentionOutput, WMConflictAttention
 from .wm_novelty_attention import WMNoveltyAttentionConfig, WMNoveltyAttentionOutput, WMNoveltyAttention
 from .wm_stability_attention import WMStabilityAttentionConfig, WMStabilityAttentionOutput, WMStabilityAttention
-from .wm_external_memory_interfaces import ExternalMemoryQuery, ExternalMemoryResponse, SyntheticExternalMemoryBank, RuntimeExternalMemoryBank
+from .wm_external_memory_interfaces import ExternalMemoryQuery, ExternalMemoryResponse, SyntheticExternalMemoryBank
 from .wm_ltm_cross_attention import WMLTMCrossAttentionConfig, WMLTMCrossAttentionOutput, WMLTMCrossAttention
 from .wm_mann_cross_attention import WMMANNCrossAttentionConfig, WMMANNTraceVisibility, WMMANNCrossAttentionOutput, WMMANNCrossAttention
 from .wm_spcp_cross_attention import WMSPCPCrossAttentionConfig, WMSPCPCrossAttentionOutput, WMSPCPCrossAttention

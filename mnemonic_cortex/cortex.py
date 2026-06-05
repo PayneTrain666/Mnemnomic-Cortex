@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
 from typing import Any, Dict, List, Optional
-import warnings
-from dataclasses import asdict, is_dataclass
-from collections import deque
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
@@ -18,25 +15,19 @@ from .cms_ops import (
 )
 from .consolidation_broker import ConsolidationBroker
 from .ahg import AHGConfig, AntiHallucinationGuard
-from .config_loader import (
-    apply_config_to_broker,
-    apply_unified_config_to_cortex,
-    load_unified_yaml_config,
-    load_yaml_config,
-)
+from .config_loader import apply_config_to_broker, load_yaml_config
 from .cps import ConsolidatedParamStore, UnifiedParamCfg
 from .cps_fuser import CPSFuser, FuserCfg
 from .diagnostics import ModelDiagnostics
 from .consolidated_memory import ConsolidatedMemoryCfg, ConsolidatedMemoryStore
 from .consolidation_broker_v2 import BrokerCfg, ConsolidationBrokerV2
-from .consolidation_scheduler import ConsolidationScheduler, SchedCfg
 from .multi_cps import MultiCPSManager
 from .router_advanced import AdvancedDomainRouter
-from .distillation import CrossDomainDistiller, DistillationConfig
+from .distillation import CrossDomainDistiller
 from .quantization import CPSQuantizer, QuantPolicy
 from .quant_fuser import QuantAwareCPSFuser
 from .router_losses import router_regularizer
-from .lightbulb_recall_v2 import LightbulbRecallV2
+from .candidate_view_builder import MemoryToViewAdapter
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -48,21 +39,75 @@ class EnhancedMnemonicCortex(nn.Module):
     def __init__(self, input_dim: int, output_dim: int,
                  sensory_buffer_size: int = 5,
                  wm_slots: int = 7, wm_slot_dim: int = 256,
-                 ltm_hg_slots: int = 2048, ltm_cgmn_slots: int = 1024, ltm_curved_slots: int = 512,
+                 ltm_hg_dim: int = 24, ltm_hg_slots: int = 1028, ltm_hg_qubits: int = 8,
+                 ltm_cgmn_dim: int = 16, ltm_cgmn_slots: int = 512, ltm_cgmn_slot_dim: int = 256,
+                 ltm_curved_hidden: int = 256, ltm_curved_curvature: int = 8, ltm_curved_slots: int = 128,
+                 ltm_n_transformer_layers: int = 3, ltm_n_heads: int = 8,
+                 ltm_attention_type: str = 'multiscale',
+                 ltm_enable_hg_bank: bool = True, ltm_hg_bank_size: int = 1024,
+                 ltm_hg_use_entanglement: bool = True, ltm_curved_use_tcn: bool = True,
                  fusion: str = 'weighted',
                  cms_vocab_size: int = 0,
                  cms_senses: int = 3,
-                 hgm_enabled: bool = False):
+                 ltm_hg_transformer_layers: int = 0,
+                 ltm_cgmn_transformer_layers: int = 0,
+                 ltm_curved_transformer_layers: int = 0,
+                 ltm_fusion_transformer_layers: int = 0,
+                 ltm_cross_model_attention_layers: int = 0,
+                 ltm_prefusion_specialization_layers: int = 0,
+                 ltm_hg_transformer_heads: int = 0,
+                 ltm_cgmn_transformer_heads: int = 0,
+                 ltm_curved_transformer_heads: int = 0,
+                 ltm_fusion_transformer_heads: int = 0,
+                 ltm_cross_model_attention_heads: int = 0,
+                 ltm_enable_hns_fusion: bool = True):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
         self._ctx_heads = self._pick_num_heads(input_dim)
+        mem_heads = self._ctx_heads
 
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
-        self.working_memory = EnhancedCurvedMemory(input_dim, hidden_dim=wm_slot_dim, mem_slots=wm_slots)
-        self.long_term_memory = EnhancedTripleHybridMemory(input_dim, output_dim,
-                                                           hg_slots=ltm_hg_slots, cgmn_slots=ltm_cgmn_slots, curved_slots=ltm_curved_slots,
-                                                           fusion=fusion)
+        self.working_memory = EnhancedCurvedMemory(
+            input_dim,
+            hidden_dim=wm_slot_dim,
+            mem_slots=wm_slots,
+            transformer_layers=2,
+            transformer_heads=int(ltm_curved_transformer_heads) if int(ltm_curved_transformer_heads) > 0 else mem_heads,
+        )
+        self.long_term_memory = EnhancedTripleHybridMemory(
+            input_dim,
+            output_dim,
+            hg_dim=int(ltm_hg_dim),
+            hg_slots=int(ltm_hg_slots),
+            hg_qubits=int(ltm_hg_qubits),
+            cgmn_dim=int(ltm_cgmn_dim),
+            cgmn_slots=int(ltm_cgmn_slots),
+            cgmn_slot_dim=int(ltm_cgmn_slot_dim),
+            curved_hidden=int(ltm_curved_hidden),
+            curved_curvature=int(ltm_curved_curvature),
+            curved_slots=int(ltm_curved_slots),
+            n_transformer_layers=int(ltm_n_transformer_layers),
+            n_heads=int(ltm_n_heads),
+            attention_type=str(ltm_attention_type),
+            enable_hg_bank=bool(ltm_enable_hg_bank),
+            hg_bank_size=int(ltm_hg_bank_size),
+            hg_use_entanglement=bool(ltm_hg_use_entanglement),
+            curved_use_tcn=bool(ltm_curved_use_tcn),
+            fusion=fusion,
+            hg_transformer_layers=int(ltm_hg_transformer_layers),
+            cgmn_transformer_layers=int(ltm_cgmn_transformer_layers),
+            curved_transformer_layers=int(ltm_curved_transformer_layers),
+            fusion_transformer_layers=int(ltm_fusion_transformer_layers),
+            cross_model_attention_layers=int(ltm_cross_model_attention_layers),
+            prefusion_specialization_layers=int(ltm_prefusion_specialization_layers),
+            hg_transformer_heads=int(ltm_hg_transformer_heads),
+            cgmn_transformer_heads=int(ltm_cgmn_transformer_heads),
+            curved_transformer_heads=int(ltm_curved_transformer_heads),
+            fusion_transformer_heads=int(ltm_fusion_transformer_heads),
+            cross_model_attention_heads=int(ltm_cross_model_attention_heads),
+            enable_hns_fusion=bool(ltm_enable_hns_fusion),
+        )
 
         # Context projection (kept simple: same dim by default)
         self.ctx_proj = nn.Linear(input_dim, input_dim)
@@ -97,12 +142,6 @@ class EnhancedMnemonicCortex(nn.Module):
         # Lightbulb + temperature scaler
         self.lightbulb = LightbulbDetector(input_dim, thresh=2.0)
         self.temp_scaler = ExplosiveRecallScaler(base_temp=1.0, min_temp=0.5, boost=0.3)
-        self.recall_controller = LightbulbRecallV2(
-            in_dim=4,
-            threshold=0.72,
-            max_hops=2,
-            k_expand_mult=1.6,
-        )
 
         # Importance predictor for consolidation condition
         self.importance_predictor = nn.Sequential(nn.Linear(input_dim,64), nn.ReLU(), nn.Linear(64,1), nn.Sigmoid())
@@ -144,40 +183,19 @@ class EnhancedMnemonicCortex(nn.Module):
         self.advanced_broker = None
         self.advanced_router = None
         self.advanced_distiller = None
-        self.distillation_config = DistillationConfig(enabled=False)
         self.advanced_quantizers = {}
         self.quant_fuser = None
-        self.advanced_scheduler = ConsolidationScheduler(SchedCfg(interval_sec=5, max_merges_per_tick=256))
-        self._advanced_pending_merges: List[tuple] = []
-        self.reasoning_controller_api = None
         self.advanced_router_feat_proj = None
+        self.advanced_view_adapter = None
+        self._advanced_merge_queue = []
+        self._advanced_nudge_keys = set()
+        self._advanced_merge_counter = 0
         self.last_router_decision = None
         self.diagnostics = ModelDiagnostics(enabled=False)
         self.shared_memory_subsystem = None
         self.hg_episodic_ltm = None
-        self.episodic_write_mode = "legacy"  # legacy | mirror | shared_only
-        self.hgm_enabled = False
-        self.hgm_config = None
-        self.hgm_last_result = None
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
-        if bool(hgm_enabled):
-            self.enable_hypergraph_manifold_bridge(enabled=True)
-
-    @classmethod
-    def from_yaml(cls, path: str):
-        """
-        Convenience constructor: build + configure from one unified YAML file.
-
-        Returns:
-            tuple[EnhancedMnemonicCortex, UnifiedCortexConfig]
-        """
-        from .config_loader import build_cortex_from_yaml
-
-        model, unified = build_cortex_from_yaml(path)
-        if not isinstance(model, cls):
-            raise TypeError(f"Expected build_cortex_from_yaml to return {cls.__name__}, got {type(model).__name__}")
-        return model, unified
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -186,97 +204,28 @@ class EnhancedMnemonicCortex(nn.Module):
                 return h
         return 1
 
-    # ---------------- Helpers ----------------
-    def enable_hypergraph_manifold_bridge(self, enabled: bool = True, *, hgm_config: Any = None):
-        if not bool(enabled):
-            self.hgm_enabled = False
-            self.hgm_last_result = None
-            self.diagnostics.log("hgm_bridge_disabled", {"enabled": False})
-            return self
-        from .hypergraph_manifold import HGMConfig
+    def _wm_uses_qdt_stack(self) -> bool:
+        return hasattr(self.working_memory, "get_attention_stack_output")
 
-        if hgm_config is None:
-            cfg = HGMConfig()
-        elif isinstance(hgm_config, HGMConfig):
-            cfg = hgm_config
-        elif isinstance(hgm_config, dict):
-            cfg = HGMConfig(**dict(hgm_config))
-        else:
-            raise ValueError("hgm_config must be None, HGMConfig, or dict")
-        self.hgm_enabled = True
-        self.hgm_config = cfg
+    def _wm_read_operation(self) -> str:
+        return "process" if self._wm_uses_qdt_stack() else "read"
+
+    def wire_qdt_to_ltm(self):
+        """Connect QDT dual-fusion LTM cross-attention to live triple-hybrid banks."""
+        from .working_memory.wm_cortex_integration import wire_qdt_ltm_adapter
+
+        attached = wire_qdt_ltm_adapter(self)
         self.diagnostics.log(
-            "hgm_bridge_enabled",
+            "qdt_ltm_adapter_wired",
             {
-                "enabled": True,
-                "max_depth_layers": int(cfg.max_depth_layers),
-                "max_hyperedge_nodes": int(cfg.max_hyperedge_nodes),
-                "default_normalization": str(cfg.default_normalization.value),
+                "attached": bool(attached),
+                "qdt_stack": self._wm_uses_qdt_stack(),
+                "adapter_kind": "triple_hybrid_ltm_adapter" if attached else "unwired",
             },
         )
         return self
 
-    def run_hypergraph_manifold(
-        self,
-        mutation_tokens: Any,
-        *,
-        top_k: int = 8,
-        charts: Optional[List[Any]] = None,
-        normalization_mode: str = "mutation_axis",
-    ) -> Dict[str, Any]:
-        if not self.hgm_enabled:
-            return {"enabled": False, "reason": "hgm bridge disabled"}
-        from .hypergraph_manifold import (
-            GeometryType,
-            ManifoldChart,
-            build_hgm1_scenario_graph,
-            build_hgm2_manifold_routing,
-            build_probability_expansion,
-            extract_top_k_scenarios,
-        )
-
-        cfg = self.hgm_config
-        expansion = build_probability_expansion(
-            mutation_tokens,
-            config=cfg,
-            normalization_mode=normalization_mode,
-        )
-        variable_ids = expansion.metadata.get("variable_ids", tuple()) if isinstance(expansion.metadata, dict) else tuple()
-        magnitude_ids = expansion.metadata.get("magnitude_bin_ids", tuple()) if isinstance(expansion.metadata, dict) else tuple()
-        scenarios = extract_top_k_scenarios(
-            expansion.payload,
-            k=max(1, int(top_k)),
-            contract=expansion.contract,
-            config=cfg,
-            variable_ids=variable_ids,
-            magnitude_bin_ids=magnitude_ids,
-        )
-        hgm1 = build_hgm1_scenario_graph(scenarios.candidates, config=cfg)
-        if charts is None:
-            charts = [
-                ManifoldChart(chart_id="ctx-euclid", geometry=GeometryType.EUCLIDEAN, dimension=int(self.input_dim)),
-                ManifoldChart(chart_id="ctx-hyper", geometry=GeometryType.HYPERBOLIC, dimension=int(self.input_dim)),
-                ManifoldChart(chart_id="ctx-product", geometry=GeometryType.PRODUCT, dimension=int(self.input_dim)),
-            ]
-        hgm2 = build_hgm2_manifold_routing(hgm1.binding.hyperedges, charts=tuple(charts), config=cfg)
-        self.hgm_last_result = {
-            "expansion": expansion,
-            "scenarios": scenarios,
-            "hgm1": hgm1,
-            "hgm2": hgm2,
-        }
-        self.diagnostics.log(
-            "hgm_pipeline_run",
-            {
-                "expansion_ok": bool(expansion.validation.ok),
-                "scenario_count": int(len(scenarios.candidates)),
-                "hyperedge_count": int(len(hgm1.binding.hyperedges)),
-                "assignment_count": int(len(hgm2.routing.assignments)),
-                "hgm2_ok": bool(hgm2.validation.ok),
-            },
-        )
-        return self.hgm_last_result
-
+    # ---------------- Helpers ----------------
     def enable_energy_mode(self, enable: bool = True):
         self.energy_mode = enable
         self.long_term_memory.enable_energy_efficient_mode(enable)
@@ -286,37 +235,25 @@ class EnhancedMnemonicCortex(nn.Module):
         self,
         *,
         num_slots: int = 2048,
-        num_systems: Optional[int] = None,
+        num_systems: int = 8,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         geometry_runtime: Any = None,
         reranker: Any = None,
         truth_runtime: Any = None,
-        overwrite_threshold: float = 0.35,
-        merge_threshold: float = 0.65,
-        quarantine_interference_threshold: float = 0.85,
-        contradiction_split_threshold: int = 3,
     ):
         """
         Attach the shared-slot memory stack (store/allocator/arbitrator/retention/read/write).
         This is optional and does not alter the main forward path unless used explicitly.
         """
         from .memory import SharedSlotStore, build_shared_memory_subsystem
-        from .memory.shared_slot_schema import MEMORY_SYSTEM_IDS
 
         device = device or self.ctx_proj.weight.device
         dtype = dtype or self.ctx_proj.weight.dtype
-        resolved_num_systems = int(len(MEMORY_SYSTEM_IDS) if num_systems is None else num_systems)
-        if resolved_num_systems <= 0:
-            raise ValueError("num_systems must be positive")
-        if resolved_num_systems > len(MEMORY_SYSTEM_IDS):
-            raise ValueError(
-                f"num_systems ({resolved_num_systems}) cannot exceed schema registry size ({len(MEMORY_SYSTEM_IDS)})"
-            )
         store = SharedSlotStore(
             num_slots=int(num_slots),
             slot_dim=int(self.input_dim),
-            num_systems=resolved_num_systems,
+            num_systems=int(num_systems),
             device=str(device),
             dtype=dtype,
         )
@@ -325,36 +262,28 @@ class EnhancedMnemonicCortex(nn.Module):
             geometry_runtime=geometry_runtime,
             reranker=reranker,
             truth_runtime=truth_runtime,
-            overwrite_threshold=overwrite_threshold,
-            merge_threshold=merge_threshold,
-            quarantine_interference_threshold=quarantine_interference_threshold,
-            contradiction_split_threshold=contradiction_split_threshold,
         )
         self.diagnostics.log(
             "shared_memory_subsystem_enabled",
             {
                 "num_slots": int(num_slots),
                 "slot_dim": int(self.input_dim),
-                "num_systems": int(resolved_num_systems),
-                "overwrite_threshold": float(overwrite_threshold),
-                "merge_threshold": float(merge_threshold),
-                "quarantine_interference_threshold": float(quarantine_interference_threshold),
-                "contradiction_split_threshold": int(contradiction_split_threshold),
+                "num_systems": int(num_systems),
             },
         )
         return self
 
-    def memory_write(self, request: Any, values: torch.Tensor):
+    def memory_write(self, request, values):
         if self.shared_memory_subsystem is None:
             raise RuntimeError("shared memory subsystem not enabled")
         return self.shared_memory_subsystem.write_engine.write(request=request, values=values)
 
-    def memory_read(self, request: Any):
+    def memory_read(self, request):
         if self.shared_memory_subsystem is None:
             raise RuntimeError("shared memory subsystem not enabled")
         return self.shared_memory_subsystem.read_engine.retrieve(request)
 
-    def memory_update(self, request: Any):
+    def memory_update(self, request):
         if self.shared_memory_subsystem is None:
             raise RuntimeError("shared memory subsystem not enabled")
         return self.shared_memory_subsystem.update_engine.update(request)
@@ -412,7 +341,9 @@ class EnhancedMnemonicCortex(nn.Module):
         long_episode_threshold: int = 16,
         summary_stride: int = 8,
         promotion_retrieval_threshold: int = 3,
-        write_mode: str = "mirror",
+        transformer_layers: int = 2,
+        transformer_heads: int = 0,
+        transformer_dropout: float = 0.1,
     ):
         """
         Attach HG episodic LTM on top of the shared-memory subsystem.
@@ -421,7 +352,7 @@ class EnhancedMnemonicCortex(nn.Module):
         if self.shared_memory_subsystem is None:
             self.enable_shared_memory_subsystem(
                 num_slots=2048,
-                num_systems=None,
+                num_systems=8,
                 device=self.ctx_proj.weight.device,
                 dtype=self.ctx_proj.weight.dtype,
             )
@@ -440,18 +371,17 @@ class EnhancedMnemonicCortex(nn.Module):
             long_episode_threshold=long_episode_threshold,
             summary_stride=summary_stride,
             promotion_retrieval_threshold=promotion_retrieval_threshold,
+            transformer_layers=int(transformer_layers),
+            transformer_heads=int(transformer_heads),
+            transformer_dropout=float(transformer_dropout),
         )
-        mode = str(write_mode).lower().strip()
-        if mode not in {"legacy", "mirror", "shared_only"}:
-            raise ValueError(f"unsupported write_mode '{write_mode}'")
-        self.episodic_write_mode = mode
         self.diagnostics.log(
             "hg_episodic_ltm_enabled",
             {
                 "long_episode_threshold": int(long_episode_threshold),
                 "summary_stride": int(summary_stride),
                 "promotion_retrieval_threshold": int(promotion_retrieval_threshold),
-                "write_mode": mode,
+                "transformer_layers": int(transformer_layers),
             },
         )
         return self
@@ -468,7 +398,7 @@ class EnhancedMnemonicCortex(nn.Module):
     ):
         if self.hg_episodic_ltm is None:
             raise RuntimeError("hg episodic ltm not enabled")
-        return self.hg_episodic_ltm.store_episode(
+        result = self.hg_episodic_ltm.store_episode(
             episode_id=episode_id,
             episode_vectors=episode_vectors,
             step_range=step_range,
@@ -476,6 +406,17 @@ class EnhancedMnemonicCortex(nn.Module):
             trace_ids=trace_ids,
             tags=tags,
         )
+        try:
+            self.sync_hg_episodic_episode_to_triple_hybrid(
+                episode_id=str(episode_id),
+                set_attention_context=False,
+            )
+        except Exception as exc:
+            self.diagnostics.log(
+                "hg_episodic_sync_error",
+                {"episode_id": str(episode_id), "error": str(exc)},
+            )
+        return result
 
     def retrieve_episodic_trace(
         self,
@@ -493,6 +434,110 @@ class EnhancedMnemonicCortex(nn.Module):
             tags=tags,
             time_window=time_window,
         )
+
+    @torch.no_grad()
+    def sync_hg_episodic_episode_to_triple_hybrid(
+        self,
+        *,
+        episode_id: str,
+        include_summary: bool = True,
+        target_banks=("hg", "cgmn", "curved"),
+        write_scale: float = 1.0,
+        set_attention_context: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Bridge one stored episodic record into triple-hybrid memory banks.
+        This keeps HG episodic-LTM storage and the runtime triple-hybrid memories aligned.
+        """
+        if self.hg_episodic_ltm is None:
+            raise RuntimeError("hg episodic ltm not enabled")
+        rec = self.hg_episodic_ltm.episode_records.get(str(episode_id))
+        if rec is None:
+            raise KeyError(f"episode_id not found: {episode_id}")
+
+        slot_ids = list(rec.slot_ids)
+        if bool(include_summary):
+            slot_ids += list(rec.summary_slot_ids)
+        slot_ids = [int(s) for s in slot_ids]
+        if not slot_ids:
+            return {"episode_id": str(episode_id), "slot_count": 0, "ingested": {}}
+
+        vectors = self.hg_episodic_ltm.slot_store.get_slot_value(slot_ids)
+        if vectors.numel() == 0:
+            return {"episode_id": str(episode_id), "slot_count": 0, "ingested": {}}
+        episodic_ctx = self.hg_episodic_ltm.build_episode_attention_context(
+            episode_id=str(episode_id),
+            include_summary=bool(include_summary),
+            max_tokens=64,
+        )
+        if (
+            set_attention_context
+            and episodic_ctx is not None
+            and hasattr(self.long_term_memory, "set_external_attention_context")
+        ):
+            self.long_term_memory.set_external_attention_context(episodic_ctx)
+
+        ingested = self.long_term_memory.ingest_episodic_vectors(
+            vectors=vectors,
+            target_banks=target_banks,
+            write_scale=float(write_scale),
+        )
+        out = {
+            "episode_id": str(episode_id),
+            "slot_count": int(vectors.size(0)),
+            "ingested": ingested,
+        }
+        self.diagnostics.log("hg_episodic_to_triple_hybrid_sync", out)
+        return out
+
+    @torch.no_grad()
+    def sync_all_hg_episodic_to_triple_hybrid(
+        self,
+        *,
+        include_summary: bool = True,
+        target_banks=("hg", "cgmn", "curved"),
+        write_scale: float = 1.0,
+    ) -> Dict[str, Any]:
+        """
+        Bridge all known episodic records into triple-hybrid memory banks.
+        """
+        if self.hg_episodic_ltm is None:
+            raise RuntimeError("hg episodic ltm not enabled")
+        total_slots = 0
+        total_ingested = {"hg": 0, "cgmn": 0, "curved": 0}
+        synced = 0
+        for eid in sorted(self.hg_episodic_ltm.episode_records.keys()):
+            result = self.sync_hg_episodic_episode_to_triple_hybrid(
+                episode_id=eid,
+                include_summary=include_summary,
+                target_banks=target_banks,
+                write_scale=write_scale,
+                set_attention_context=False,
+            )
+            total_slots += int(result.get("slot_count", 0))
+            ing = result.get("ingested", {}) or {}
+            for k in ("hg", "cgmn", "curved"):
+                total_ingested[k] += int(ing.get(k, 0))
+            synced += 1
+        if synced > 0 and hasattr(self.long_term_memory, "set_external_attention_context"):
+            keys = sorted(self.hg_episodic_ltm.episode_records.keys())
+            tail = keys[-min(4, len(keys)) :]
+            chunks = []
+            for eid in tail:
+                c = self.hg_episodic_ltm.build_episode_attention_context(
+                    episode_id=eid, include_summary=True, max_tokens=32
+                )
+                if c is not None:
+                    chunks.append(c)
+            if chunks:
+                self.long_term_memory.set_external_attention_context(torch.cat(chunks, dim=1))
+        summary = {
+            "episodes_synced": int(synced),
+            "total_slots": int(total_slots),
+            "total_ingested": total_ingested,
+        }
+        self.diagnostics.log("hg_episodic_to_triple_hybrid_sync_all", summary)
+        return summary
 
     @torch.no_grad()
     def apply_topology_policy(self, name: str):
@@ -607,93 +652,9 @@ class EnhancedMnemonicCortex(nn.Module):
             gcfg = load_yaml_config(config_path)
             apply_config_to_broker(self.consolidation_broker, gcfg)
             self.ahg = AntiHallucinationGuard(gcfg.ahg)
-            self.configure_distillation(gcfg.distill)
-        except FileNotFoundError:
-            warnings.warn(
-                f"Broker config '{config_path}' not found; using default broker/AHG settings.",
-                RuntimeWarning,
-            )
-        except RuntimeError as exc:
-            warnings.warn(f"Broker config load failed: {exc}", RuntimeWarning)
-        except Exception as exc:
-            warnings.warn(f"Broker config apply failed: {exc}", RuntimeWarning)
-        return self
-
-    def configure_from_yaml(
-        self,
-        path: str,
-        *,
-        auto_enable_broker: bool = True,
-        broker_vocab_size: Optional[int] = None,
-    ):
-        unified = load_unified_yaml_config(path)
-        ctor_cfg = unified.cortex
-
-        if int(ctor_cfg.input_dim) != int(self.input_dim) or int(ctor_cfg.output_dim) != int(self.output_dim):
-            warnings.warn(
-                "YAML cortex dims differ from existing model instance "
-                f"(yaml: in={int(ctor_cfg.input_dim)}, out={int(ctor_cfg.output_dim)}; "
-                f"model: in={int(self.input_dim)}, out={int(self.output_dim)}). "
-                "Keeping existing instantiated dimensions.",
-                RuntimeWarning,
-            )
-
-        if auto_enable_broker and self.consolidation_broker is None and unified.global_config.stores:
-            resolved_vocab = int(
-                broker_vocab_size
-                or getattr(self.consolidated_lexicon, "vocab_size", 0)
-                or int(getattr(ctor_cfg, "cms_vocab_size", 0))
-            )
-            if resolved_vocab > 0:
-                if self.consolidated_lexicon is None and int(getattr(ctor_cfg, "cms_vocab_size", 0)) > 0:
-                    self.enable_consolidated_lexicon(
-                        vocab_size=int(ctor_cfg.cms_vocab_size),
-                        senses=int(ctor_cfg.cms_senses),
-                    )
-                self.enable_consolidation_broker(vocab_size=resolved_vocab, config_path=path)
-            else:
-                warnings.warn(
-                    "Unified YAML requests broker/store config, but vocab size is unavailable. "
-                    "Provide broker_vocab_size or set cortex.cms_vocab_size in YAML.",
-                    RuntimeWarning,
-                )
-
-        apply_unified_config_to_cortex(self, unified)
-        self.diagnostics.log(
-            "configured_from_yaml",
-            {
-                "path": str(path),
-                "hgm_enabled": bool(self.hgm_enabled),
-                "reasoning_bridge_enabled": bool(self.reasoning_controller_api is not None),
-                "qdt_wm_bridge_enabled": bool(self._resolve_qdt_working_memory() is not None),
-                "shared_memory_enabled": bool(self.shared_memory_subsystem is not None),
-                "hg_episodic_ltm_enabled": bool(self.hg_episodic_ltm is not None),
-                "broker_enabled": bool(self.consolidation_broker is not None),
-            },
-        )
-        return unified
-
-    def configure_distillation(self, cfg: Any = None):
-        if cfg is None:
-            cfg = DistillationConfig(enabled=False)
-        elif isinstance(cfg, dict):
-            cfg = DistillationConfig(**cfg)
-        elif not isinstance(cfg, DistillationConfig):
-            raise ValueError("cfg must be DistillationConfig, dict, or None")
-        cfg.validate()
-        self.distillation_config = cfg
-        if self.advanced_distiller is not None:
-            self.advanced_distiller.configure(cfg)
-        self.diagnostics.log(
-            "distillation_configured",
-            {
-                "enabled": bool(cfg.enabled),
-                "teacher_domain": str(cfg.teacher_domain),
-                "student_domains": [str(x) for x in cfg.student_domains],
-                "neighbor_k": int(cfg.neighbor_k),
-                "sim_temp": float(cfg.sim_temp),
-            },
-        )
+        except Exception:
+            # Keep defaults if config is not present or invalid.
+            pass
         return self
 
     def enable_ahg(self, cfg: AHGConfig = None):
@@ -748,7 +709,6 @@ class EnhancedMnemonicCortex(nn.Module):
             hidden=max(64, self.input_dim),
         )
         self.advanced_distiller = CrossDomainDistiller(self.multi_cps, cms=self.advanced_cms)
-        self.advanced_distiller.configure(self.distillation_config)
         self.advanced_quantizers = {
             dom: CPSQuantizer(QuantPolicy()) for dom in self.multi_cps.cps.keys()
         }
@@ -763,100 +723,17 @@ class EnhancedMnemonicCortex(nn.Module):
             nn.Linear(12, self.input_dim),
             nn.Tanh(),
         )
+        self.advanced_view_adapter = MemoryToViewAdapter(
+            d_in=self.input_dim,
+            d_model=cms_cfg.d_model,
+        )
+        self._advanced_merge_queue = []
+        self._advanced_nudge_keys = set()
+        self._advanced_merge_counter = 0
         self.diagnostics.log(
             "advanced_consolidation_enabled",
-            {
-                "domains": list(self.multi_cps.cps.keys()),
-                "distillation_enabled": bool(self.distillation_config.enabled),
-            },
+            {"domains": list(self.multi_cps.cps.keys())},
         )
-        self._wire_runtime_external_memory_backends()
-        return self
-
-    @staticmethod
-    def _distill_keys_from_token_ids(token_ids) -> List[str]:
-        if token_ids is None:
-            return []
-        if token_ids.dim() > 1:
-            flat = token_ids.reshape(-1)
-        else:
-            flat = token_ids
-        seen = set()
-        out = []
-        for t in flat.tolist():
-            key = f"token:{int(t)}"
-            if key not in seen:
-                seen.add(key)
-                out.append(key)
-        return out
-
-    def enable_reasoning_controller_bridge(
-        self,
-        *,
-        enabled: bool = True,
-        allow_shared_mann_ltm_geometry: bool = True,
-        max_reasoning_hops: int = 2,
-    ):
-        from .reasoning_depth.reasoning_controller_api import (
-            ReasoningControllerAPI,
-            ReasoningControllerAPIConfig,
-        )
-
-        if not enabled:
-            self.reasoning_controller_api = None
-            self.diagnostics.log("reasoning_controller_bridge", {"enabled": False})
-            return self
-
-        cfg = ReasoningControllerAPIConfig(
-            enabled=True,
-            key_dim=int(self.input_dim),
-            value_dim=int(self.input_dim),
-            slot_count=32,
-            max_reasoning_hops=int(max(1, max_reasoning_hops)),
-            allow_shared_mann_ltm_geometry=bool(allow_shared_mann_ltm_geometry),
-            allow_policy_router=True,
-            allow_evidence_reasoning=True,
-            allow_counterfactual_probe=True,
-            allow_conflict_aware_consolidation=True,
-            require_json_safe_outputs=False,
-        )
-        self.reasoning_controller_api = ReasoningControllerAPI(cfg)
-        self.diagnostics.log(
-            "reasoning_controller_bridge",
-            {
-                "enabled": True,
-                "shared_geometry": bool(allow_shared_mann_ltm_geometry),
-                "max_reasoning_hops": int(max_reasoning_hops),
-            },
-        )
-        return self
-
-    def enable_qdt_working_memory_bridge(
-        self,
-        *,
-        hidden_dim: int = 128,
-        num_depths: int = 8,
-        num_slots: int = 8,
-        num_heads: Optional[int] = None,
-        transformer_layers: int = 1,
-        use_compatibility_wrapper: bool = True,
-    ):
-        from .working_memory import CortexWorkingMemoryIntegrationConfig, replace_cortex_working_memory
-
-        resolved_heads = int(self._pick_num_heads(int(self.input_dim)) if num_heads is None else num_heads)
-        cfg = CortexWorkingMemoryIntegrationConfig(
-            input_dim=int(self.input_dim),
-            hidden_dim=int(hidden_dim),
-            num_depths=int(num_depths),
-            num_slots=int(num_slots),
-            num_heads=resolved_heads,
-            transformer_layers=int(transformer_layers),
-            use_compatibility_wrapper=bool(use_compatibility_wrapper),
-            preserve_old_reference=True,
-        )
-        result = replace_cortex_working_memory(self, cfg)
-        self.diagnostics.log("qdt_working_memory_bridge", result.to_dict())
-        self._wire_runtime_external_memory_backends()
         return self
 
     def enable_cps_cms_full_stack(
@@ -865,138 +742,51 @@ class EnhancedMnemonicCortex(nn.Module):
         vocab_size: int,
         cms_senses: int = 3,
         enable_broker: bool = True,
-        enable_advanced: bool = True,
+        enable_advanced: bool = False,
         enable_reasoning_bridge: bool = True,
-        enable_qdt_wm_bridge: bool = True,
+        enable_qdt_wm_bridge: bool = False,
     ):
-        self.enable_consolidated_lexicon(vocab_size=int(vocab_size), senses=int(cms_senses))
-        if enable_broker:
+        """
+        Wire optional CMS/CPS, advanced consolidation, QDT WM, and episodic bridges.
+        Safe to call multiple times; only attaches missing components.
+        """
+        if self.consolidated_lexicon is None:
+            self.enable_consolidated_lexicon(vocab_size=int(vocab_size), senses=int(cms_senses))
+        if enable_broker and self.consolidation_broker is None:
             self.enable_consolidation_broker(vocab_size=int(vocab_size))
-        if enable_advanced:
+        if enable_advanced and self.advanced_cms is None:
             self.enable_advanced_consolidation()
-        if enable_reasoning_bridge:
-            self.enable_reasoning_controller_bridge(enabled=True, allow_shared_mann_ltm_geometry=True)
         if enable_qdt_wm_bridge:
-            self.enable_qdt_working_memory_bridge()
-        else:
-            self._wire_runtime_external_memory_backends()
+            from .working_memory.wm_cortex_integration import (
+                CortexWorkingMemoryIntegrationConfig,
+                replace_cortex_working_memory,
+            )
+            wm_cfg = CortexWorkingMemoryIntegrationConfig(
+                input_dim=self.input_dim,
+                hidden_dim=max(128, self.input_dim),
+                num_depths=8,
+                num_slots=max(8, getattr(self.working_memory, "M", 8)),
+            )
+            replace_cortex_working_memory(self, wm_cfg)
+            self.wire_qdt_to_ltm()
+        if enable_reasoning_bridge:
+            if self.shared_memory_subsystem is None:
+                self.enable_shared_memory_subsystem()
+            if self.hg_episodic_ltm is None:
+                self.enable_hg_episodic_ltm()
+        if enable_qdt_wm_bridge and self.shared_memory_subsystem is not None:
+            self.wire_qdt_to_ltm()
         self.diagnostics.log(
             "cps_cms_full_stack_enabled",
             {
-                "vocab_size": int(vocab_size),
-                "cms_senses": int(cms_senses),
-                "broker": bool(enable_broker),
-                "advanced": bool(enable_advanced),
-                "reasoning_bridge": bool(enable_reasoning_bridge),
-                "qdt_wm_bridge": bool(enable_qdt_wm_bridge),
+                "broker": self.consolidation_broker is not None,
+                "advanced": self.advanced_cms is not None,
+                "qdt_wm": hasattr(self.working_memory, "get_attention_stack_output"),
+                "shared_memory": self.shared_memory_subsystem is not None,
+                "hg_episodic": self.hg_episodic_ltm is not None,
             },
         )
         return self
-
-    def _resolve_qdt_working_memory(self):
-        wm = self.working_memory
-        if hasattr(wm, "qdt_working_memory"):
-            return getattr(wm, "qdt_working_memory")
-        if hasattr(wm, "dual_fusion"):
-            return wm
-        return None
-
-    def _wire_runtime_external_memory_backends(self) -> bool:
-        from .working_memory.wm_external_memory_interfaces import RuntimeExternalMemoryBank
-
-        qdt_wm = self._resolve_qdt_working_memory()
-        if qdt_wm is None or not hasattr(qdt_wm, "dual_fusion"):
-            return False
-
-        shared_slot_store = getattr(qdt_wm, "shared_slot_store", None)
-
-        def _ltm_query_fn(request, top_k: int):
-            query = request.query_state
-            qseq = query.unsqueeze(1)
-            values = self.long_term_memory(qseq, operation="read")
-            pooled = values.mean(dim=1)
-            k = max(1, int(top_k))
-            memory_state = pooled.unsqueeze(1).expand(-1, k, -1).contiguous()
-            qn = torch.nn.functional.normalize(query, dim=-1)
-            mn = torch.nn.functional.normalize(memory_state[:, 0, :], dim=-1)
-            score = (qn * mn).sum(dim=-1, keepdim=True)
-            scores = score.expand(-1, k).contiguous()
-            slot_ids = [[f"ltm_runtime_{i}" for i in range(k)] for _ in range(query.size(0))]
-            return {"memory_state": memory_state, "scores": scores, "slot_ids": slot_ids}
-
-        def _mann_query_fn(request, top_k: int):
-            query = request.query_state
-            if self.reasoning_controller_api is not None:
-                try:
-                    api_result = self.reasoning_controller_api.run_reasoning_pass(
-                        query,
-                        content="wm_mann_runtime_bridge",
-                        write_permission=False,
-                    )
-                    out = api_result.result.mann_output
-                    if out is None:
-                        out = api_result.result.output
-                    mann_state = out
-                except Exception:
-                    mann_state = query
-            else:
-                mann_state = query
-            k = max(1, int(top_k))
-            memory_state = mann_state.unsqueeze(1).expand(-1, k, -1).contiguous()
-            qn = torch.nn.functional.normalize(query, dim=-1)
-            mn = torch.nn.functional.normalize(memory_state[:, 0, :], dim=-1)
-            score = (qn * mn).sum(dim=-1, keepdim=True)
-            scores = score.expand(-1, k).contiguous()
-            hops = 3
-            hop_scales = torch.linspace(0.25, 1.0, steps=hops, device=query.device, dtype=query.dtype).view(1, hops, 1)
-            scratchpad_tokens = mann_state.unsqueeze(1) * hop_scales
-            per_hop_attention = torch.softmax(scores.unsqueeze(1).expand(-1, hops, -1), dim=-1)
-            slot_ids = [[f"mann_runtime_{i}" for i in range(k)] for _ in range(query.size(0))]
-            return {
-                "memory_state": memory_state,
-                "scores": scores,
-                "slot_ids": slot_ids,
-                "scratchpad_tokens": scratchpad_tokens,
-                "per_hop_attention": per_hop_attention,
-            }
-
-        def _spcp_query_fn(request, top_k: int):
-            query = request.query_state
-            qseq = query.unsqueeze(1)
-            values = self.long_term_memory.curved(qseq, operation="read")
-            pooled = values.mean(dim=1)
-            k = max(1, int(top_k))
-            memory_state = pooled.unsqueeze(1).expand(-1, k, -1).contiguous()
-            qn = torch.nn.functional.normalize(query, dim=-1)
-            mn = torch.nn.functional.normalize(memory_state[:, 0, :], dim=-1)
-            score = (qn * mn).sum(dim=-1, keepdim=True)
-            scores = score.expand(-1, k).contiguous()
-            slot_ids = [[f"spcp_runtime_{i}" for i in range(k)] for _ in range(query.size(0))]
-            return {"memory_state": memory_state, "scores": scores, "slot_ids": slot_ids}
-
-        qdt_wm.dual_fusion.ltm.external_bank = RuntimeExternalMemoryBank(
-            memory_type="ltm",
-            dim=int(self.input_dim),
-            query_fn=_ltm_query_fn,
-            shared_slot_store=shared_slot_store,
-        )
-        qdt_wm.dual_fusion.mann.external_bank = RuntimeExternalMemoryBank(
-            memory_type="mann",
-            dim=int(self.input_dim),
-            query_fn=_mann_query_fn,
-            shared_slot_store=shared_slot_store,
-        )
-        qdt_wm.dual_fusion.spcp.external_bank = RuntimeExternalMemoryBank(
-            memory_type="spcp",
-            dim=int(self.input_dim),
-            query_fn=_spcp_query_fn,
-            shared_slot_store=shared_slot_store,
-        )
-        self.diagnostics.log(
-            "wm_external_runtime_backends_wired",
-            {"ltm": "runtime", "mann": "runtime", "spcp": "runtime"},
-        )
-        return True
 
     def set_cps_curriculum_stage(self, stage: int):
         self.cps_fuser.set_curriculum_stage(int(stage))
@@ -1035,56 +825,40 @@ class EnhancedMnemonicCortex(nn.Module):
             total = agree if total is None else (total + agree)
         return total / max(1, len(token_list))
 
-    @torch.no_grad()
     def _enqueue_advanced_ltm_merge(
         self,
-        *,
         key: str,
         candidate_view: Dict[str, torch.Tensor],
         importance: torch.Tensor,
-        src_info: Dict[str, Any],
+        src_info: Optional[Dict] = None,
     ) -> None:
         if self.advanced_broker is None:
             return
-        self._advanced_pending_merges.append((key, candidate_view, importance, src_info))
-        if len(self._advanced_pending_merges) > 4096:
-            self._advanced_pending_merges = self._advanced_pending_merges[-4096:]
+        self._advanced_merge_queue.append(
+            (str(key), candidate_view, importance.detach(), dict(src_info or {}))
+        )
 
     @torch.no_grad()
     def _tick_advanced_consolidation(self, token_keys: Optional[List[str]] = None) -> None:
         if self.advanced_broker is None:
             return
-
-        token_keys = token_keys or []
-        # Preserve insertion order while deduping.
-        seen = set()
-        deduped = []
-        for k in token_keys:
-            if k in seen:
-                continue
-            seen.add(k)
-            deduped.append(k)
-
-        def _pending_merges():
-            pending = list(self._advanced_pending_merges)
-            self._advanced_pending_merges.clear()
-            return pending
-
-        def _nudge_keys():
-            if deduped:
-                return deduped[:256]
-            return self.cps.keys()[:256]
-
-        def _reindex_keys():
-            return []
-
-        self.advanced_scheduler.tick(
-            pending_merges=_pending_merges,
-            nudge_keys=_nudge_keys,
-            reindex_keys=_reindex_keys,
-            broker=self.advanced_broker,
-            cms_index=None,
-        )
+        if token_keys:
+            for k in token_keys:
+                self._advanced_nudge_keys.add(str(k))
+        pending = self._advanced_merge_queue[:256]
+        self._advanced_merge_queue = self._advanced_merge_queue[256:]
+        for key, cand_view, importance, src_info in pending:
+            try:
+                self.advanced_broker.ingest_from_ltm(key, cand_view, importance, src_info=src_info)
+                self._advanced_nudge_keys.add(key)
+            except Exception as exc:
+                self.diagnostics.log("advanced_merge_error", {"key": key, "error": str(exc)})
+        for key in list(self._advanced_nudge_keys)[:256]:
+            try:
+                self.advanced_broker.cms_pull_to_cps(key)
+                self.advanced_broker.cps_push_to_cms(key)
+            except Exception as exc:
+                self.diagnostics.log("advanced_nudge_error", {"key": key, "error": str(exc)})
 
     def enable_diagnostics(
         self,
@@ -1165,7 +939,7 @@ class EnhancedMnemonicCortex(nn.Module):
         context_features=None,
         consolidation_intent: str = "auto",
     ):
-        if token_ids is None:
+        if (self.consolidated_lexicon is None and self.consolidation_broker is None) or token_ids is None:
             return sensory_input
         if token_ids.shape[:2] != sensory_input.shape[:2]:
             raise ValueError(
@@ -1185,7 +959,6 @@ class EnhancedMnemonicCortex(nn.Module):
                     f"batch/seq {list(sensory_input.shape[:2])}"
                 )
             flat_ctx = context_features.reshape(-1, context_features.size(-1))
-        self.last_cms_aux = None
         if self.consolidation_broker is not None:
             fused, baux = self.consolidation_broker.route_fuse(
                 flat_ids,
@@ -1205,15 +978,9 @@ class EnhancedMnemonicCortex(nn.Module):
                 },
             )
         else:
-            if self.consolidated_lexicon is not None:
-                fused, _, aux = self.consolidated_lexicon(flat_ids, flat_base, flat_ctx)
-                self.last_cms_aux = aux
-                self.diagnostics.log("cms_single_store", {"intent": consolidation_intent})
-            else:
-                # CPS can still provide token-level consolidation without CMS banks.
-                fused = flat_base
-                aux = {}
-                self.diagnostics.log("cms_unavailable_cps_only", {"intent": consolidation_intent})
+            fused, _, aux = self.consolidated_lexicon(flat_ids, flat_base, flat_ctx)
+            self.last_cms_aux = aux
+            self.diagnostics.log("cms_single_store", {"intent": consolidation_intent})
 
         def _batchify_feat(x: torch.Tensor, bsz_: int, device, dtype):
             if not isinstance(x, torch.Tensor):
@@ -1277,7 +1044,6 @@ class EnhancedMnemonicCortex(nn.Module):
         cps_fused = []
         cps_loss = fused.new_tensor(0.0)
         routed_counts = {d: 0 for d in domain_names}
-        quantized_fusion_count = 0
         for i, tid in enumerate(flat_ids.tolist()):
             key = f"token:{int(tid)}"
             if router_probs is not None and domain_names:
@@ -1290,18 +1056,6 @@ class EnhancedMnemonicCortex(nn.Module):
             else:
                 up = self.cps.ensure(key, device=fused.device, dtype=fused.dtype)
                 v, loss = self.cps_fuser.fuse(up.view())
-                dom = "core"
-            if self.quant_fuser is not None and isinstance(self.advanced_quantizers, dict):
-                quantizer = self.advanced_quantizers.get(dom) or self.advanced_quantizers.get("core")
-                if quantizer is not None:
-                    try:
-                        self.quant_fuser.quantizer = quantizer
-                        qpack = quantizer.quantize_entry(up)
-                        qv, _ = self.quant_fuser(qpack=qpack, device=fused.device)
-                        v = 0.5 * v + 0.5 * qv.to(v.device, v.dtype)
-                        quantized_fusion_count += 1
-                    except Exception as exc:
-                        self.diagnostics.log("quant_fuser_error", {"error": str(exc), "domain": str(dom)})
             cps_fused.append(v)
             cps_loss = cps_loss + loss
         if cps_fused:
@@ -1309,16 +1063,6 @@ class EnhancedMnemonicCortex(nn.Module):
             fused = 0.85 * fused + 0.15 * cps_fused
             cps_loss = cps_loss / max(1, len(cps_fused))
             self.last_cps_aux = {"agree_loss": cps_loss}
-            self.last_cps_aux["quantized_fusion_count"] = int(quantized_fusion_count)
-            token_keys = [f"token:{int(t)}" for t in flat_ids.tolist()]
-            if self.advanced_broker is not None:
-                try:
-                    self._tick_advanced_consolidation(token_keys=token_keys)
-                    coh = self.advanced_broker.cohesion_regularizer(token_keys[:128])
-                    self.last_cps_aux["advanced_cohesion"] = coh.detach()
-                    self.diagnostics.record_scalar("advanced_cms_cohesion", float(coh.detach().item()))
-                except Exception as exc:
-                    self.diagnostics.log("advanced_consolidation_tick_error", {"error": str(exc)})
             if router_probs is not None:
                 reg, reg_aux = router_regularizer(router_probs)
                 self.last_cps_aux["router_reg"] = reg.detach()
@@ -1357,6 +1101,44 @@ class EnhancedMnemonicCortex(nn.Module):
         cproj = self.ctx_proj(context)                    # (B,input_dim)
         return cproj.unsqueeze(1).expand(-1, S, -1)
 
+    def _sync_attention_stacks(self, wm_tokens: Optional[torch.Tensor] = None) -> None:
+        """
+        Bridge attention-stack context across WM/QDT, episodic-LTM, and triple-hybrid LTM.
+        """
+        ltm = getattr(self, "long_term_memory", None)
+        if ltm is None or not hasattr(ltm, "set_external_attention_context"):
+            return
+        ctx = None
+        if hasattr(self.working_memory, "get_attention_stack_output"):
+            try:
+                ctx = self.working_memory.get_attention_stack_output()
+            except Exception:
+                ctx = None
+        if ctx is None and wm_tokens is not None:
+            ctx = wm_tokens
+        if ctx is None and self.hg_episodic_ltm is not None:
+            keys = sorted(self.hg_episodic_ltm.episode_records.keys())
+            if keys:
+                tail = keys[-min(4, len(keys)) :]
+                chunks = []
+                for eid in tail:
+                    c = self.hg_episodic_ltm.build_episode_attention_context(
+                        episode_id=eid, include_summary=True, max_tokens=32
+                    )
+                    if c is not None:
+                        chunks.append(c)
+                if chunks:
+                    ctx = torch.cat(chunks, dim=1)
+        if ctx is not None:
+            ltm.set_external_attention_context(ctx)
+            if self.hg_episodic_ltm is not None and hasattr(self.hg_episodic_ltm, "set_external_attention_context"):
+                self.hg_episodic_ltm.set_external_attention_context(ctx)
+            if hasattr(self.working_memory, "set_external_attention_context"):
+                try:
+                    self.working_memory.set_external_attention_context(ctx)
+                except Exception:
+                    pass
+
     def _bridge_wm_ltm(self, wm_seq: torch.Tensor, ltm_seq: torch.Tensor, phase: str) -> torch.Tensor:
         gate = torch.sigmoid(self.mem_bridge_gate)
         wm_from_ltm, w_wm = self.wm_to_ltm_attn(wm_seq, ltm_seq, ltm_seq, need_weights=True)
@@ -1380,6 +1162,7 @@ class EnhancedMnemonicCortex(nn.Module):
 
     def encode_memory(self, info, context, mtype):
         B,S,d = info.shape
+        self._sync_attention_stacks(info)
         ctx = self._tile_context(context, S)
         pooled = torch.cat([info, ctx], dim=-1).mean(dim=1)      # (B, 2d)
         idx = self.hippocampal_encoder(pooled)                   # (B,256)
@@ -1390,33 +1173,29 @@ class EnhancedMnemonicCortex(nn.Module):
             cue = self.cue_to_input(cue)
 
         if mtype == 'episodic':
-            if self.episodic_write_mode in {"legacy", "mirror"}:
-                self.long_term_memory.hg(cue, operation='write')
-            if self.hg_episodic_ltm is not None and self.episodic_write_mode in {"mirror", "shared_only"}:
-                for b in range(B):
-                    self.store_episodic_trace(
-                        episode_id=f"auto-ep-{int(self.shared_memory_subsystem.store.version_counter if self.shared_memory_subsystem is not None else 0)}-{int(b)}",
-                        episode_vectors=info[b],
-                        step_range=(0, int(S - 1)),
-                        trace_ids=[f"cortex:auto:{int(b)}"],
-                        tags=["auto", "episodic", "cortex"],
-                    )
+            self.long_term_memory(cue, operation='write')
         elif mtype == 'semantic':
             self.long_term_memory.cgmn(cue, operation='write')
+        elif mtype in ('spatial', 'associative'):
+            self.long_term_memory.curved(cue, operation='write')
+        elif mtype in ('all', 'triple', 'hybrid'):
+            self.long_term_memory(cue, operation='write')
         else:
             self.long_term_memory.curved(cue, operation='write')
 
-        if self.advanced_broker is not None:
+        if self.advanced_broker is not None and self.advanced_view_adapter is not None:
             for b in range(B):
                 cvec = cue[b].mean(dim=0).detach()
                 importance = torch.sigmoid(cvec.norm().view(1))
+                key = f"ltm_encode_{self._advanced_merge_counter}"
+                self._advanced_merge_counter += 1
+                cand = self.advanced_view_adapter(cvec)
                 self._enqueue_advanced_ltm_merge(
-                    key=f"ltm:{str(mtype)}:b{int(b)}",
-                    candidate_view={"E": cvec},
+                    key=key,
+                    candidate_view=cand,
                     importance=importance,
                     src_info={"source": "encode_memory", "mtype": str(mtype), "batch_index": int(b)},
                 )
-            self._tick_advanced_consolidation()
         return idx
 
     def retrieve_memory(
@@ -1430,24 +1209,11 @@ class EnhancedMnemonicCortex(nn.Module):
     ):
         """Retrieve memories with optional explosive recall (fire_mask)."""
         B,S,d = cue.shape
+        self._sync_attention_stacks(cue)
         ctx = self._tile_context(context, S)
         c = (cue + ctx) * 0.5
         qctx, _ = self.query_ctx_attn(c, ctx, ctx, need_weights=False)
         c = self.query_norm(c + qctx)
-        if fire_mask is None:
-            fire_mask = self.lightbulb(cue)
-        if isinstance(fire_mask, torch.Tensor):
-            fire_rate = float(fire_mask.float().mean().item())
-            has_fire = bool(fire_mask.any().item())
-        else:
-            has_fire = bool(fire_mask)
-            fire_rate = 1.0 if has_fire else 0.0
-        recall_signal = {
-            "entropy_drop": 0.0,
-            "agreement": 0.5,
-            "novelty": 0.0,
-            "uncertainty": 0.0,
-        }
 
         if self.consolidation_broker is not None and self.ahg is not None:
             query = c.mean(dim=1)
@@ -1492,93 +1258,39 @@ class EnhancedMnemonicCortex(nn.Module):
                 # conservative fallback answer vector from context only
                 z = torch.zeros(context.size(0), 256, device=context.device, dtype=context.dtype)
                 return self.retrieval(torch.cat([z, context], dim=-1))
-            recall_signal["agreement"] = float(decision.scores.get("agree", 0.5))
-            recall_signal["uncertainty"] = float(decision.scores.get("fisher", 0.0))
 
-        cue_p = torch.softmax(cue.detach().abs(), dim=-1)
-        ctx_p = torch.softmax(ctx.detach().abs(), dim=-1)
-        cue_entropy = -(cue_p * cue_p.clamp_min(1e-9).log()).sum(dim=-1).mean()
-        ctx_entropy = -(ctx_p * ctx_p.clamp_min(1e-9).log()).sum(dim=-1).mean()
-        recall_signal["entropy_drop"] = float((ctx_entropy - cue_entropy).detach().clamp_min(0.0).item())
-        novelty = (cue.detach() - ctx.detach()).norm(dim=-1).mean()
-        recall_signal["novelty"] = float(torch.sigmoid(novelty / max(1.0, float(cue.size(-1) ** 0.5))).item())
-        recall_event = self.recall_controller(
-            entropy_drop=torch.tensor(recall_signal["entropy_drop"], device=cue.device),
-            cms_cps_agreement=torch.tensor(recall_signal["agreement"], device=cue.device),
-            novelty=torch.tensor(recall_signal["novelty"], device=cue.device),
-            uncertainty=torch.tensor(recall_signal["uncertainty"], device=cue.device),
-            base_k=int(getattr(self.long_term_memory, "K_base", 8)),
-            debounce_ok=not has_fire,
-        )
-        if recall_event.triggered:
-            recall_boost = max(
-                recall_boost,
-                min(
-                    1.25,
-                    0.65
-                    + 0.10 * max(0, int(recall_event.hops))
-                    + 0.05 * max(0.0, float(recall_event.expanded_k) / max(1.0, float(getattr(self.long_term_memory, "K_base", 8))) - 1.0),
-                ),
-            )
-            fire_mask = torch.ones(B, device=cue.device, dtype=torch.bool)
-            has_fire = True
-            fire_rate = 1.0
+        if self.hg_episodic_ltm is not None:
+            try:
+                epi = self.retrieve_episodic_trace(query=c.mean(dim=1), top_k=8)
+                frags = getattr(epi, "values", None)
+                if isinstance(frags, torch.Tensor) and frags.numel() > 0:
+                    pooled = frags.mean(dim=1, keepdim=True).expand(-1, S, -1)
+                    c = self.query_norm(c + 0.15 * pooled)
+                    self.diagnostics.log(
+                        "retrieve_episodic_blend",
+                        {"fragment_count": int(frags.size(1))},
+                    )
+            except Exception as exc:
+                self.diagnostics.log("retrieve_episodic_error", {"error": str(exc)})
 
         if strategy == 'direct':
             r = self.long_term_memory(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
         elif strategy == 'associative':
-            r = self.long_term_memory.curved(
-                c,
-                operation='read',
-                fire_mask=fire_mask,
-                recall_boost=recall_boost,
-            )
+            r = self.long_term_memory.curved(c, operation='read')
         else:
-            # Reconstructive via HG
             r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
 
-        # Bidirectional bridge: retrieved LTM context exchanges with WM readout.
-        wm_r = self.working_memory(c, operation='read')
+        wm_r = self.working_memory(c, operation=self._wm_read_operation())
         r = self._bridge_wm_ltm(wm_r, r, phase="retrieve")
-        if self.reasoning_controller_api is not None:
-            try:
-                rc_out = self.reasoning_controller_api.run_reasoning_pass(
-                    r.mean(dim=1),
-                    content="cortex_retrieve_mann_bridge",
-                    write_permission=False,
-                )
-                mann = rc_out.result.mann_output
-                if mann is None:
-                    mann = rc_out.result.output
-                mann_seq = mann.unsqueeze(1).expand(-1, r.size(1), -1)
-                mann_weight = min(0.45, max(0.10, 0.15 + 0.15 * float(recall_event.triggered) + 0.10 * float(fire_rate)))
-                align = torch.nn.functional.cosine_similarity(r.mean(dim=1), mann, dim=-1).mean()
-                if float(align.item()) < 0.0:
-                    mann_weight *= 0.5
-                r = (1.0 - mann_weight) * r + mann_weight * mann_seq
-                self.diagnostics.log(
-                    "reasoning_mann_bridge",
-                    {"enabled": True, "mann_weight": float(mann_weight), "alignment": float(align.item())},
-                )
-            except Exception as exc:
-                self.diagnostics.log("reasoning_mann_bridge_error", {"error": str(exc)})
         inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
         if isinstance(inter, dict) and inter:
             self.diagnostics.log("ltm_inter_memory_exchange", inter)
+        pref = getattr(self.long_term_memory, "last_prefusion_specialization_stats", None)
+        if isinstance(pref, dict) and pref:
+            self.diagnostics.log("ltm_prefusion_specialization", pref)
 
         cue_vec = self.r_proj(r.mean(dim=1))
         self.diagnostics.record_scalar("recall_boost", float(recall_boost))
-        self.diagnostics.record_scalar("recall_fire_rate", float(fire_rate))
-        self.diagnostics.log(
-            "recall_event",
-            {
-                "triggered": bool(recall_event.triggered),
-                "spike_score": float(recall_event.spike_score),
-                "expanded_k": int(recall_event.expanded_k),
-                "hops": int(recall_event.hops),
-                "signals": recall_signal,
-            },
-        )
         self.diagnostics.log("retrieve_path", {"strategy": strategy})
         return self.retrieval(torch.cat([cue_vec, context], dim=-1))
 
@@ -1587,8 +1299,7 @@ class EnhancedMnemonicCortex(nn.Module):
         """Forget rarely used slots (usage-based) and gently decay working-memory importance."""
         th = self.forgetting_threshold if threshold is None else float(threshold)
         self.long_term_memory.consolidate_unused(th)
-        if hasattr(self.working_memory, "memory_importance"):
-            self.working_memory.memory_importance.mul_(0.999)
+        self.working_memory.memory_importance.mul_(0.999)
         self.diagnostics.log("consolidate_memories", {"threshold": th})
         if self.consolidation_broker is not None:
             try:
@@ -1612,15 +1323,6 @@ class EnhancedMnemonicCortex(nn.Module):
                 )
             except Exception:
                 pass
-        if self.advanced_broker is not None:
-            try:
-                self._tick_advanced_consolidation()
-                self.diagnostics.log(
-                    "advanced_consolidation_tick",
-                    {"cps_keys": int(len(self.cps.keys()))},
-                )
-            except Exception as exc:
-                self.diagnostics.log("advanced_consolidation_tick_error", {"error": str(exc)})
 
     def get_metrics(self):
         """Collect diagnostic metrics from all components."""
@@ -1655,21 +1357,6 @@ class EnhancedMnemonicCortex(nn.Module):
         if isinstance(rstats, dict):
             for k, v in rstats.items():
                 metrics[f"ltm_router_{k}"] = float(v)
-        qh_banks = getattr(self.long_term_memory, "qh_banks", None)
-        if isinstance(qh_banks, nn.ModuleDict):
-            for bank_name, bank in qh_banks.items():
-                if hasattr(bank, "trace_summary"):
-                    for k, v in bank.trace_summary().items():
-                        metrics[f"ltm_qh_{bank_name}_{k}"] = float(v)
-        wm_qh = getattr(self.working_memory, "qh_slot_bank", None)
-        if wm_qh is not None and hasattr(wm_qh, "trace_summary"):
-            for k, v in wm_qh.trace_summary().items():
-                metrics[f"wm_qh_{k}"] = float(v)
-        cms = getattr(self, "advanced_cms", None)
-        cms_qh = getattr(cms, "qh_slot_bank", None) if cms is not None else None
-        if cms_qh is not None and hasattr(cms_qh, "trace_summary"):
-            for k, v in cms_qh.trace_summary().items():
-                metrics[f"cms_qh_{k}"] = float(v)
         if self.consolidation_broker is not None:
             b = self.consolidation_broker.get_metrics()
             for k, v in b.items():
@@ -1730,30 +1417,6 @@ class EnhancedMnemonicCortex(nn.Module):
             metrics["hg_episodic_records"] = float(len(self.hg_episodic_ltm.episode_records))
         else:
             metrics["hg_episodic_enabled"] = 0.0
-        metrics["advanced_cms_enabled"] = 1.0 if self.advanced_cms is not None else 0.0
-        metrics["advanced_broker_enabled"] = 1.0 if self.advanced_broker is not None else 0.0
-        if self.advanced_cms is not None:
-            metrics["advanced_cms_keys"] = float(len(self.advanced_cms.keys()))
-        metrics["reasoning_bridge_enabled"] = 1.0 if self.reasoning_controller_api is not None else 0.0
-        metrics["hgm_enabled"] = 1.0 if self.hgm_enabled else 0.0
-        if isinstance(self.hgm_last_result, dict):
-            hgm2 = self.hgm_last_result.get("hgm2", None)
-            scenarios = self.hgm_last_result.get("scenarios", None)
-            hgm1 = self.hgm_last_result.get("hgm1", None)
-            if scenarios is not None:
-                metrics["hgm_scenarios"] = float(len(getattr(scenarios, "candidates", tuple())))
-            if hgm1 is not None:
-                binding = getattr(hgm1, "binding", None)
-                if binding is not None:
-                    metrics["hgm_hyperedges"] = float(len(getattr(binding, "hyperedges", tuple())))
-            if hgm2 is not None:
-                routing = getattr(hgm2, "routing", None)
-                if routing is not None:
-                    metrics["hgm_assignments"] = float(len(getattr(routing, "assignments", tuple())))
-                validation = getattr(hgm2, "validation", None)
-                metrics["hgm_validation_ok"] = 1.0 if bool(getattr(validation, "ok", False)) else 0.0
-        qdt_wm = self._resolve_qdt_working_memory()
-        metrics["qdt_wm_bridge_enabled"] = 1.0 if qdt_wm is not None else 0.0
         return metrics
 
     @torch.no_grad()
@@ -1792,54 +1455,13 @@ class EnhancedMnemonicCortex(nn.Module):
                 'hg_usage': self.long_term_memory.hg.usage_counts.clone(),
                 'cgmn_usage': self.long_term_memory.cgmn.usage_counts.clone(),
                 'curved_usage': self.long_term_memory.curved.usage_counts.clone(),
-            },
+            }
         }
-        if self.shared_memory_subsystem is not None:
-            store = self.shared_memory_subsystem.store
-            ser_meta = {}
-            for k, v in store.metadata.items():
-                if is_dataclass(v):
-                    ser_meta[int(k)] = asdict(v)
-                elif isinstance(v, dict):
-                    ser_meta[int(k)] = dict(v)
-                else:
-                    ser_meta[int(k)] = v
-            checkpoint["shared_memory_state"] = {
-                "num_slots": int(store.num_slots),
-                "slot_dim": int(store.slot_dim),
-                "num_systems": int(store.num_systems),
-                "version_counter": int(store.version_counter),
-                "free_slot_ids": list(store.free_slot_ids),
-                "slot_values": store.slot_values.detach().cpu(),
-                "slot_confidence": store.slot_confidence.detach().cpu(),
-                "slot_usage": store.slot_usage.detach().cpu(),
-                "slot_age": store.slot_age.detach().cpu(),
-                "slot_state_code": store.slot_state_code.detach().cpu(),
-                "primary_system_code": store.primary_system_code.detach().cpu(),
-                "allowed_read_mask": store.allowed_read_mask.detach().cpu(),
-                "allowed_write_mask": store.allowed_write_mask.detach().cpu(),
-                "metadata": ser_meta,
-            }
-        if self.hg_episodic_ltm is not None:
-            ep = self.hg_episodic_ltm
-            checkpoint["hg_episodic_state"] = {
-                "episodic_write_mode": str(self.episodic_write_mode),
-                "episode_records": {
-                    eid: (asdict(rec) if is_dataclass(rec) else dict(rec))
-                    for eid, rec in ep.episode_records.items()
-                },
-                "episode_index_by_trace_id": dict(ep.episode_index_by_trace_id),
-                "episode_index_by_time": list(ep.episode_index_by_time),
-                "episode_index_by_tag": dict(ep.episode_index_by_tag),
-                "slot_retrieval_hits": dict(ep.slot_retrieval_hits),
-            }
         torch.save(checkpoint, path)
 
     def load_checkpoint(self, path: str, strict: bool = True):
         """Load checkpoint with version validation."""
         import torch
-        from .memory.shared_slot_schema import SlotMetadata, SlotProvenance
-        from .ltm.hg_episodic_ltm import EpisodeRecord
         checkpoint = torch.load(path, map_location='cpu')
         
         # Version check
@@ -1874,53 +1496,6 @@ class EnhancedMnemonicCortex(nn.Module):
                 self.long_term_memory.cgmn.usage_counts.copy_(mem['cgmn_usage'])
             if 'curved_usage' in mem:
                 self.long_term_memory.curved.usage_counts.copy_(mem['curved_usage'])
-        if "shared_memory_state" in checkpoint:
-            sm = checkpoint["shared_memory_state"]
-            if self.shared_memory_subsystem is None:
-                self.enable_shared_memory_subsystem(
-                    num_slots=int(sm.get("num_slots", 2048)),
-                    num_systems=int(sm.get("num_systems", 8)),
-                    device=self.ctx_proj.weight.device,
-                    dtype=self.ctx_proj.weight.dtype,
-                )
-            store = self.shared_memory_subsystem.store
-            store.slot_values.copy_(sm["slot_values"].to(device=store.slot_values.device, dtype=store.slot_values.dtype))
-            store.slot_confidence.copy_(sm["slot_confidence"].to(device=store.slot_confidence.device, dtype=store.slot_confidence.dtype))
-            store.slot_usage.copy_(sm["slot_usage"].to(device=store.slot_usage.device, dtype=store.slot_usage.dtype))
-            store.slot_age.copy_(sm["slot_age"].to(device=store.slot_age.device, dtype=store.slot_age.dtype))
-            store.slot_state_code.copy_(sm["slot_state_code"].to(device=store.slot_state_code.device, dtype=store.slot_state_code.dtype))
-            store.primary_system_code.copy_(sm["primary_system_code"].to(device=store.primary_system_code.device, dtype=store.primary_system_code.dtype))
-            store.allowed_read_mask.copy_(sm["allowed_read_mask"].to(device=store.allowed_read_mask.device, dtype=store.allowed_read_mask.dtype))
-            store.allowed_write_mask.copy_(sm["allowed_write_mask"].to(device=store.allowed_write_mask.device, dtype=store.allowed_write_mask.dtype))
-            store.version_counter = int(sm.get("version_counter", 0))
-            store.free_slot_ids = deque(int(x) for x in sm.get("free_slot_ids", []))
-            restored_meta = {}
-            for key, val in (sm.get("metadata") or {}).items():
-                sid = int(key)
-                if isinstance(val, dict) and {"slot_id", "state", "confidence", "usage_score", "age_steps", "primary_system_id"}.issubset(val.keys()):
-                    prov = val.get("provenance")
-                    if isinstance(prov, dict):
-                        val["provenance"] = SlotProvenance(**prov)
-                    restored_meta[sid] = SlotMetadata(**val)
-                else:
-                    restored_meta[sid] = val
-            store.metadata = restored_meta
-        if "hg_episodic_state" in checkpoint:
-            hs = checkpoint["hg_episodic_state"]
-            if self.hg_episodic_ltm is None:
-                self.enable_hg_episodic_ltm(write_mode=str(hs.get("episodic_write_mode", "mirror")))
-            else:
-                self.episodic_write_mode = str(hs.get("episodic_write_mode", self.episodic_write_mode))
-            ep = self.hg_episodic_ltm
-            recs = {}
-            for eid, raw in (hs.get("episode_records") or {}).items():
-                if isinstance(raw, dict):
-                    recs[eid] = EpisodeRecord(**raw)
-            ep.episode_records = recs
-            ep.episode_index_by_trace_id = {k: list(v) for k, v in (hs.get("episode_index_by_trace_id") or {}).items()}
-            ep.episode_index_by_time = [tuple(x) for x in (hs.get("episode_index_by_time") or [])]
-            ep.episode_index_by_tag = {k: list(v) for k, v in (hs.get("episode_index_by_tag") or {}).items()}
-            ep.slot_retrieval_hits = {int(k): int(v) for k, v in (hs.get("slot_retrieval_hits") or {}).items()}
 
     def compute_recall_loss(self, cue, context):
         """InfoNCE contrastive loss: cue vs. retrieved memory.
@@ -1963,8 +1538,7 @@ class EnhancedMnemonicCortex(nn.Module):
             )
         fire = self.lightbulb(sensory_input)                # (B,)
         temp = self.temp_scaler(fire)                       # (B,) scalars
-        if hasattr(self.working_memory, "set_temperature"):
-            self.working_memory.set_temperature(temp)
+        self.working_memory.set_temperature(temp)
         self.long_term_memory.set_temperature(temp)
 
         if operation == 'process':
@@ -1978,17 +1552,26 @@ class EnhancedMnemonicCortex(nn.Module):
             self.diagnostics.record_scalar("importance_mean", float(imp.mean().item()))
 
             # --- Working-memory read phase -----------------------------------
-            wm_out = self.working_memory(filtered, operation='read')      # (B,S,d)
+            wm_out = self.working_memory(filtered, operation=self._wm_read_operation())  # (B,S,d)
+            self._sync_attention_stacks(wm_out)
             ltm_ctx = self.long_term_memory(
                 wm_out,
                 operation='read',
                 fire_mask=fire,
                 recall_boost=0.2,
             )
+            if hasattr(self.working_memory, "set_external_attention_context"):
+                try:
+                    self.working_memory.set_external_attention_context(ltm_ctx.detach())
+                except Exception:
+                    pass
             bridged = self._bridge_wm_ltm(wm_out, ltm_ctx, phase="process")
             inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
             if isinstance(inter, dict) and inter:
                 self.diagnostics.log("ltm_inter_memory_exchange", inter)
+            pref = getattr(self.long_term_memory, "last_prefusion_specialization_stats", None)
+            if isinstance(pref, dict) and pref:
+                self.diagnostics.log("ltm_prefusion_specialization", pref)
 
             # --- Consolidation into long-term memory ------------------------
             if self.training:  # consolidate only during training
@@ -2009,44 +1592,18 @@ class EnhancedMnemonicCortex(nn.Module):
                 recall_loss = self.compute_recall_loss(filtered, context)
                 gate, gate_prob = self._ste_write_gate(filtered)
                 self.diagnostics.record_scalar("recall_loss", float(recall_loss.detach().item()))
-                distill_loss = torch.tensor(0.0, device=filtered.device, dtype=filtered.dtype)
-                if (
-                    self.distillation_config.enabled
-                    and self.advanced_distiller is not None
-                    and self.multi_cps is not None
-                    and token_ids is not None
-                ):
-                    dkeys = self._distill_keys_from_token_ids(token_ids)
-                    if dkeys:
-                        distill_domains = {
-                            str(self.distillation_config.teacher_domain),
-                            *[str(d) for d in self.distillation_config.student_domains],
-                        }
-                        for dom in distill_domains:
-                            if self.multi_cps.has_domain(dom):
-                                for k in dkeys:
-                                    self.multi_cps.ensure(k, domain=dom, device=filtered.device, dtype=filtered.dtype)
-                        distill_loss = self.advanced_distiller.total_distill_loss(
-                            dkeys,
-                            self.distillation_config,
-                        )
-                self.diagnostics.record_scalar("distill_loss", float(distill_loss.detach().item()))
-                return wm_out, {
-                    'recall_loss': recall_loss,
-                    'distill_loss': distill_loss,
-                    'aux_total': recall_loss + distill_loss,
-                    'write_gate_prob': gate_prob.mean(),
-                }
+                return wm_out, {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
             
             return bridged
 
         elif operation == 'retrieve':
             # Route fire to LTM for sharper readout on the cue as well
+            fire_ret = self.lightbulb(sensory_input)  # (B,)
             return self.retrieve_memory(
                 sensory_input,
                 context,
                 strategy='direct',
-                fire_mask=fire,
+                fire_mask=fire_ret,
                 recall_boost=0.3,
                 query_token_ids=token_ids,
             )

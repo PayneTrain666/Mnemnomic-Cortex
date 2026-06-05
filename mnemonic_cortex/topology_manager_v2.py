@@ -91,25 +91,6 @@ class TopologyManagerV2:
         qhm_lb_temp_min=None,
         adaptive=None,
     ):
-        if len(curvature_mix) != 4:
-            raise ValueError("curvature_mix must contain exactly 4 weights")
-        cmix = tuple(float(x) for x in curvature_mix)
-        if any(x < 0.0 for x in cmix):
-            raise ValueError("curvature_mix weights must be non-negative")
-        if sum(cmix) <= 0.0:
-            raise ValueError("curvature_mix weights must not all be zero")
-        adaptive_defaults = dict(
-            b_lo=0.01,
-            b_hi=0.03,
-            omega_lo=0.10,
-            omega_hi=0.25,
-            fit_up=0.80,
-            fit_down=0.55,
-            step=0.002,
-        )
-        adaptive_payload = dict(adaptive_defaults)
-        if adaptive is not None:
-            adaptive_payload.update({k: adaptive[k] for k in adaptive if k in adaptive_defaults})
         policy = dict(
             micro_b=float(micro_b),
             micro_b_max=float(micro_b_max),
@@ -123,7 +104,7 @@ class TopologyManagerV2:
             curvature_mode=str(curvature_mode),
             curvature_rate=float(curvature_rate),
             curvature_clip=float(curvature_clip),
-            curvature_mix=cmix,
+            curvature_mix=tuple(float(x) for x in curvature_mix),
             qhm_enable=bool(qhm_enable),
             qhm_alpha_override=qhm_alpha_override,
             qhm_temp=float(qhm_temp),
@@ -150,7 +131,17 @@ class TopologyManagerV2:
             else float(qhm_lb_prefocus_alpha_boost),
             qhm_lb_alpha_max=None if qhm_lb_alpha_max is None else float(qhm_lb_alpha_max),
             qhm_lb_temp_min=None if qhm_lb_temp_min is None else float(qhm_lb_temp_min),
-            adaptive=adaptive_payload,
+            adaptive=dict(
+                b_lo=0.01,
+                b_hi=0.03,
+                omega_lo=0.10,
+                omega_hi=0.25,
+                fit_up=0.80,
+                fit_down=0.55,
+                step=0.002,
+            )
+            if adaptive is None
+            else adaptive,
         )
         self.policies[name] = policy
         return self
