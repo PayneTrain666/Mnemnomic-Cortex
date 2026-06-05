@@ -46,6 +46,15 @@ class EnhancedMnemonicCortex(nn.Module):
         # Forgetting threshold for consolidation
         self.forgetting_threshold = 0.3
         self.energy_mode = False
+        
+        # HGM (Hypergraph Manifold) flag
+        self.hgm_enabled = False
+        
+        # Distillation config
+        self.distillation_config = type('obj', (object,), {'enabled': False})()
+        
+        # Consolidation broker
+        self.consolidation_broker = None
 
         # Contrastive recall head (InfoNCE)
         self.contrastive_proj = nn.Sequential(
@@ -68,6 +77,10 @@ class EnhancedMnemonicCortex(nn.Module):
         self.energy_mode = enable
         self.long_term_memory.enable_energy_efficient_mode(enable)
         self.working_memory.enable_energy_efficient_mode(enable)
+    
+    def enable_hypergraph_manifold_bridge(self, enabled: bool = True):
+        """Enable or disable hypergraph manifold bridge."""
+        self.hgm_enabled = enabled
 
     def _ste_write_gate(self, x):
         """Compute write gate with straight-through estimator.
@@ -252,6 +265,29 @@ class EnhancedMnemonicCortex(nn.Module):
         labels = torch.arange(B, device=logits.device)
         loss = torch.nn.functional.cross_entropy(logits, labels)
         return loss
+    
+    def configure_from_yaml(self, path: str, broker_vocab_size: int = None):
+        """Configure cortex from YAML file and optionally set up broker."""
+        from .config_loader import load_unified_yaml_config
+        
+        unified = load_unified_yaml_config(path)
+        
+        # Apply configuration
+        if unified.features.hgm_enabled is not None:
+            self.enable_hypergraph_manifold_bridge(unified.features.hgm_enabled)
+        
+        # Initialize consolidation broker if requested
+        if broker_vocab_size is not None and self.consolidation_broker is None:
+            # Create a simple broker placeholder
+            self.consolidation_broker = type('obj', (object,), {'vocab_size': broker_vocab_size})()
+        
+        return unified
+    
+    @classmethod
+    def from_yaml(cls, path: str):
+        """Build cortex from YAML file and return both model and config."""
+        from .config_loader import build_cortex_from_yaml
+        return build_cortex_from_yaml(path)
 
     # ---------------- Forward ----------------
     def forward(self, sensory_input, context, operation='process', return_aux_losses=False):
