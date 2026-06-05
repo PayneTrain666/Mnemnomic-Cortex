@@ -1,0 +1,11 @@
+--- mnemonic_cortex/working_memory/__init__.py (PROD-5)
++++ mnemonic_cortex/working_memory/__init__.py (PROD-6)
+@@
++# QSPIN-PROD-6 exports
++from .qspin_shadow_stress_replay import *
++from .qspin_trace_corpus import *
++from .qspin_ci_matrix_hardening import *
++from .qspin_extended_safety_regression import *
++from .qspin_remediation_closure import *
++from .qspin_prod6_observability import *
++from .qspin_prod6_source_matrix import *

@@ -1,0 +1,19 @@
+[
+  "docs/hgm_hpme/11_hgm_10_release_consolidation.md",
+  "docs/hgm_hpme/HGM_V0_1_API_FREEZE.md",
+  "docs/hgm_hpme/HGM_V0_1_INTEGRATION_ROADMAP.md",
+  "docs/hgm_hpme/HGM_V0_1_RELEASE_NOTES.md",
+  "mnemonic_cortex/hypergraph_manifold/api_freeze.py",
+  "mnemonic_cortex/hypergraph_manifold/hgm10_pipeline.py",
+  "mnemonic_cortex/hypergraph_manifold/hgm10_result.py",
+  "mnemonic_cortex/hypergraph_manifold/integration_roadmap.py",
+  "mnemonic_cortex/hypergraph_manifold/release_consolidation.py",
+  "mnemonic_cortex/hypergraph_manifold/__init__.py",
+  "release/hgm_10/changed_files.json",
+  "release/hgm_10/compatibility_pytest_output.txt",
+  "release/hgm_10/compile_output.txt",
+  "release/hgm_10/manifest.json",
+  "release/hgm_10/pytest_output.txt",
+  "release/hgm_10/ship_check.md",
+  "tests/test_hgm_10_release_consolidation.py"
+]

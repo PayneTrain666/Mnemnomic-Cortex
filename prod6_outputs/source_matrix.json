@@ -1,0 +1,121 @@
+{
+  "records": [
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "QD6A",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "QSPIN-8",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-0",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-1",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-2",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-3",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-4",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "active synthetic stress/replay source",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-5",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "active synthetic stress/replay source",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "PROD-6",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "tests",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "docs",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": true,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "release_manifests",
+      "risk": "low-synthetic-only",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "live runtime remains blocked; source considered for compatibility",
+      "directly_used": false,
+      "evidence": "PROD-6 matrix, tests, runner output, release manifest",
+      "family": "optional_skips",
+      "risk": "low-synthetic-only",
+      "structured_skip": true
+    }
+  ]
+}

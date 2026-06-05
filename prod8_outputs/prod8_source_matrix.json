@@ -1,0 +1,139 @@
+{
+  "records": [
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for qd6a",
+      "family": "qd6a",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for qspin8",
+      "family": "qspin8",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod0",
+      "family": "prod0",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod1",
+      "family": "prod1",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod2",
+      "family": "prod2",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod3",
+      "family": "prod3",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod4",
+      "family": "prod4",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod5",
+      "family": "prod5",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod6",
+      "family": "prod6",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for prod7",
+      "family": "prod7",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for prod8",
+      "family": "prod8",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for tests",
+      "family": "tests",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for docs",
+      "family": "docs",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for release_manifests",
+      "family": "release_manifests",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for optional_skips",
+      "family": "optional_skips",
+      "missing_optional": true,
+      "risk": "Missing optional sources are structured skips."
+    }
+  ]
+}

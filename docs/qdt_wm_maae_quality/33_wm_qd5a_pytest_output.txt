@@ -1,0 +1,61 @@
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/generated/interface/models.py", line 48821, in hydrate_crdt_from_proto
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/remote.py", line 747, in __call__
+  File "/tmp/tmp.9eeVjt35CN/artifact_tool_v2-2.7.5/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m [ 41%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m [ 82%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31m                                          [100%][0m
+=================================== FAILURES ===================================
+[31m[1m_________________ test_commit_proposal_and_decision_validation _________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_commit_proposal_and_decision_validation[39;49;00m():[90m[39;49;00m
+        proposal = SystemWriteProposal.create([90m[39;49;00m
+            content=torch.randn([94m32[39;49;00m),[90m[39;49;00m
+            local_slot_id=[33m"[39;49;00m[33munit[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            write_permission=[94mTrue[39;49;00m,[90m[39;49;00m
+            confidence=[94m0.9[39;49;00m,[90m[39;49;00m
+        )[90m[39;49;00m
+        ensure_commit_proposal_like([33m"[39;49;00m[33mproposal[39;49;00m[33m"[39;49;00m, proposal, expected_dim=[94m32[39;49;00m)[90m[39;49;00m
+    [90m[39;49;00m
+        decision = CommitGateDecision([90m[39;49;00m
+            proposal_id=proposal.proposal_id,[90m[39;49;00m
+            decision=[33m"[39;49;00m[33mcommit[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            reason=[33m"[39;49;00m[33munit[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            paamax_metadata={[33m"[39;49;00m[33mdecision[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mcommit[39;49;00m[33m"[39;49;00m},[90m[39;49;00m
+        )[90m[39;49;00m
+        ensure_commit_decision_like([33m"[39;49;00m[33mdecision[39;49;00m[33m"[39;49;00m, decision)[90m[39;49;00m
+    [90m[39;49;00m
+        bad = SystemWriteProposal.create(content=torch.randn([94m32[39;49;00m), write_permission=[94mTrue[39;49;00m, confidence=[94m0.9[39;49;00m)[90m[39;49;00m
+        bad.content[[94m0[39;49;00m] = [96mfloat[39;49;00m([33m"[39;49;00m[33mnan[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [94mwith[39;49;00m pytest.raises(WMCommitCortexValidationError):[90m[39;49;00m
+>           ensure_commit_proposal_like([33m"[39;49;00m[33mbad[39;49;00m[33m"[39;49;00m, bad, expected_dim=[94m32[39;49;00m)[90m[39;49;00m
+
+[1m[31mtests/test_wm_qd5a_commit_cortex_guards.py[0m:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mmnemonic_cortex/working_memory/wm_commit_cortex_guards.py[0m:49: in ensure_commit_proposal_like
+    [0mensure_finite_tensor([33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m.content[39;49;00m[33m"[39;49;00m, content)[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'bad.content'
+tensor = tensor([    nan, -0.6918, -1.0188,  1.4737,  0.2352,  0.5625,  0.0847, -0.6125,
+         0.6292,  0.1285, -1.3037, -1....6, -0.5179,  0.7901,  0.2978, -0.1732,
+        -0.3014,  0.1962,  0.5173, -0.3514,  0.1089, -0.3599, -0.2914, -1.7650])
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mensure_finite_tensor[39;49;00m(name: [96mstr[39;49;00m, tensor: torch.Tensor) -> torch.Tensor:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Validate that a tensor contains no NaN/Inf values."""[39;49;00m[90m[39;49;00m
+        [94mif[39;49;00m [95mnot[39;49;00m [96misinstance[39;49;00m(tensor, torch.Tensor):[90m[39;49;00m
+            [94mraise[39;49;00m WMFoundationValidationError([33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m must be a torch.Tensor[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [94mif[39;49;00m [95mnot[39;49;00m torch.isfinite(tensor).all():[90m[39;49;00m
+>           [94mraise[39;49;00m WMFoundationValidationError([33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mname[33m}[39;49;00m[33m contains NaN or Inf[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[1m[31mE           mnemonic_cortex.working_memory.wm_foundation_guards.WMFoundationValidationError: bad.content contains NaN or Inf[0m
+
+[1m[31mmnemonic_cortex/working_memory/wm_foundation_guards.py[0m:19: WMFoundationValidationError
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/test_wm_qd5a_commit_cortex_guards.py::[1mtest_commit_proposal_and_decision_validation[0m - mnemonic_cortex.working_memory.wm_foundation_guards.WMFoundationValidationError: bad.content contains NaN or Inf
+[31m[31m[1m1 failed[0m, [32m174 passed[0m[31m in 5.19s[0m[0m

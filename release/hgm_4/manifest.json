@@ -1,0 +1,37 @@
+{
+  "release": "HGM-4",
+  "title": "QDT/WM Bridge Adapter, Shared Slot-Lattice Hooks, and Trace-Safe Memory Integration",
+  "source_of_truth": "/mnt/data/current-branch-HGM-3-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "safety": "dry-run/read-only bridge planning; no QDT/WM mutation; no hardware calls",
+  "added_files": [
+    "docs/hgm_hpme/05_hgm_4_qdt_wm_bridge.md",
+    "mnemonic_cortex/hypergraph_manifold/bridge_payloads.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm4_result.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_wm_bridge.py",
+    "mnemonic_cortex/hypergraph_manifold/slot_lattice_hooks.py",
+    "mnemonic_cortex/hypergraph_manifold/trace_safe_memory_integration.py",
+    "tests/test_hgm_4_qdt_wm_bridge.py"
+  ],
+  "modified_files": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "tests": {
+    "targeted": "python -m pytest tests/test_hgm_4_qdt_wm_bridge.py -q",
+    "compatibility": "python -m pytest tests/test_hgm_0a_foundation_types.py tests/test_hgm_0b_probability_expander.py tests/test_hgm_1_hyperedge_binder.py tests/test_hgm_2_manifold_router.py tests/test_hgm_3_spcp_procedural_memory.py tests/test_hgm_4_qdt_wm_bridge.py -q",
+    "compile": "python -m compileall -q mnemonic_cortex/hypergraph_manifold"
+  },
+  "results": {
+    "targeted": "18 passed",
+    "compatibility": "81 passed",
+    "compile": "passed"
+  },
+  "known_limits": [
+    "dry-run/read-only bridge planning only",
+    "does not write into QDT/WM memory",
+    "does not mutate shared slot-lattice internals",
+    "does not execute robotics actions",
+    "does not perform live memory consolidation",
+    "write-capable integration requires later explicit permission stage"
+  ]
+}

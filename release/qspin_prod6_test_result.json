@@ -1,0 +1,16 @@
+{
+  "stage": "QSPIN-PROD-6-QD6A",
+  "manual": {
+    "command": "python3 -S prod6_manual_runner.py",
+    "returncode": 0,
+    "stdout": "PASS=7\nFAIL=0\nSKIP=0\n",
+    "stderr": ""
+  },
+  "pytest": {
+    "command": "python3 -m pytest -q tests",
+    "returncode": 0,
+    "stdout": ".................                                                        [100%]\n17 passed in 0.49s\n",
+    "stderr": ""
+  },
+  "passed": true
+}

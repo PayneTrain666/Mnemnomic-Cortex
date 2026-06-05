@@ -1,0 +1,27 @@
+{
+  "stage": "HGM-QDT-WRITE-PREP-1",
+  "title": "Read-Only Proposal Materialization Contract, Slot-ID Mapping Plan, QH/Q-Spin Conversion Contract, and Rollback Snapshot Handshake",
+  "source_baseline": "/mnt/data/current-branch-HGM-QDT-AUDIT-1-audited.zip",
+  "hgm_release_baseline": "/mnt/data/current-branch-HGM-10-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "safety": {
+    "read_only": true,
+    "live_qdt_wm_writes": false,
+    "working_memory_mutation": false,
+    "production_write_enablement": false
+  },
+  "tests": {
+    "targeted": "7 passed",
+    "compatibility": "160 passed",
+    "qdt_wm_targeted": "22 passed",
+    "compileall": "passed"
+  },
+  "outputs": [
+    "proposal materialization contract",
+    "slot ID mapping plan",
+    "q-spin/QH conversion contract",
+    "rollback snapshot handshake",
+    "signature-level QDT/WM contract probe"
+  ],
+  "next_command": "DEV-FLOW RUN HGM-QDT-WRITE-PREP-2 \u2014 Dry-Run SystemWriteProposal Builder, CommitGate Preflight Harness, and Non-Mutating End-to-End Write Simulation"
+}

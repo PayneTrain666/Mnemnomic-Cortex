@@ -1,0 +1,1 @@
+compileall passed for mnemonic_cortex/hypergraph_manifold and mnemonic_cortex/working_memory

@@ -1,0 +1,279 @@
+{
+  "groups": {
+    "WM-QD-1A": [
+      {
+        "module": "mnemonic_cortex.working_memory.context_geometry_maps",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.context_map_selector",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.context_to_wm_bridge",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_context_mount",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.legacy_enhanced_curved_memory",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_curved_core",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.curved_resonant_wm_core",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.curved_slot_state",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.curvature_metric_policy",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.geometry_aware_addressing",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.bounded_associative_spread",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.curved_local_trace",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.curved_shadow_write",
+        "contract_function": "wm_qd1a_foundation_contract",
+        "pass": true,
+        "trace_type": "wm_qd1a_foundation_contract"
+      }
+    ],
+    "WM-QD-2A": [
+      {
+        "module": "mnemonic_cortex.working_memory.wm_quaternion_depth",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_intra_depth_transformer",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_cross_depth_transformer",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.depth_specific_addressing",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_depth_adapters",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_depth_fusion",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_triplet_state",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_trace",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.qdt_working_memory",
+        "contract_function": "wm_qd2a_depth_contract",
+        "pass": true,
+        "trace_type": "wm_qd2a_depth_contract"
+      }
+    ],
+    "WM-QD-3A": [
+      {
+        "module": "mnemonic_cortex.working_memory.wm_retrieval_lanes",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_geometry_scoring",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_memory_augmented_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_geometry_linker",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_evidence_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_trace_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_counterfactual_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_conflict_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_novelty_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_stability_attention",
+        "contract_function": "wm_qd3a_attention_contract",
+        "pass": true,
+        "trace_type": "wm_qd3a_attention_trace"
+      }
+    ],
+    "WM-QD-4A": [
+      {
+        "module": "mnemonic_cortex.working_memory.wm_external_memory_interfaces",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_ltm_cross_attention",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_mann_cross_attention",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_spcp_cross_attention",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_dual_fusion",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_shared_slot_registry",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_shared_slot_store",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_quantum_holographic_storage",
+        "contract_function": "wm_qd4a_external_memory_contract",
+        "pass": true,
+        "trace_type": "wm_qd4a_external_memory_trace"
+      }
+    ],
+    "WM-QD-5A": [
+      {
+        "module": "mnemonic_cortex.working_memory.wm_system_commit_gate",
+        "contract_function": "wm_qd5a_commit_cortex_contract",
+        "pass": true,
+        "trace_type": "wm_qd5a_commit_cortex_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_compatibility_wrapper",
+        "contract_function": "wm_qd5a_commit_cortex_contract",
+        "pass": true,
+        "trace_type": "wm_qd5a_commit_cortex_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.wm_cortex_integration",
+        "contract_function": "wm_qd5a_commit_cortex_contract",
+        "pass": true,
+        "trace_type": "wm_qd5a_commit_cortex_trace"
+      },
+      {
+        "module": "mnemonic_cortex.working_memory.qdt_working_memory",
+        "contract_function": "wm_qd5a_commit_cortex_contract",
+        "pass": true,
+        "trace_type": "wm_qd5a_commit_cortex_trace"
+      }
+    ]
+  },
+  "overall_pass": true
+}

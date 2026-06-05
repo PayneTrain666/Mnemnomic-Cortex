@@ -1,0 +1,192 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:live_route"
+        ]
+      },
+      "name": "no live route activation",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-001",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:transfer_payload"
+        ]
+      },
+      "name": "no real payload transfer",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-002",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:mutate_production_config"
+        ]
+      },
+      "name": "no production write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-003",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:write_qh"
+        ]
+      },
+      "name": "no QH write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-004",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:write_shared_slot"
+        ]
+      },
+      "name": "no shared-slot write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-005",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:write_external_memory"
+        ]
+      },
+      "name": "no external-memory write",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-006",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:execute_topology"
+        ]
+      },
+      "name": "no topology execution",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-007",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:commit"
+        ]
+      },
+      "name": "no commit execution",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-008",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "forbidden_flag:network_call"
+        ]
+      },
+      "name": "no network call",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-009",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "fp1": "1a5816138dc0e909d270afd170446bce374054e7785884fb0705c582e581ff96",
+        "fp2": "1a5816138dc0e909d270afd170446bce374054e7785884fb0705c582e581ff96"
+      },
+      "name": "deterministic replay",
+      "observed_reason": "SYNTHETIC_SHADOW_EXECUTED",
+      "observed_status": "PASS",
+      "passed": true,
+      "regression_id": "REG-P5-010",
+      "severity": "P1"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "unsupported_shadow_mode"
+        ]
+      },
+      "name": "malformed input handling",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-011",
+      "severity": "P1"
+    },
+    {
+      "detail": {},
+      "name": "redaction behavior",
+      "observed_reason": "SYNTHETIC_SHADOW_EXECUTED",
+      "observed_status": "PASS",
+      "passed": true,
+      "regression_id": "REG-P5-012",
+      "severity": "P0"
+    },
+    {
+      "detail": {
+        "audit_count": 3
+      },
+      "name": "audit-chain completeness",
+      "observed_reason": "AUDIT_EVENTS_PRESENT",
+      "observed_status": "PASS",
+      "passed": true,
+      "regression_id": "REG-P5-013",
+      "severity": "P1"
+    },
+    {
+      "detail": {
+        "blocked_actions": [
+          "payload_too_large"
+        ]
+      },
+      "name": "bounded payload handling",
+      "observed_reason": "SAFETY_BOUNDARY_BLOCK",
+      "observed_status": "FAIL_CLOSED",
+      "passed": true,
+      "regression_id": "REG-P5-014",
+      "severity": "P1"
+    }
+  ],
+  "fail_count": 0,
+  "lineage": {
+    "prod0": "qspin_prod0_qd6a_release_pack.zip",
+    "prod1": "qspin_prod1_qd6a_release_pack.zip",
+    "prod2": "qspin_prod2_qd6a_release_pack.zip",
+    "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+    "prod4": "qspin_prod4_qd6a_release_pack.zip",
+    "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+    "qspin8": "qspin8_qd6a_release_pack.zip"
+  },
+  "pass_count": 14,
+  "skip_count": 0,
+  "stage": "QSPIN-PROD-5-QD6A"
+}

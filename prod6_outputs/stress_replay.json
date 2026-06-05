@@ -1,0 +1,100 @@
+{
+  "fail_count": 0,
+  "pass_count": 13,
+  "results": [
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "feb8e7b86bd51185a0beec43dd58d86af942f5ecf21af9d75a020763bb2be33d",
+      "scenario_id": "stress_audit_chain",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "212834b4962bc1a82e5571b0be18de02fe4e3cc9ca20e219d3121e8fd6dbd4bf",
+      "scenario_id": "stress_canary_corpus",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "ef189bbe20f750ac882243a0f5e64b34a6b3704d62bf2e1a2f64d1e5c365c650",
+      "scenario_id": "stress_concurrency_pressure",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "594b74e3c03312f76e0877651347411976208821dd73f0c024a42bcdb6dd3c9a",
+      "scenario_id": "stress_dead_letter",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "2d3fa964aba1fce9d9b80f85907488001aecec43f8f5cd8f5b1e20e688be8a7e",
+      "scenario_id": "stress_forbidden_action",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "633ec5a520cbb685e51725a54debcb582ce3de07b6d350d95eac5ba86a98443d",
+      "scenario_id": "stress_malformed_input",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "60f56a1c7d796acca610001e8a44dcb517d4933d28a2b32aab862ce802802460",
+      "scenario_id": "stress_redaction",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "4ce834c21ced8e6876ac5c660b4f332d65737fe9b148c201b34e549f3108a870",
+      "scenario_id": "stress_remediation",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "544246f3ec7ea696ad8618261c73d3e5d2bcac4e5953f34c37be682ded386276",
+      "scenario_id": "stress_safety_regression",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "3405ac5caf3667ce8491062624af3930de2978cd0900ee89b810b0d6fc0be1ed",
+      "scenario_id": "stress_shadow_runtime",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "28968e40bbbb9e0c918247a13f8e45fc1000cf210c5440d19167b4299eccac5a",
+      "scenario_id": "stress_structured_skip",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "9ff83c8500d3e2353cebc25785c012ffd7d0075fbf61427d97cbfecc4787e239",
+      "scenario_id": "stress_timeout_bound",
+      "status": "passed"
+    },
+    {
+      "block_reasons": [],
+      "iterations": 2,
+      "replay_hash": "12539a5e35895e4629e0f150d9cb63ad6eba78faff94265a5b9f9030272745e7",
+      "scenario_id": "stress_trace_corpus",
+      "status": "passed"
+    }
+  ],
+  "skip_count": 0,
+  "status": "passed",
+  "suite_hash": "e1a527116ff621d2322cfd53c5431930b5d6c34fed2df3063a6915dda6bd2210"
+}

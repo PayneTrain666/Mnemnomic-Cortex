@@ -1,0 +1,14 @@
+[
+  "docs/hgm_hpme/HGM_QDT_WRITE_PREP_5.md",
+  "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep5_result.py",
+  "mnemonic_cortex/hypergraph_manifold/qdt_live_shape_contract_harness.py",
+  "mnemonic_cortex/hypergraph_manifold/qdt_permission_boundary_audit.py",
+  "mnemonic_cortex/hypergraph_manifold/qdt_production_write_blocker_burndown.py",
+  "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep5_pipeline.py",
+  "mnemonic_cortex/hypergraph_manifold/__init__.py",
+  "tests/test_hgm_qdt_write_prep_5.py",
+  "release/hgm_qdt_write_prep_5/pytest_output.txt",
+  "release/hgm_qdt_write_prep_5/compatibility_pytest_output.txt",
+  "release/hgm_qdt_write_prep_5/qdt_wm_targeted_pytest_output.txt",
+  "release/hgm_qdt_write_prep_5/compile_output.txt"
+]

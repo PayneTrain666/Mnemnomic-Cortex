@@ -1,0 +1,6 @@
+{
+  "passed": true,
+  "stdout": "PASSED 21 FAILED 0\n",
+  "stderr": "",
+  "command": "python3 -S prod3_manual_runner.py"
+}

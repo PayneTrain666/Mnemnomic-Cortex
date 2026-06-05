@@ -1,0 +1,1 @@
+DEV-FLOW RUN QSPIN-BRIDGE Stage QSPIN-PROD-3-QD6A — Feature-Flagged Active-Dry-Run Bridge Executor, Commit-Gate Approval Simulation, Payload Codec Roundtrip Stubs, QH/Shared-Slot Permission Dry-Run, Integration Tests, Source Consideration Matrix, Active Remediation, Full Content Printout, Audit, Ship-Check, and PROD-4 Command

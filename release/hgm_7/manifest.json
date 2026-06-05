@@ -1,0 +1,44 @@
+{
+  "stage": "HGM-7",
+  "title": "Explicit Write Execution Adapter, Transaction Log, and Recovery Verification Harness",
+  "source_truth": "/mnt/data/current-branch-HGM-6-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "additive_only": true,
+  "default_mode": "simulation/dry-run safe",
+  "live_qdt_wm_writes": false,
+  "new_modules": [
+    "hgm7_result.py",
+    "transaction_log.py",
+    "recovery_verification.py",
+    "write_execution_adapter.py"
+  ],
+  "tests": {
+    "targeted": "python -m pytest tests/test_hgm_7_write_execution_adapter.py -q",
+    "targeted_result": "11 passed",
+    "compatibility": "python -m pytest tests/test_hgm_0a_foundation_types.py tests/test_hgm_0b_probability_expander.py tests/test_hgm_1_hyperedge_binder.py tests/test_hgm_2_manifold_router.py tests/test_hgm_3_spcp_procedural_memory.py tests/test_hgm_4_qdt_wm_bridge.py tests/test_hgm_5_embedding_evaluation.py tests/test_hgm_6_write_permission_gate.py tests/test_hgm_7_write_execution_adapter.py -q",
+    "compatibility_result": "117 passed",
+    "compileall_result": "passed"
+  },
+  "known_limits": [
+    "HGM-7 remains simulation-mode by default.",
+    "No live QDT/WM writes are executed.",
+    "No shared slot-lattice mutation is performed.",
+    "Optional test execution is isolated and log-only in this stage.",
+    "Production write execution requires a later explicit permission stage."
+  ],
+  "changed_files": [
+    "docs/hgm_hpme/08_hgm_7_write_execution_adapter.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm7_result.py",
+    "mnemonic_cortex/hypergraph_manifold/transaction_log.py",
+    "mnemonic_cortex/hypergraph_manifold/recovery_verification.py",
+    "mnemonic_cortex/hypergraph_manifold/write_execution_adapter.py",
+    "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "tests/test_hgm_7_write_execution_adapter.py",
+    "release/hgm_7/changed_files.json",
+    "release/hgm_7/compatibility_pytest_output.txt",
+    "release/hgm_7/compile_output.txt",
+    "release/hgm_7/manifest.json",
+    "release/hgm_7/pytest_output.txt",
+    "release/hgm_7/ship_check.md"
+  ]
+}

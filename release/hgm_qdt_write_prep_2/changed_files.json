@@ -1,0 +1,57 @@
+[
+  {
+    "path": "docs/hgm_hpme/HGM_QDT_WRITE_PREP_2.md",
+    "sha256": "e791fd8caaa88f66819841129f6614e2e9ee61231d05dc92387a7be02664d38d",
+    "size_bytes": 2737
+  },
+  {
+    "path": "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep2_result.py",
+    "sha256": "2b5adc230473219d855c07d1aec807427edb7e6481456574a7085cf5cd47229d",
+    "size_bytes": 5642
+  },
+  {
+    "path": "mnemonic_cortex/hypergraph_manifold/qdt_dry_run_proposal_builder.py",
+    "sha256": "5d9420ee6532f9a2cdaea8d9dff4ac079fe4bfa51032186f8e6bbb3794849f5b",
+    "size_bytes": 11467
+  },
+  {
+    "path": "mnemonic_cortex/hypergraph_manifold/qdt_commitgate_preflight.py",
+    "sha256": "7efa31f3af60792f6d7fd4846bfcd86c89203266c0fccc957af0c38c22ddedad",
+    "size_bytes": 6233
+  },
+  {
+    "path": "mnemonic_cortex/hypergraph_manifold/qdt_end_to_end_write_simulation.py",
+    "sha256": "e6dbea64911829f88c98b52eb03826d8330d704aedc597f8f13f06d42140c433",
+    "size_bytes": 5271
+  },
+  {
+    "path": "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "sha256": "8fb35fbf8c789353d65b7bacddf1fa04b64d8eb0e6489a71d1d72fb65c55f185",
+    "size_bytes": 14992
+  },
+  {
+    "path": "tests/test_hgm_qdt_write_prep_2.py",
+    "sha256": "32b5661f7a476ed7fbfe53bbe37e88956e1a94e911b0dc32f082afe82bb45e32",
+    "size_bytes": 6527
+  },
+  {
+    "path": "release/hgm_qdt_write_prep_2/pytest_output.txt",
+    "sha256": "3a62e05c7c3caf9770ade396f5ab56743ae5baebd8caf17f0d1f62bb7eaab348",
+    "size_bytes": 98
+  },
+  {
+    "path": "release/hgm_qdt_write_prep_2/compatibility_pytest_output.txt",
+    "sha256": "b70c86b0c3391631455f7bfe8ce6ed163d19b61b73e190dace0760fb0930c481",
+    "size_bytes": 260
+  },
+  {
+    "path": "release/hgm_qdt_write_prep_2/qdt_wm_targeted_pytest_output.txt",
+    "sha256": "3239e7c4518864b52acbbcdc98beff08e40a09d19d2d5067344a3cc9ad6ff49d",
+    "size_bytes": 99
+  },
+  {
+    "path": "release/hgm_qdt_write_prep_2/compile_output.txt",
+    "sha256": "b9a7a7bdf18f0940bd1e4f2a0af1284a0286a3c6256b77f010dadfe940fead1a",
+    "size_bytes": 18
+  }
+]

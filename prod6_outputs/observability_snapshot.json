@@ -1,0 +1,46 @@
+{
+  "audits": [
+    {
+      "action": "manual_runner",
+      "event_id": "prod6_audit_runner",
+      "reason_codes": [
+        "synthetic_only",
+        "no_live_effects"
+      ]
+    }
+  ],
+  "dead_letters": [],
+  "metrics": [
+    {
+      "name": "stress_replay_attempts",
+      "tags": {},
+      "value": 1
+    },
+    {
+      "name": "trace_corpus_records_generated",
+      "tags": {},
+      "value": 19
+    },
+    {
+      "name": "ci_matrix_cases_run",
+      "tags": {},
+      "value": 16
+    },
+    {
+      "name": "extended_safety_cases_run",
+      "tags": {},
+      "value": 21
+    }
+  ],
+  "spans": [
+    {
+      "name": "prod6_manual_runner",
+      "safe_summary": {
+        "safe": true,
+        "synthetic": true
+      },
+      "span_id": "prod6_span",
+      "status": "ok"
+    }
+  ]
+}

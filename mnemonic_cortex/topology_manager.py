@@ -79,6 +79,7 @@ class TopologyManagerV3(nn.Module):
         fractal_alpha=1.0,
         default_beta=0.12,      # curvature warp gain
         spin_scale=0.7,         # scales spin-angle contribution
+        gate_nudge=0.5,
     ):
         super().__init__()
         self.subsystems = list(subsystems)
@@ -100,6 +101,7 @@ class TopologyManagerV3(nn.Module):
         # warp gains
         self.default_beta = default_beta
         self.spin_scale = spin_scale
+        self.gate_nudge = gate_nudge
 
         # Lightweight learned gate: inputs=[fitness, entropy, mean|curv|, spin_coh] → weights over 4 metrics
         self.gates = nn.ModuleDict({
@@ -117,6 +119,12 @@ class TopologyManagerV3(nn.Module):
             s: nn.Parameter(torch.tensor([self.default_beta, self.default_beta, self.default_beta, self.spin_scale], dtype=torch.float32))
             for s in self.subsystems
         })
+        self.mode_bias = {
+            "stabilise": torch.tensor([+0.3, +0.3, +0.1, +0.1, 0.0, 0.0]),
+            "structured": torch.tensor([0.0, +0.4, +0.2, 0.0, +0.2, +0.2]),
+            "explore": torch.tensor([+0.2, 0.0, +0.2, +0.3, +0.1, +0.2]),
+            "spinquant": torch.tensor([0.0, 0.0, +0.1, 0.0, +0.6, +0.3]),
+        }
 
     # ---------- EMA & hysteresis ----------
     def _hysteresis_thresholds(self, subsystem: str):
@@ -139,6 +147,26 @@ class TopologyManagerV3(nn.Module):
         else: topo = 'fractal'
         self._topo[subsystem] = topo
         return topo
+
+    def _mode_from_fitness(self, fitness: float) -> str:
+        if fitness >= 0.80:
+            return "structured"
+        if fitness >= 0.60:
+            return "stabilise"
+        if fitness >= 0.40:
+            return "explore"
+        return "spinquant"
+
+    @torch.no_grad()
+    def steer_merger(self, merger, subsystem: str):
+        """Nudge GeometryMergerV2 channel logits based on subsystem fitness."""
+        if not hasattr(merger, "set_gate_bias"):
+            return
+        fit = self._ema_fit.get(subsystem, None)
+        fit = 0.5 if fit is None else float(fit)
+        mode = self._mode_from_fitness(fit)
+        bias = self.mode_bias[mode].to(merger.gate_bias.device, merger.gate_bias.dtype)
+        merger.set_gate_bias(bias.clamp(-1, 1) * self.gate_nudge)
 
     # ---------- curvature helpers ----------
     @staticmethod
@@ -179,6 +207,23 @@ class TopologyManagerV3(nn.Module):
         if len(orig_shape) == 2:
             slot_c = slot_c.unsqueeze(1).expand(orig_shape)
         return slot_c
+
+    @torch.no_grad()
+    def mutate_tensor_like(self, tensor: torch.Tensor, subsystem: str) -> torch.Tensor:
+        """Safe generic mutation for tensors like SPD factors."""
+        fit = self._ema_fit.get(subsystem, None)
+        fit = 0.5 if fit is None else float(fit)
+        mode = self._mode_from_fitness(fit)
+        step = self.mutation_rate
+        if mode == "structured":
+            out = tensor + 0.5 * step * torch.randn_like(tensor)
+        elif mode == "stabilise":
+            out = 0.98 * tensor
+        elif mode == "explore":
+            out = tensor + step * torch.randn_like(tensor)
+        else:
+            out = 0.97 * tensor + 0.25 * step * torch.randn_like(tensor)
+        return out
 
     # ---------- mixture-of-metrics warp ----------
     def warp_and_blend(

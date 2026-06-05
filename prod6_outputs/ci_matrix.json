@@ -1,0 +1,136 @@
+{
+  "fail_count": 0,
+  "pass_count": 16,
+  "results": [
+    {
+      "axis": "python_version",
+      "case_id": "ci_python_version",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "os",
+      "case_id": "ci_os",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "torch_available",
+      "case_id": "ci_torch_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "pytest_available",
+      "case_id": "ci_pytest_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "source_pack_available",
+      "case_id": "ci_source_pack_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "previous_pack_available",
+      "case_id": "ci_previous_pack_available",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "qh_write_attempt",
+      "case_id": "ci_qh_write_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "shared_slot_write_attempt",
+      "case_id": "ci_shared_slot_write_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "external_write_attempt",
+      "case_id": "ci_external_write_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "payload_transfer_attempt",
+      "case_id": "ci_payload_transfer_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "commit_attempt",
+      "case_id": "ci_commit_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "production_activation_attempt",
+      "case_id": "ci_production_activation_attempt",
+      "reason_codes": [
+        "blocked_unsafe_axis"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "malformed_input",
+      "case_id": "ci_malformed_input",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "timeout_pressure",
+      "case_id": "ci_timeout_pressure",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "concurrency_pressure",
+      "case_id": "ci_concurrency_pressure",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    },
+    {
+      "axis": "redaction_pressure",
+      "case_id": "ci_redaction_pressure",
+      "reason_codes": [
+        "synthetic_axis_ok"
+      ],
+      "status": "passed"
+    }
+  ],
+  "skip_count": 0,
+  "status": "passed"
+}

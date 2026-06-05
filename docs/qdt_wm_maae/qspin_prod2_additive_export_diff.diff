@@ -1,0 +1,8 @@
+--- qspin_prod1/mnemonic_cortex/working_memory/__init__.py
++++ qspin_prod2/mnemonic_cortex/working_memory/__init__.py
+@@
++# QSPIN-PROD-2 simulation-only production-track infrastructure exports.
++from .qspin_runtime_shadow_bus import *
++from .qspin_payload_dry_run import *
++from .qspin_guarded_dispatch_sim import *
++from .qspin_prod2_observability import *

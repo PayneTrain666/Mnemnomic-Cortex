@@ -1,0 +1,30 @@
+{
+  "active_patching": [
+    {
+      "affected_file": "tests/qspin_prod8_module_loader.py",
+      "patch_applied": "register module in sys.modules before spec.loader.exec_module(module)",
+      "problem_id": "P001",
+      "remaining_risk": "none for PROD-8 test loading scope",
+      "result": "passed",
+      "retest_command": "python3 -m pytest -q tests",
+      "root_cause": "test module loader executed module before registering it in sys.modules",
+      "symptom": "pytest dynamic imports failed during dataclass decoration"
+    }
+  ],
+  "final_hold_required": true,
+  "manual_runner": {
+    "command": "python3 -S prod8_manual_runner.py",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "PASS=8\nFAIL=0\nSKIP=0\n"
+  },
+  "production_active": false,
+  "pytest": {
+    "command": "python3 -m pytest -q tests",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "..........                                                               [100%]\n10 passed in 0.41s\n"
+  },
+  "ship_decision": "SHIP_FINAL_PRE_ACTIVATION_HOLD",
+  "stage": "QSPIN-PROD-8-QD6A"
+}

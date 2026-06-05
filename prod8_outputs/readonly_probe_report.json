@@ -1,0 +1,85 @@
+{
+  "mode": "read_only_report",
+  "report_id": "prod8_readonly_probe_report",
+  "residual_risk": [
+    "Live runtime was not called; real operational behavior remains unvalidated.",
+    "All probe evidence remains read-only/pre-activation."
+  ],
+  "sections": [
+    {
+      "findings": [],
+      "section_id": "source_import",
+      "status": "read_only_pass",
+      "title": "Source/import probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "dataclass_contract",
+      "status": "read_only_pass",
+      "title": "Dataclass contract probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "enum_contract",
+      "status": "read_only_pass",
+      "title": "Enum contract probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "manifest",
+      "status": "read_only_pass",
+      "title": "Manifest probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "release_metadata",
+      "status": "read_only_pass",
+      "title": "Release metadata probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_write",
+      "status": "blocked",
+      "title": "No-write sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_network",
+      "status": "blocked",
+      "title": "No-network sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_commit",
+      "status": "blocked",
+      "title": "No-commit sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_live_route",
+      "status": "blocked",
+      "title": "No-live-route sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_payload_transfer",
+      "status": "blocked",
+      "title": "No-payload-transfer sentinel results"
+    },
+    {
+      "findings": [
+        {
+          "carry_forward": true,
+          "detail": "Optional missing sources were recorded as skips, not hidden passes.",
+          "finding_id": "structured_skip-F1",
+          "severity": "info",
+          "title": "Optional missing sources were recorded as skips, not hidden passes."
+        }
+      ],
+      "section_id": "structured_skip",
+      "status": "available",
+      "title": "Structured skip results"
+    }
+  ],
+  "status": "generated_with_findings"
+}

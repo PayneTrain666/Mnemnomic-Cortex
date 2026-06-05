@@ -1,0 +1,30 @@
+{
+  "adapter_available": true,
+  "changed_files": [
+    "docs/hgm_hpme/HGM_QDT_AUDIT_1_READ_ONLY_CONTRACT_AUDIT.md",
+    "docs/hgm_hpme/HGM_QDT_AUDIT_1_BRIDGE_COMPATIBILITY_REVIEW.md",
+    "docs/hgm_hpme/HGM_QDT_AUDIT_1_WRITE_STAGE_RISK_REGISTER.md",
+    "docs/hgm_hpme/HGM_QDT_AUDIT_1_NEXT_STAGE_COMMAND.md",
+    "release/hgm_qdt_audit_1/contract_inventory.json",
+    "release/hgm_qdt_audit_1/write_stage_risk_register.json",
+    "release/hgm_qdt_audit_1/hgm_compatibility_pytest_output.txt",
+    "release/hgm_qdt_audit_1/qdt_wm_targeted_pytest_output.txt",
+    "release/hgm_qdt_audit_1/compile_output.txt"
+  ],
+  "generated_utc": "2026-06-04T08:59:16.330425+00:00",
+  "hgm_public_api_symbols": 176,
+  "live_writes_enabled": false,
+  "mode": "read_only_audit",
+  "next_command": "DEV-FLOW RUN HGM-QDT-WRITE-PREP-1 \u2014 Read-Only Proposal Materialization Contract, Slot-ID Mapping Plan, QH/Q-Spin Conversion Contract, and Rollback Snapshot Handshake",
+  "runtime_source_modifications": false,
+  "source_archive": "/mnt/data/current-branch-HGM-10-patched.zip",
+  "source_sha256": "b5b314f15f4527b49dd08d446243243893281257eea6c03458d82c6a6080d81e",
+  "stage": "HGM-QDT-AUDIT-1",
+  "tests": {
+    "compileall": "passed for HGM and working_memory",
+    "hgm_0a_through_hgm_10": "153 passed in 1.86s",
+    "qdt_wm_targeted": "22 passed in 1.13s"
+  },
+  "title": "Read-Only QDT/WM Contract Audit, Bridge Compatibility Review, and Write-Stage Risk Register",
+  "verdict": "read-only bridge planning compatible; write-stage blocked pending materialization/mapping/qh/rollback contracts"
+}

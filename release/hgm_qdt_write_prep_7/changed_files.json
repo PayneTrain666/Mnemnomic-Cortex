@@ -1,0 +1,19 @@
+{
+  "stage": "HGM-QDT-WRITE-PREP-7",
+  "changed_files": [
+    "docs/hgm_hpme/HGM_QDT_WRITE_PREP_7.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep7_result.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_permission_token_contract.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_shadow_commit_sandbox.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_final_blocker_review.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep7_pipeline.py",
+    "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "tests/test_hgm_qdt_write_prep_7.py",
+    "release/hgm_qdt_write_prep_7/pytest_output.txt",
+    "release/hgm_qdt_write_prep_7/compatibility_pytest_output.txt",
+    "release/hgm_qdt_write_prep_7/qdt_wm_targeted_pytest_output.txt",
+    "release/hgm_qdt_write_prep_7/compile_output.txt"
+  ],
+  "runtime_source_modified_outside_hgm": [],
+  "qdt_wm_source_modified": []
+}

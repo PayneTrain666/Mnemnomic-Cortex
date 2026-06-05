@@ -1,0 +1,152 @@
+{
+  "stage": "REAL-BACKEND-IMPLEMENTATION-A",
+  "stage_complete": true,
+  "source_pack": "/mnt/data/mnemonic_reasoning_future_backend_authorization_pack.zip",
+  "token_budget": {
+    "global_policy_resolution": {
+      "fixed_18000_rule_removed": true,
+      "rule": "Precompute estimated token cost from selected source/test/doc content before each response; set split budget from selected content plus margin.",
+      "response_split_budgets": {
+        "implementation_status_response": {
+          "estimated_tokens": 3600,
+          "budget_enforced": 5200
+        },
+        "REAL-BACKEND-A-PRINT-P1": {
+          "estimated_tokens": 5715,
+          "budget_enforced": 7315
+        },
+        "REAL-BACKEND-A-PRINT-P1B": {
+          "estimated_tokens": 5805,
+          "budget_enforced": 7005
+        },
+        "REAL-BACKEND-A-PRINT-P2": {
+          "estimated_tokens": 1679,
+          "budget_enforced": 2879
+        },
+        "REAL-BACKEND-A-PRINT-P3": {
+          "estimated_tokens": 19500,
+          "budget_enforced": 21200
+        }
+      }
+    },
+    "stage_budget": {
+      "target_scope": "REAL-BACKEND-IMPLEMENTATION-A dry-run backend interface, credential scope, backup/recovery plan, migration dry-run plan, tests, docs, tracker, manifest, package, and print sequence.",
+      "minimum_complete_version_tokens_est": 32000,
+      "deep_implementation_version_tokens_est": 82000,
+      "generated_content_total_tokens_est": 55199,
+      "binding_split_decision": "Implementation/tests/package completed in one execution; printout split into P1/P1B/P2/P3 using dynamic precomputed budgets.",
+      "file_module_count": {
+        "new_source_files": 4,
+        "patched_source_files": 1,
+        "new_tests": 8,
+        "new_docs": 8,
+        "updated_tracker": 1,
+        "release_manifest": 1
+      },
+      "benchmark_count": 0,
+      "selected_split_scope": "Full dry-run-first backend interface stage and package; print source files first.",
+      "clean_split_points": [
+        "source-integrity audit",
+        "backend interface protocol",
+        "dry-run backend implementation",
+        "credential scope model",
+        "backup/recovery planner",
+        "migration dry-run planner",
+        "init export patch",
+        "tests",
+        "docs/tracker/ship-check",
+        "package bundles",
+        "print sequence"
+      ],
+      "explicit_out_of_scope": [
+        "real persistence writes",
+        "write permission grant",
+        "real credential loading",
+        "schema migration execution",
+        "real backup/restore execution",
+        "external backend connections",
+        "model weight mutation",
+        "optimizer mutation",
+        "destructive WM/MANN/LTM replacement"
+      ]
+    },
+    "file_token_estimates": {
+      "mnemonic_cortex/reasoning_depth/backend_interface_protocol.py": 1256,
+      "mnemonic_cortex/reasoning_depth/dry_run_backend_interface.py": 1085,
+      "mnemonic_cortex/reasoning_depth/credential_scope_model.py": 1187,
+      "mnemonic_cortex/reasoning_depth/backend_backup_recovery.py": 2187,
+      "mnemonic_cortex/reasoning_depth/__init__.py": 5805,
+      "tests/test_real_backend_a_interface_disabled.py": 197,
+      "tests/test_real_backend_a_dry_run_write.py": 238,
+      "tests/test_real_backend_a_idempotency.py": 186,
+      "tests/test_real_backend_a_credential_scope.py": 196,
+      "tests/test_real_backend_a_backup_recovery.py": 215,
+      "tests/test_real_backend_a_migration_dry_run.py": 200,
+      "tests/test_real_backend_a_future_auth_compatibility.py": 288,
+      "tests/test_real_backend_a_dependency_check.py": 159
+    }
+  },
+  "shipcheck": {
+    "stage": "REAL-BACKEND-IMPLEMENTATION-A",
+    "stage_complete": true,
+    "source_pack": "/mnt/data/mnemonic_reasoning_future_backend_authorization_pack.zip",
+    "source_info": {
+      "primary_source_pack": "/mnt/data/mnemonic_reasoning_future_backend_authorization_pack.zip",
+      "primary_source_sha256": "4609830d9c838552e2a2bfb449db4efb995860670958f9a4ce8ca8b6c256b654",
+      "future_auth_pack_exists": true,
+      "latest_pack_exists": true,
+      "backend_authorization_exists": true,
+      "backend_threat_model_exists": true,
+      "backend_implementation_plan_exists": true,
+      "public_init_exists": true
+    },
+    "source_files_created": [
+      "mnemonic_cortex/reasoning_depth/backend_interface_protocol.py",
+      "mnemonic_cortex/reasoning_depth/dry_run_backend_interface.py",
+      "mnemonic_cortex/reasoning_depth/credential_scope_model.py",
+      "mnemonic_cortex/reasoning_depth/backend_backup_recovery.py"
+    ],
+    "source_files_patched": [
+      "mnemonic_cortex/reasoning_depth/__init__.py"
+    ],
+    "tests_created": [
+      "tests/test_real_backend_a_interface_disabled.py",
+      "tests/test_real_backend_a_dry_run_write.py",
+      "tests/test_real_backend_a_idempotency.py",
+      "tests/test_real_backend_a_credential_scope.py",
+      "tests/test_real_backend_a_backup_recovery.py",
+      "tests/test_real_backend_a_migration_dry_run.py",
+      "tests/test_real_backend_a_future_auth_compatibility.py",
+      "tests/test_real_backend_a_dependency_check.py"
+    ],
+    "docs_created": [
+      "docs/reasoning_engine/118_real_backend_a_design.md",
+      "docs/reasoning_engine/119_dry_run_backend_interface.md",
+      "docs/reasoning_engine/120_credential_scope_model.md",
+      "docs/reasoning_engine/121_backup_recovery_and_migration_dry_run.md",
+      "docs/reasoning_engine/122_real_backend_a_api.md",
+      "docs/reasoning_engine/123_real_backend_a_tests.md",
+      "docs/reasoning_engine/124_real_backend_a_shipcheck.md",
+      "docs/reasoning_engine/125_next_write_permission_or_hold_command.md"
+    ],
+    "full_test_result": "\u001b[32m\u001b[32m\u001b[1m302 passed\u001b[0m\u001b[32m in 7.43s\u001b[0m\u001b[0m",
+    "dry_run_first": true,
+    "real_store_write_performed": false,
+    "real_store_write_authorized": false,
+    "write_permission_granted": false,
+    "credentials_loaded": false,
+    "schema_migration_executed": false,
+    "real_backup_executed": false,
+    "real_restore_executed": false,
+    "external_backend_connection_opened": false,
+    "permanent_memory_store_mutation": false,
+    "destructive_replacement": false,
+    "second_write_permission_stage_required": true,
+    "printout_status": "split_required; PRINT-P1 source files begins in assistant final response",
+    "redo_required": false,
+    "full_depth_adequacy_gate": "PASS"
+  },
+  "next_write_permission_command": "DEV-FLOW RUN MNEMONIC-REASONING Stage REAL-BACKEND-WRITE-PERMISSION-B \u2014 Explicit Write-Permission Gate, Local Shadow Store Implementation Review, and Still-Disabled Default\n\nACTIVE DEV-FLOW RUN HOLISTIC STANDARD v1.0:\nThis command may design a write-permission gate and local shadow store review path. It must not enable real writes by default.\n\nSOURCE OF TRUTH:\n- Latest development integration pack:\n  /mnt/data/mnemonic_reasoning_latest_development_integration_pack.zip\n- REAL-BACKEND-IMPLEMENTATION-A pack:\n  /mnt/data/mnemonic_reasoning_real_backend_implementation_a_pack.zip\n\nPURPOSE:\nCreate a second authorization gate for write-capable local shadow store work. Review dry-run interface, credential scope, backup/recovery, and migration dry-run artifacts before any actual write-capable path is introduced.\n\nSAFETY:\n- Write-permission gate design allowed.\n- Real writes remain disabled by default.\n- Any write-capable code must be isolated behind explicit test-only gates.\n- No production credentials.\n- No production schema migration execution.\n- No permanent memory-store mutation.\n\nREQUIRED:\n1. Build explicit write-permission gate schema.\n2. Define local shadow store target and transaction boundaries.\n3. Define test-only write path requirements.\n4. Require backup/restore and migration dry-run evidence before enabling write-capable test code.\n5. Add failure-injection, rollback, duplicate idempotency, and permission denial tests.\n6. Package ZIP and print full contents.\n",
+  "final_hold_command": "DEV-FLOW FINALIZE MNEMONIC-REASONING Stage REAL-BACKEND-A-HOLD \u2014 Preserve Dry-Run Backend Interface State\n\nSOURCE OF TRUTH:\n- REAL-BACKEND-IMPLEMENTATION-A pack:\n  /mnt/data/mnemonic_reasoning_real_backend_implementation_a_pack.zip\n\nPURPOSE:\nAccept the dry-run backend interface as the current final state. Preserve no-write backend interface, credential scope model, backup/recovery plan, migration dry-run plan, and second write-permission requirement.\n",
+  "next_stage": "REAL_BACKEND_WRITE_PERMISSION_B_OR_FINAL_HOLD"
+}

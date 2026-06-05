@@ -1,0 +1,42 @@
+{
+  "canary_count": 12,
+  "fail_count": 0,
+  "outputs": {
+    "canary_results_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/canary_results.json",
+    "remediation_register_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/remediation_register.json",
+    "safety_regression_summary_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/safety_regression_summary.json",
+    "source_matrix_json": "/mnt/data/qspin_prod5_qd6a/prod5_outputs/source_matrix.json"
+  },
+  "pass_count": 26,
+  "safety_boundaries": {
+    "commit_execution": "DISABLED/BLOCKED",
+    "external_memory_writes": "DISABLED/BLOCKED",
+    "live_routing": "DISABLED/BLOCKED",
+    "production_activation": "DISABLED/BLOCKED",
+    "qh_writes": "DISABLED/BLOCKED",
+    "real_payload_transfer": "DISABLED/BLOCKED",
+    "real_shared_slot_writes": "DISABLED/BLOCKED",
+    "topology_execution": "DISABLED/BLOCKED"
+  },
+  "safety_regression_count": 14,
+  "skip_count": 0,
+  "source_audit": {
+    "coverage_status": "PASS",
+    "reference_only": [
+      "WM-7A"
+    ],
+    "skipped_missing": [],
+    "used": [
+      "QD6A",
+      "QSPIN-8",
+      "PROD-0",
+      "PROD-1",
+      "PROD-2",
+      "PROD-3",
+      "PROD-4",
+      "PROD-4-PRINTOUT"
+    ]
+  },
+  "stage": "QSPIN-PROD-5-QD6A",
+  "status": "PASS"
+}

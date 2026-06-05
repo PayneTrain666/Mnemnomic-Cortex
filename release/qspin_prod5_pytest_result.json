@@ -1,0 +1,8 @@
+{
+  "command": "python3 -m pytest tests",
+  "reason": "PYTEST_AVAILABLE",
+  "returncode": 0,
+  "status": "PASS",
+  "stderr": "",
+  "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0\nrootdir: /mnt/data/qspin_prod5_qd6a\nplugins: metadata-3.1.1, json-report-1.5.0, cov-7.0.0, ddtrace-4.4.0, asyncio-1.3.0, anyio-4.13.0, Faker-40.1.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 7 items\n\ntests/test_active_remediation_register.py .                              [ 14%]\ntests/test_observability.py .                                            [ 28%]\ntests/test_safety_regression_ci.py .                                     [ 42%]\ntests/test_shadow_runtime_harness.py ..                                  [ 71%]\ntests/test_source_consideration_matrix.py .                              [ 85%]\ntests/test_synthetic_canary_bridge.py .                                  [100%]\n\n============================== 7 passed in 0.14s ===============================\n"
+}

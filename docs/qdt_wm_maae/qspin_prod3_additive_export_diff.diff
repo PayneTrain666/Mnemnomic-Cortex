@@ -1,0 +1,10 @@
+--- qspin_prod2/mnemonic_cortex/working_memory/__init__.py
++++ qspin_prod3/mnemonic_cortex/working_memory/__init__.py
+@@
++# QSPIN-PROD-3 active-dry-run simulation-only exports.
++# These are additive and do not activate production routing.
++from .qspin_active_dry_run_executor import *
++from .qspin_commit_gate_approval_sim import *
++from .qspin_payload_roundtrip_stub import *
++from .qspin_permission_dry_run import *
++from .qspin_prod3_observability import *

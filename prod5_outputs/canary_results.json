@@ -1,0 +1,1296 @@
+[
+  {
+    "canary_id": "CANARY-001",
+    "category": "route_shape_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/06d11e386c6cf0e7"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.755889
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.17,
+        "idempotency_key": "0d5685db7e09a9877a70ffc708147a8344f4420a421a0a1809868d49f50d96e2",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/06d11e386c6cf0e7",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-001",
+        "category": "route_shape_canary",
+        "description": "Valid synthetic route shape should execute shadow-only.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-002",
+    "category": "payload_integrity_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/06d11e386c6cf0e7"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.755889
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.756077
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.039,
+        "idempotency_key": "d6a8011e8b5524d0985281d48accdd803b11953723baea2e544f8e85bdf275a7",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-002",
+        "category": "payload_integrity_canary",
+        "description": "Benign payload should survive synthetic planning.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-003",
+    "category": "qh_no_write_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.756077
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_qh"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_qh": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "qh_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 3052
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756274
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:write_qh"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.25,
+        "idempotency_key": "77374403b88a5d56b4e85945517706b355206b7a3b7edaa4313208ef674486eb",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-003",
+        "category": "qh_no_write_canary",
+        "description": "QH write request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-004",
+    "category": "shared_slot_no_write_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_qh"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_qh": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "qh_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 3052
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756274
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_shared_slot"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_shared_slot": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "shared_slot_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 1197
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756526
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:write_shared_slot"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.299,
+        "idempotency_key": "787d1c39542250c6a6c3850211c5596139806655ccab03c66103e878d3aadd4c",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-004",
+        "category": "shared_slot_no_write_canary",
+        "description": "Shared-slot write request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-005",
+    "category": "external_memory_no_write_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_shared_slot"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_shared_slot": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "shared_slot_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 1197
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756526
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_external_memory"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_external_memory": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "external_memory_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 9919
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756842
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:write_external_memory"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.34,
+        "idempotency_key": "3254b885d1beacb9c0eadbd4a5e95976ad828d8b2712436eae4db407c89606f4",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-005",
+        "category": "external_memory_no_write_canary",
+        "description": "External-memory write request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-006",
+    "category": "topology_no_execute_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:write_external_memory"
+              ],
+              "envelope": {
+                "flags": {
+                  "write_external_memory": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "external_memory_no_write_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 9919
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.756842
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:execute_topology"
+              ],
+              "envelope": {
+                "flags": {
+                  "execute_topology": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "topology_no_execute_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 6049
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757179
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:execute_topology"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.395,
+        "idempotency_key": "28384c120bc25f601f5e3ca3f95e3bc7565f3efb433d51d3517b149d061a7389",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-006",
+        "category": "topology_no_execute_canary",
+        "description": "Topology execution request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-007",
+    "category": "commit_gate_no_commit_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:execute_topology"
+              ],
+              "envelope": {
+                "flags": {
+                  "execute_topology": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "topology_no_execute_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 6049
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757179
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:commit"
+              ],
+              "envelope": {
+                "flags": {
+                  "commit": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "commit_gate_no_commit_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 4314
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757586
+          }
+        ],
+        "blocked_actions": [
+          "forbidden_flag:commit"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.45,
+        "idempotency_key": "ef82e7f7fda9da6dec7d80e596e66bd6ff9fc7a70298abea20a786b51cf6e70f",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-007",
+        "category": "commit_gate_no_commit_canary",
+        "description": "Commit request must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P0",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-008",
+    "category": "audit_chain_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "blocked_actions": [
+                "forbidden_flag:commit"
+              ],
+              "envelope": {
+                "flags": {
+                  "commit": true
+                },
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "commit_gate_no_commit_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 4314
+                },
+                "requested_mode": "SHADOW_EXECUTE_SYNTHETIC",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.757586
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758054
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.032,
+        "idempotency_key": "28546a94c2207ac8f1ae16a5aec425a8466974260bcaccc0251767924add619f",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-008",
+        "category": "audit_chain_canary",
+        "description": "Audit chain must include a PASS audit event.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-009",
+    "category": "redaction_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758054
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758601
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.03,
+        "idempotency_key": "1b5a9f26ee89586628a9ee3499cb0e85a78e0fb05b1cbf482077642f6f1bae3b",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-009",
+        "category": "redaction_canary",
+        "description": "Secret-looking payload text must not leak unredacted.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-010",
+    "category": "concurrency_guard_canary",
+    "detail": {
+      "first": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.758601
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.759146
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.03,
+        "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "second": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.759146
+          },
+          {
+            "detail": {
+              "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133"
+            },
+            "event_type": "shadow_runtime_idempotent_replay",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "IDEMPOTENT_REPLAY",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "SKIP",
+            "timestamp": 1778405403.759678
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "prior_status": "PASS",
+          "replayed_from_seen_key": true
+        },
+        "elapsed_ms": 0.586,
+        "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133",
+        "mode": "SHADOW_AUDIT",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "IDEMPOTENT_REPLAY",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "SKIP"
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED+IDEMPOTENT_REPLAY",
+    "observed_runtime_status": "PASS+SKIP",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-011",
+    "category": "timeout_bound_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "idempotency_key": "925f788b19cacc6e1a54304565d3af49269bcc5ad8067a9c052f668e2e6d2133"
+            },
+            "event_type": "shadow_runtime_idempotent_replay",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "IDEMPOTENT_REPLAY",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "SKIP",
+            "timestamp": 1778405403.759678
+          },
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.760289
+          }
+        ],
+        "blocked_actions": [],
+        "diagnostics": {
+          "dry_run": true,
+          "payload_transferred": false,
+          "persistent_writes": false,
+          "sandbox": true,
+          "shadow": true,
+          "synthetic": true
+        },
+        "elapsed_ms": 0.028,
+        "idempotency_key": "1178f4642fa1016a548722504b026a47705134d1ebfae079a55c9ad4c8e066cf",
+        "mode": "SHADOW_EXECUTE_SYNTHETIC",
+        "planned_actions": [
+          "validate_envelope",
+          "redact_payload",
+          "derive_synthetic_route_shape",
+          "simulate_bridge_decision_no_payload_transfer",
+          "emit_audit_only"
+        ],
+        "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+        "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf",
+        "status": "PASS"
+      },
+      "spec": {
+        "canary_id": "CANARY-011",
+        "category": "timeout_bound_canary",
+        "description": "Timeout bound config remains fail-closed if exceeded.",
+        "expected_reason": null,
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": false
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+    "observed_runtime_status": "PASS",
+    "remediation_hint": "none",
+    "status": "PASS"
+  },
+  {
+    "canary_id": "CANARY-012",
+    "category": "malformed_input_canary",
+    "detail": {
+      "runtime_result": {
+        "audit_events": [
+          {
+            "detail": {
+              "planned_actions": [
+                "validate_envelope",
+                "redact_payload",
+                "derive_synthetic_route_shape",
+                "simulate_bridge_decision_no_payload_transfer",
+                "emit_audit_only"
+              ],
+              "simulated_route": "synthetic://shadow/d89ecaed18d6e4cf"
+            },
+            "event_type": "shadow_runtime_execute",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SYNTHETIC_SHADOW_EXECUTED",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "PASS",
+            "timestamp": 1778405403.760289
+          },
+          {
+            "detail": {
+              "blocked_actions": [
+                "unsupported_shadow_mode"
+              ],
+              "envelope": {
+                "flags": {},
+                "idempotency_key": null,
+                "payload": {
+                  "message": "synthetic canary bridge payload",
+                  "mutation": "malformed_input_canary",
+                  "secret_probe": "<REDACTED>",
+                  "stage": "QSPIN-PROD-5-QD6A",
+                  "synthetic": true,
+                  "synthetic_nonce": 3387
+                },
+                "requested_mode": "UNSUPPORTED_LIVE_MODE",
+                "requested_route": "synthetic.shadow.route",
+                "source_stage": "QSPIN-PROD-5-QD6A",
+                "target": "local_synthetic_shadow"
+              }
+            },
+            "event_type": "shadow_runtime_block",
+            "lineage": {
+              "prod0": "qspin_prod0_qd6a_release_pack.zip",
+              "prod1": "qspin_prod1_qd6a_release_pack.zip",
+              "prod2": "qspin_prod2_qd6a_release_pack.zip",
+              "prod3": "qspin_prod3_qd6a_release_pack_refresh.zip",
+              "prod4": "qspin_prod4_qd6a_release_pack.zip",
+              "qd6a": "qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+              "qspin8": "qspin8_qd6a_release_pack.zip"
+            },
+            "reason_code": "SAFETY_BOUNDARY_BLOCK",
+            "stage": "QSPIN-PROD-5-QD6A",
+            "status": "FAIL_CLOSED",
+            "timestamp": 1778405403.760944
+          }
+        ],
+        "blocked_actions": [
+          "unsupported_shadow_mode"
+        ],
+        "diagnostics": {
+          "side_effects": "none",
+          "synthetic_only": true
+        },
+        "elapsed_ms": 0.711,
+        "idempotency_key": "5437b714991d96671caa7b490482c212f3f6eae913646a155f9568dc7d5df763",
+        "mode": "SHADOW_FAIL_CLOSED",
+        "planned_actions": [],
+        "reason_code": "SAFETY_BOUNDARY_BLOCK",
+        "simulated_route": null,
+        "status": "FAIL_CLOSED"
+      },
+      "spec": {
+        "canary_id": "CANARY-012",
+        "category": "malformed_input_canary",
+        "description": "Unsupported mode must be blocked.",
+        "expected_reason": "SAFETY_BOUNDARY_BLOCK",
+        "expected_status": "PASS",
+        "severity": "P1",
+        "should_block": true
+      }
+    },
+    "expected_status": "PASS",
+    "observed_reason_code": "SAFETY_BOUNDARY_BLOCK",
+    "observed_runtime_status": "FAIL_CLOSED",
+    "remediation_hint": "none",
+    "status": "PASS"
+  }
+]

@@ -1,0 +1,205 @@
+{
+  "stage": "QSPIN-PROD-4-QD6A",
+  "source_of_truth": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+  "current_production_baseline": "/mnt/data/qspin_prod3_qd6a_release_pack_refresh.zip",
+  "fallback_current_production_baseline": "/mnt/data/qspin_prod3_qd6a_release_pack.zip",
+  "previous_production_baselines": [
+    "/mnt/data/qspin_prod2_qd6a_release_pack.zip",
+    "/mnt/data/qspin_prod1_qd6a_release_pack.zip",
+    "/mnt/data/qspin_prod0_qd6a_release_pack.zip"
+  ],
+  "metadata_release_baseline": "/mnt/data/qspin8_qd6a_release_pack.zip",
+  "wm7a_status": {
+    "included_inside_qd6a": true,
+    "superseded_by_qd6a_where_content_differs": true,
+    "usable_only_for": [
+      "historical comparison",
+      "rollback reference",
+      "delta audit"
+    ]
+  },
+  "behavior": {
+    "synthetic_payload_execution": "synthetic metadata only",
+    "synthetic_qh_shared_slot_sandbox": "isolated metadata only",
+    "expanded_commit_gate": "dry-run only",
+    "runtime_safety_regression": "synthetic deterministic",
+    "live_routing": false,
+    "real_payload_transfer": false,
+    "topology_routing": false,
+    "depth_phase_execution_into_live_wm": false,
+    "shared_slot_writes": false,
+    "external_memory_writes": false,
+    "qh_storage_writes": false,
+    "commit_execution": false,
+    "production_activation": false
+  },
+  "tests": {
+    "manual_runner": "python3 -S prod4_manual_runner.py",
+    "result": "PASSED 18 FAILED 0",
+    "passed": true
+  },
+  "ship_decision": "SHIP QSPIN-PROD-4-QD6A as synthetic/sandbox-only production-track infrastructure; NOT production-active",
+  "next_stage": "QSPIN-PROD-5-QD6A",
+  "generated_files": [
+    {
+      "path": "README_QSPIN_PROD4_QD6A.md",
+      "size_bytes": 263,
+      "sha256": "46086d553b2d1ab6ca7c5a771abc2c433e936053e3e9843b50dbf9c3e9026b7f"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_active_patching_report.md",
+      "size_bytes": 660,
+      "sha256": "8b37a2a6ad5977363216e6aa664599ed9868dba2d79a19e6be62a5979c0fdd7c"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_additive_export_diff.diff",
+      "size_bytes": 508,
+      "sha256": "c6acd6c7b8f3f7a2511a897f67c489f46a1a08df1089e0f63375f0491f6b2474"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_audit_shipcheck.md",
+      "size_bytes": 653,
+      "sha256": "c4291809f1f0458021199f4f9934189b594859b5780a48d100fdec7cab31c95c"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_commit_gate_expanded_dry_run_design.md",
+      "size_bytes": 673,
+      "sha256": "190bcb9685a37cc769f5a9501d97383c4ff7666fd1910defe10c56497d2e4bf9"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_gate_integration_flow.md",
+      "size_bytes": 659,
+      "sha256": "0f6281d526c22a117ac8ee007633bf5bc0b1d0046ea267060db051ec28140706"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_integration_test_matrix.md",
+      "size_bytes": 661,
+      "sha256": "958d1be98fce206059309a5137f41c69d7d7de5dd88c082555d95840ecdc9478"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_observability_audit_metrics_design.md",
+      "size_bytes": 672,
+      "sha256": "dde9feeb133fb860bdb23531d7dd48705982e0014f45817a2ac5610965ca404b"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_prod2_prod1_prod0_qspin8_preservation_walkthrough.md",
+      "size_bytes": 662,
+      "sha256": "f3f02309d915dfd3ef3b115a7d5700bdb4802d2b4c8ce7656f4a952544248083"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_prod3_contract_walkthrough.md",
+      "size_bytes": 665,
+      "sha256": "6502c1ccca16b420d02d0fca32d5dcb134b1ce06b6cb2804e98046b5a62120c0"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_qd6a_source_consideration_matrix.md",
+      "size_bytes": 1319,
+      "sha256": "a3302cf143f6f5ff4635376d95c547d01f65fccfffac25cccd8d230e728246c2"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_runtime_safety_regression_design.md",
+      "size_bytes": 670,
+      "sha256": "0fb63e31913f328d928f4bd5e8542220dc14a8461f863c1972aea104d1da4bbf"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_safety_stability_report.md",
+      "size_bytes": 661,
+      "sha256": "9bd1d2c9b545d84e3a860f764088a7d476fac807f7780b5590b0c6caa32406d3"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_synthetic_payload_harness_design.md",
+      "size_bytes": 670,
+      "sha256": "e65f5c3b7f9eaef937fdb6faa5af2fc1f05b54bba8e6f55749f2333dc96784f0"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_synthetic_qh_shared_slot_sandbox_design.md",
+      "size_bytes": 677,
+      "sha256": "26bac24f32ceb9596e26d1b145015f75dbefa2b86303983f8993aef64446d23e"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod4_token_budget.md",
+      "size_bytes": 650,
+      "sha256": "f022bc7af50b1cbc328f813da9212076feb6f6c2e0cf0e30d7651f006854e2df"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod5_qd6a_next_command.md",
+      "size_bytes": 305,
+      "sha256": "6acb962f926098b11d5433c27e7787d99495ee81d692a7433c6644d0fbd17fa4"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_commit_gate_expanded_dry_run.py",
+      "size_bytes": 6342,
+      "sha256": "17efba6b729ba132f9e4576c93ab5b46d018f2df3c79788457c5bd63f69c3c9d"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_prod4_observability.py",
+      "size_bytes": 4546,
+      "sha256": "9cab11ff09b6f31a6eecb7b32dd7c9002aeb7195c82fb3f3ae6c8cb5f96ca48e"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_runtime_safety_regression.py",
+      "size_bytes": 4669,
+      "sha256": "8acc88af9ba6dcb38ae540ef879ab33f9ff5dcdace5e3c49a12189e7619fcd42"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_synthetic_payload_harness.py",
+      "size_bytes": 12473,
+      "sha256": "5e6af286ff3d45b717f72b9999e0e515ea2c9d090942eb11d8f43c2ad0e13455"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_synthetic_qh_shared_slot_sandbox.py",
+      "size_bytes": 10037,
+      "sha256": "3a899b7d39351a7dd847781e321afaceaae524b31a644e5f4237a1ebf3fbb85c"
+    },
+    {
+      "path": "release/qspin_prod4_test_result.json",
+      "size_bytes": 122,
+      "sha256": "8d7815a43c6d2a86c4c640f26a29fa4a97870dae58c18629342cf6d300c3c763"
+    },
+    {
+      "path": "tests/qspin_prod4_module_loader.py",
+      "size_bytes": 1081,
+      "sha256": "13d062b8d28f945e41ba769372ceda770f7eb38fd71bac991a9412860a0fcc7b"
+    },
+    {
+      "path": "tests/test_qspin_commit_gate_expanded_dry_run.py",
+      "size_bytes": 1149,
+      "sha256": "04edf17cde74be0460b77fd0ff1aed7644d853fec33a24be89a466c8f62fd92f"
+    },
+    {
+      "path": "tests/test_qspin_prod4_failure_abuse_cases.py",
+      "size_bytes": 1622,
+      "sha256": "a0b137f8fa01acc155d8aee86905249860267c7811155edd6eaad6b8057069e3"
+    },
+    {
+      "path": "tests/test_qspin_prod4_integration_synthetic_execution.py",
+      "size_bytes": 1147,
+      "sha256": "de03899cc0b495f8f0751fb84d932fa278693caf2f306ab1d836b774633b9fe9"
+    },
+    {
+      "path": "tests/test_qspin_prod4_observability.py",
+      "size_bytes": 830,
+      "sha256": "dc969d9ceaf8e61359a02ed75253a4dba797f88c6f1ef7071dd97905ffef317a"
+    },
+    {
+      "path": "tests/test_qspin_prod4_source_consideration_matrix.py",
+      "size_bytes": 517,
+      "sha256": "8d7fbdb65e9307a2c5b90fc0e360683d94983cbf4a3594621e8a1611db762758"
+    },
+    {
+      "path": "tests/test_qspin_runtime_safety_regression.py",
+      "size_bytes": 802,
+      "sha256": "b8853b6c2e57603596284421409d56b71c0d6d1a56e37870e51f9d054d9e898c"
+    },
+    {
+      "path": "tests/test_qspin_synthetic_payload_harness.py",
+      "size_bytes": 2450,
+      "sha256": "e2c6d9a41fec4273df983b4bd48c05505f97851cd24b86da4be325460c644fce"
+    },
+    {
+      "path": "tests/test_qspin_synthetic_qh_shared_slot_sandbox.py",
+      "size_bytes": 1733,
+      "sha256": "61d3eb7f8ba0256ed6e35167753ebc682b2b518f155e48f8239fd4be54825d01"
+    }
+  ]
+}

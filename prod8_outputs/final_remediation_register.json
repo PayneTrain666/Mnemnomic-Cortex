@@ -1,0 +1,167 @@
+{
+  "deferred": [
+    "FR-008",
+    "FR-009",
+    "FR-010",
+    "FR-011",
+    "FR-012"
+  ],
+  "hold_required": true,
+  "items": [
+    {
+      "acceptance_criteria": [
+        "Evidence closes unresolved_production_blocker under an explicit future command."
+      ],
+      "category": "unresolved_production_blocker",
+      "defer_justification": "",
+      "description": "Carry forward unresolved_production_blocker before any activation planning.",
+      "item_id": "FR-001",
+      "severity": "P0",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes deferred_hardening under an explicit future command."
+      ],
+      "category": "deferred_hardening",
+      "defer_justification": "",
+      "description": "Carry forward deferred_hardening before any activation planning.",
+      "item_id": "FR-002",
+      "severity": "P0",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes missing_live_test under an explicit future command."
+      ],
+      "category": "missing_live_test",
+      "defer_justification": "",
+      "description": "Carry forward missing_live_test before any activation planning.",
+      "item_id": "FR-003",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes external_security_review under an explicit future command."
+      ],
+      "category": "external_security_review",
+      "defer_justification": "",
+      "description": "Carry forward external_security_review before any activation planning.",
+      "item_id": "FR-004",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes operator_approval under an explicit future command."
+      ],
+      "category": "operator_approval",
+      "defer_justification": "",
+      "description": "Carry forward operator_approval before any activation planning.",
+      "item_id": "FR-005",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes performance_benchmark under an explicit future command."
+      ],
+      "category": "performance_benchmark",
+      "defer_justification": "",
+      "description": "Carry forward performance_benchmark before any activation planning.",
+      "item_id": "FR-006",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes deployment_staging_review under an explicit future command."
+      ],
+      "category": "deployment_staging_review",
+      "defer_justification": "",
+      "description": "Carry forward deployment_staging_review before any activation planning.",
+      "item_id": "FR-007",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes live_rollback_test under an explicit future command."
+      ],
+      "category": "live_rollback_test",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward live_rollback_test before any activation planning.",
+      "item_id": "FR-008",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes observability_live_test under an explicit future command."
+      ],
+      "category": "observability_live_test",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward observability_live_test before any activation planning.",
+      "item_id": "FR-009",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes canary_live_test under an explicit future command."
+      ],
+      "category": "canary_live_test",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward canary_live_test before any activation planning.",
+      "item_id": "FR-010",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes commit_execution_validation under an explicit future command."
+      ],
+      "category": "commit_execution_validation",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward commit_execution_validation before any activation planning.",
+      "item_id": "FR-011",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes real_storage_integration_validation under an explicit future command."
+      ],
+      "category": "real_storage_integration_validation",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward real_storage_integration_validation before any activation planning.",
+      "item_id": "FR-012",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    }
+  ],
+  "open_p0": [
+    "FR-001",
+    "FR-002"
+  ],
+  "open_p1": [
+    "FR-003",
+    "FR-004",
+    "FR-005",
+    "FR-006",
+    "FR-007"
+  ]
+}

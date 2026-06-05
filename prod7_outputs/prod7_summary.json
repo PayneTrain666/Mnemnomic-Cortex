@@ -1,0 +1,829 @@
+{
+  "boundary": {
+    "failed": 0,
+    "passed": 16,
+    "results": [
+      {
+        "blocker": "block_synthetic_payload",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_synthetic_payload",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "synthetic_payload",
+        "surface_kind": "synthetic_payload",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_real_payload",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_real_payload",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "real_payload",
+        "surface_kind": "real_payload",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_synthetic_qh_sandbox",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_synthetic_qh_sandbox",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "synthetic_qh_sandbox",
+        "surface_kind": "synthetic_qh_sandbox",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_real_qh_storage",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_real_qh_storage",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "real_qh_storage",
+        "surface_kind": "real_qh_storage",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_synthetic_shared_slot_sandbox",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_synthetic_shared_slot_sandbox",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "synthetic_shared_slot_sandbox",
+        "surface_kind": "synthetic_shared_slot_sandbox",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_real_shared_slot_store",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_real_shared_slot_store",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "real_shared_slot_store",
+        "surface_kind": "real_shared_slot_store",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_synthetic_external_memory",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_synthetic_external_memory",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "synthetic_external_memory",
+        "surface_kind": "synthetic_external_memory",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_real_external_memory",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_real_external_memory",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "real_external_memory",
+        "surface_kind": "real_external_memory",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_dry_run_commit",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_dry_run_commit",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "dry_run_commit",
+        "surface_kind": "dry_run_commit",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_real_commit",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_real_commit",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "real_commit",
+        "surface_kind": "real_commit",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_shadow_route",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_shadow_route",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "shadow_route",
+        "surface_kind": "shadow_route",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_live_route",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_live_route",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "live_route",
+        "surface_kind": "live_route",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_synthetic_trace",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_synthetic_trace",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "synthetic_trace",
+        "surface_kind": "synthetic_trace",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_raw_payload_trace",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_raw_payload_trace",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "raw_payload_trace",
+        "surface_kind": "raw_payload_trace",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_local_source_probe",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_local_source_probe",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "local_source_probe",
+        "surface_kind": "local_source_probe",
+        "synthetic_side_inspected": true
+      },
+      {
+        "blocker": "block_live_runtime_execution",
+        "real_side_not_touched": true,
+        "reasons": [],
+        "request_id": "verify_live_runtime_execution",
+        "residual_risk": "low",
+        "status": "passed",
+        "surface_id": "live_runtime_execution",
+        "surface_kind": "live_runtime_execution",
+        "synthetic_side_inspected": true
+      }
+    ],
+    "skipped": 0
+  },
+  "ci": {
+    "failed": 0,
+    "passed": 20,
+    "results": [
+      {
+        "check_id": "source_verification_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "token_budget_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "source_consideration_matrix_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_live_routing_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_payload_transfer_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_real_write_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_qh_write_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_shared_slot_write_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_external_memory_write_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_commit_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "no_production_activation_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "redaction_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "audit_chain_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "deterministic_replay_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "trace_corpus_replay_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "ci_matrix_hardening_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "extended_safety_regression_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "remediation_closure_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "full_printout_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "ship_check_gate",
+        "evidence": {},
+        "reasons": [],
+        "severity": "critical",
+        "status": "passed"
+      },
+      {
+        "check_id": "pytest_optional",
+        "evidence": {},
+        "reasons": [
+          "optional_tool_missing"
+        ],
+        "severity": "optional",
+        "status": "skipped"
+      }
+    ],
+    "skipped": 1
+  },
+  "commits": "BLOCKED",
+  "fail": 0,
+  "live_routing": "BLOCKED",
+  "observability_review": {
+    "gaps": [],
+    "prod8_carry_forward": [],
+    "reasons": [],
+    "remediation_hints": [],
+    "request_id": "obs_review",
+    "status": "passed"
+  },
+  "observability_snapshot": {
+    "audits": [],
+    "dead_letters": [],
+    "metrics": [
+      {
+        "name": "readonly_probe_attempts",
+        "tags": {},
+        "value": 6
+      },
+      {
+        "name": "boundary_verification_attempts",
+        "tags": {},
+        "value": 16
+      },
+      {
+        "name": "ci_gate_checks_run",
+        "tags": {},
+        "value": 21
+      },
+      {
+        "name": "probe_safety_cases_run",
+        "tags": {},
+        "value": 19
+      }
+    ],
+    "spans": []
+  },
+  "pass": 62,
+  "probe": {
+    "failed": 0,
+    "passed": 6,
+    "results": [
+      {
+        "elapsed_ms": 0.007,
+        "evidence": {
+          "module": "json",
+          "read_only": true,
+          "target": "json"
+        },
+        "reasons": [],
+        "request_id": "probe_import_stdlib_json",
+        "status": "passed",
+        "target": "json",
+        "target_kind": "local_import"
+      },
+      {
+        "elapsed_ms": 0.036,
+        "evidence": {
+          "exists": true,
+          "read_only": true,
+          "target": "release/qspin_prod7_qd6a_release_manifest.json"
+        },
+        "reasons": [],
+        "request_id": "probe_manifest",
+        "status": "passed",
+        "target": "release/qspin_prod7_qd6a_release_manifest.json",
+        "target_kind": "manifest_exists"
+      },
+      {
+        "elapsed_ms": 0.002,
+        "evidence": {
+          "read_only": true,
+          "sentinel_passed": true,
+          "target": "no_write"
+        },
+        "reasons": [],
+        "request_id": "probe_no_write",
+        "status": "passed",
+        "target": "no_write",
+        "target_kind": "no_write_sentinel"
+      },
+      {
+        "elapsed_ms": 0.001,
+        "evidence": {
+          "read_only": true,
+          "sentinel_passed": true,
+          "target": "no_network"
+        },
+        "reasons": [],
+        "request_id": "probe_no_network",
+        "status": "passed",
+        "target": "no_network",
+        "target_kind": "no_network_sentinel"
+      },
+      {
+        "elapsed_ms": 0.001,
+        "evidence": {
+          "read_only": true,
+          "sentinel_passed": true,
+          "target": "no_commit"
+        },
+        "reasons": [],
+        "request_id": "probe_no_commit",
+        "status": "passed",
+        "target": "no_commit",
+        "target_kind": "no_commit_sentinel"
+      },
+      {
+        "elapsed_ms": 0.002,
+        "evidence": {
+          "read_only": true,
+          "sentinel_passed": true,
+          "target": "no_live_route"
+        },
+        "reasons": [],
+        "request_id": "probe_no_live_route",
+        "status": "passed",
+        "target": "no_live_route",
+        "target_kind": "no_live_route_sentinel"
+      }
+    ],
+    "skipped": 0
+  },
+  "production_active": false,
+  "readiness_blockers": {
+    "blockers": [
+      {
+        "blocker_id": "RB-001",
+        "category": "live-routing-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "critical",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-002",
+        "category": "real-payload-transfer-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "critical",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-003",
+        "category": "real-write-path-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "critical",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-004",
+        "category": "qh-real-store-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-005",
+        "category": "shared-slot-real-store-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-006",
+        "category": "external-memory-real-store-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-007",
+        "category": "commit-execution-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "critical",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-008",
+        "category": "production-activation-not-enabled",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "critical",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-009",
+        "category": "real-runtime-integration-not-verified",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "critical",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-010",
+        "category": "performance-benchmarks-not-real",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-011",
+        "category": "security-review-not-complete",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-012",
+        "category": "hazop-lopa-equivalent-not-complete",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-013",
+        "category": "operator-approval-not-complete",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-014",
+        "category": "rollback-live-test-not-complete",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-015",
+        "category": "observability-live-test-not-complete",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      },
+      {
+        "blocker_id": "RB-016",
+        "category": "canary-live-test-not-complete",
+        "evidence": "not yet production-validated",
+        "required_next_action": "carry forward to later explicit activation planning",
+        "safety_implication": "prevents production-active claim",
+        "severity": "high",
+        "status": "open",
+        "target_stage": "PROD-8+",
+        "test_coverage": "synthetic/read-only only"
+      }
+    ],
+    "open_critical": 6,
+    "production_active_allowed": false
+  },
+  "real_payload_transfer": "BLOCKED",
+  "real_writes": "BLOCKED",
+  "safety": {
+    "failed": 0,
+    "passed": 19,
+    "results": [
+      {
+        "case_id": "PSC-001",
+        "kind": "readonly_import_no_write",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-002",
+        "kind": "dataclass_no_heavy_runtime",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-003",
+        "kind": "enum_no_global_mutation",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-004",
+        "kind": "manifest_no_write",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-005",
+        "kind": "no_live_route",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-006",
+        "kind": "no_payload_transfer",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-007",
+        "kind": "no_qh_write",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-008",
+        "kind": "no_shared_slot_write",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-009",
+        "kind": "no_external_memory_write",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-010",
+        "kind": "no_commit",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-011",
+        "kind": "no_production_activation",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-012",
+        "kind": "no_network",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-013",
+        "kind": "no_raw_payload_logging",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-014",
+        "kind": "no_secret_logging",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-015",
+        "kind": "optional_source_structured_skip",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-016",
+        "kind": "ci_gate_fails_on_safety",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-017",
+        "kind": "boundary_blocks_real_side",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-018",
+        "kind": "observability_redacts_unsafe",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      },
+      {
+        "case_id": "PSC-019",
+        "kind": "readiness_blocks_production",
+        "passed": true,
+        "reason_codes": [
+          "expected_boundary_enforced"
+        ],
+        "remediation_hint": "maintain read-only/synthetic boundary"
+      }
+    ]
+  },
+  "skip": 1,
+  "stage": "QSPIN-PROD-7-QD6A"
+}

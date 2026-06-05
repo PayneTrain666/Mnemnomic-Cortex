@@ -1,0 +1,130 @@
+{
+  "records": [
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "QD6A",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "QSPIN-8",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "PROD-0",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "PROD-1",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "PROD-2",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "PROD-3",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "PROD-4",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "PROD-5",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "n/a",
+      "direct_use": true,
+      "evidence": "lineage recorded",
+      "family": "PROD-6",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "n/a",
+      "direct_use": true,
+      "evidence": "lineage recorded",
+      "family": "PROD-7",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "n/a",
+      "direct_use": true,
+      "evidence": "lineage recorded",
+      "family": "tests",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "n/a",
+      "direct_use": true,
+      "evidence": "lineage recorded",
+      "family": "docs",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "n/a",
+      "direct_use": true,
+      "evidence": "lineage recorded",
+      "family": "release_manifests",
+      "risk": "low",
+      "structured_skip": false
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "preserved / no mutation",
+      "direct_use": false,
+      "evidence": "lineage recorded",
+      "family": "optional_skips",
+      "risk": "low",
+      "structured_skip": false
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "release_id": "HGM-9",
+  "name": "HGM/QDT Runtime Integration Evaluation, Slot-Lattice Replay Benchmarks, and Production Readiness Gate",
+  "source_of_truth": "/mnt/data/current-branch-HGM-8-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "additive_only": true,
+  "live_qdt_writes": false,
+  "production_enabled": false,
+  "targeted_tests": "13 passed",
+  "compatibility_tests": "143 passed",
+  "compileall": "passed",
+  "added_files": [
+    "docs/hgm_hpme/10_hgm_9_runtime_integration_readiness.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm9_pipeline.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm9_result.py",
+    "mnemonic_cortex/hypergraph_manifold/production_readiness_gate.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_runtime_evaluation.py",
+    "mnemonic_cortex/hypergraph_manifold/slot_lattice_replay_benchmark.py",
+    "release/hgm_9/changed_files.json",
+    "release/hgm_9/compatibility_pytest_output.txt",
+    "release/hgm_9/compile_output.txt",
+    "release/hgm_9/manifest.json",
+    "release/hgm_9/pytest_output.txt",
+    "release/hgm_9/ship_check.md",
+    "tests/test_hgm_9_runtime_integration_readiness.py"
+  ],
+  "modified_files": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "known_limits": [
+    "HGM-9 is evaluation-first.",
+    "It does not perform live QDT/WM writes.",
+    "It does not mutate bridge plans or slot-lattice internals.",
+    "It does not enable production execution.",
+    "It does not require torch/numpy.",
+    "Production activation and API freeze belong to HGM-10/later stages."
+  ]
+}

@@ -1,0 +1,1948 @@
+{
+  "adapter_status": {
+    "adapter_type": "qdt_wm_dry_run_detector",
+    "available": true,
+    "detected_paths": [
+      "module:mnemonic_cortex.working_memory",
+      "module:mnemonic_cortex.working_memory.qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack",
+      "path:/mnt/data/hgm_qdt_audit1_work/mnemonic_cortex/working_memory"
+    ],
+    "metadata": {
+      "dry_run_only": true,
+      "heavy_imports": false
+    },
+    "reason": "detected expected QDT/WM package path(s)"
+  },
+  "audited_files": [
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "_coerce_options",
+        "_trace",
+        "detect_qdt_wm_adapter_status",
+        "build_hgm4_qdt_wm_bridge"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "import": [
+            "importlib.util"
+          ]
+        },
+        {
+          "import": [
+            "os"
+          ]
+        },
+        {
+          "from": "pathlib",
+          "names": [
+            "Path"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Mapping",
+            "Optional",
+            "Sequence"
+          ]
+        },
+        {
+          "from": "enums",
+          "names": [
+            "TraceEventKind",
+            "ValidationSeverity"
+          ]
+        },
+        {
+          "from": "hgm4_result",
+          "names": [
+            "BridgeAdapterStatus",
+            "HGM4BridgeResult",
+            "QDTWMBridgeOptions"
+          ]
+        },
+        {
+          "from": "types",
+          "names": [
+            "TraceRecord"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/qdt_wm_bridge.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "_coerce_options",
+        "_trace",
+        "_redact_value",
+        "_redact_mapping",
+        "_summary",
+        "_metadata",
+        "_maybe_qspin",
+        "_record_content_summary",
+        "_payload_fields",
+        "build_bridge_payload_from_hgm_record"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "asdict",
+            "is_dataclass"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Mapping",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "from": "enums",
+          "names": [
+            "DepthLayer",
+            "GeometryType",
+            "TraceEventKind",
+            "ValidationSeverity"
+          ]
+        },
+        {
+          "from": "hgm1_result",
+          "names": [
+            "BoundScenarioHyperedge"
+          ]
+        },
+        {
+          "from": "hgm2_result",
+          "names": [
+            "DepthRetrievalTarget",
+            "ManifoldRouteAssignment"
+          ]
+        },
+        {
+          "from": "hgm3_result",
+          "names": [
+            "ProceduralActionSequence",
+            "ProceduralMemoryRetrievalCandidate",
+            "RoboticsPlanningActionOption",
+            "SPCPProcedureEmbedding"
+          ]
+        },
+        {
+          "from": "hgm4_result",
+          "names": [
+            "BridgePayloadBuildResult",
+            "HGMBridgePayload",
+            "QDTWMBridgeOptions"
+          ]
+        },
+        {
+          "from": "types",
+          "names": [
+            "TraceRecord"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/bridge_payloads.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "_coerce_options",
+        "_trace",
+        "_clamp01",
+        "_target_slot_id",
+        "build_shared_slot_lattice_hooks"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional",
+            "Sequence"
+          ]
+        },
+        {
+          "from": "enums",
+          "names": [
+            "TraceEventKind",
+            "ValidationSeverity"
+          ]
+        },
+        {
+          "from": "hgm4_result",
+          "names": [
+            "HGMBridgePayload",
+            "QDTWMBridgeOptions",
+            "SharedSlotLatticeHook",
+            "SharedSlotLatticeHookResult"
+          ]
+        },
+        {
+          "from": "types",
+          "names": [
+            "TraceRecord"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/slot_lattice_hooks.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "_coerce_options",
+        "_trace",
+        "build_trace_safe_memory_plan",
+        "preview_bridge_execution"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional",
+            "Sequence"
+          ]
+        },
+        {
+          "from": "bridge_payloads",
+          "names": [
+            "build_bridge_payload_from_hgm_record"
+          ]
+        },
+        {
+          "from": "enums",
+          "names": [
+            "TraceEventKind",
+            "ValidationSeverity"
+          ]
+        },
+        {
+          "from": "hgm4_result",
+          "names": [
+            "BridgeExecutionPreview",
+            "HGMBridgePayload",
+            "QDTWMBridgeOptions",
+            "TraceSafeMemoryPlan"
+          ]
+        },
+        {
+          "from": "qdt_wm_bridge",
+          "names": [
+            "detect_qdt_wm_adapter_status"
+          ]
+        },
+        {
+          "from": "slot_lattice_hooks",
+          "names": [
+            "build_shared_slot_lattice_hooks"
+          ]
+        },
+        {
+          "from": "types",
+          "names": [
+            "TraceRecord"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/trace_safe_memory_integration.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "coerce_hgm6_options",
+        "_redact",
+        "trace_hgm6",
+        "build_write_permission_state",
+        "build_hgm6_write_permission_gate"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Mapping",
+            "Optional"
+          ]
+        },
+        {
+          "from": "enums",
+          "names": [
+            "TraceEventKind",
+            "ValidationSeverity"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "HGM6CommitOptions",
+            "WritePermissionState"
+          ]
+        },
+        {
+          "from": "types",
+          "names": [
+            "TraceRecord"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/write_permission_gate.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "build_transaction_operation_previews",
+        "_empty_rollback_manifest",
+        "build_transaction_commit_preview"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "from": "hgm4_result",
+          "names": [
+            "TraceSafeMemoryPlan"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "HGM6CommitOptions",
+            "TransactionOperationPreview"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        },
+        {
+          "from": "write_permission_gate",
+          "names": [
+            "coerce_hgm6_options",
+            "trace_hgm6"
+          ]
+        },
+        {
+          "from": "commit_readiness",
+          "names": [
+            "score_commit_readiness"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "TransactionCommitPreview"
+          ]
+        },
+        {
+          "from": "rollback_plan",
+          "names": [
+            "build_rollback_manifest"
+          ]
+        },
+        {
+          "from": "write_permission_gate",
+          "names": [
+            "build_write_permission_state"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/transaction_preview.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "build_rollback_manifest"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional",
+            "Sequence"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "HGM6CommitOptions",
+            "RollbackManifest",
+            "RollbackOperation",
+            "TransactionOperationPreview"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        },
+        {
+          "from": "write_permission_gate",
+          "names": [
+            "coerce_hgm6_options",
+            "trace_hgm6"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/rollback_plan.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "_stable_hash",
+        "_clamp01",
+        "_extract_hgm5_score",
+        "score_commit_readiness"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "import": [
+            "math"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional"
+          ]
+        },
+        {
+          "from": "hgm4_result",
+          "names": [
+            "TraceSafeMemoryPlan"
+          ]
+        },
+        {
+          "from": "hgm5_result",
+          "names": [
+            "HGM5EmbeddingEvaluationResult",
+            "IntegrationScoringResult"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "CommitReadinessScore",
+            "HGM6CommitOptions",
+            "RollbackManifest",
+            "WritePermissionState"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        },
+        {
+          "from": "write_permission_gate",
+          "names": [
+            "coerce_hgm6_options",
+            "trace_hgm6"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/commit_readiness.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "build_write_execution_adapter_status",
+        "execute_write_adapter",
+        "build_hgm7_write_execution_adapter"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "TransactionCommitPreview"
+          ]
+        },
+        {
+          "from": "hgm7_result",
+          "names": [
+            "HGM7ExecutionOptions",
+            "HGM7WriteExecutionResult",
+            "WriteExecutionAdapterStatus",
+            "WriteExecutionResult",
+            "hgm7_stable_hash",
+            "trace_hgm7"
+          ]
+        },
+        {
+          "from": "recovery_verification",
+          "names": [
+            "verify_recovery"
+          ]
+        },
+        {
+          "from": "transaction_log",
+          "names": [
+            "build_transaction_log",
+            "coerce_hgm7_options"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/write_execution_adapter.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "coerce_hgm7_options",
+        "build_transaction_log"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "TransactionCommitPreview"
+          ]
+        },
+        {
+          "from": "hgm7_result",
+          "names": [
+            "HGM7ExecutionOptions",
+            "TransactionLog",
+            "TransactionLogEntry",
+            "hgm7_stable_hash",
+            "trace_hgm7"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/transaction_log.py"
+    },
+    {
+      "classes": [],
+      "exists": true,
+      "functions": [
+        "verify_recovery"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "List",
+            "Mapping",
+            "Optional"
+          ]
+        },
+        {
+          "from": "hgm6_result",
+          "names": [
+            "RollbackManifest"
+          ]
+        },
+        {
+          "from": "hgm7_result",
+          "names": [
+            "HGM7ExecutionOptions",
+            "RecoveryVerificationRecord",
+            "RecoveryVerificationResult",
+            "TransactionLog",
+            "hgm7_stable_hash",
+            "trace_hgm7"
+          ]
+        },
+        {
+          "from": "transaction_log",
+          "names": [
+            "coerce_hgm7_options"
+          ]
+        },
+        {
+          "from": "validation",
+          "names": [
+            "ValidationResult"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/hypergraph_manifold/recovery_verification.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "__init__",
+            "_validate_input",
+            "forward",
+            "stability_report"
+          ],
+          "name": "QDTWorkingMemory"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "wm_qd2a_depth_contract",
+        "wm_qd5a_commit_cortex_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_commit_cortex_guards",
+          "names": [
+            "ensure_commit_proposal_like",
+            "ensure_commit_decision_like",
+            "ensure_rollback_trace",
+            "ensure_compatibility_input",
+            "ensure_migration_template_safety",
+            "ensure_no_fake_real_source_patch_claim",
+            "commit_cortex_contract_trace",
+            "commit_cortex_trace"
+          ]
+        },
+        {
+          "from": "wm_depth_guards",
+          "names": [
+            "ensure_depth_state",
+            "ensure_token_state",
+            "ensure_triplet_axis",
+            "normalize_quaternion",
+            "ensure_quaternion_pack",
+            "depth_contract_trace",
+            "assert_depth_compatible_tokens"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "import": [
+            "torch.nn"
+          ]
+        },
+        {
+          "from": "wm_config",
+          "names": [
+            "QDTWorkingMemoryConfig"
+          ]
+        },
+        {
+          "from": "wm_trace",
+          "names": [
+            "WMTraceEmitter"
+          ]
+        },
+        {
+          "from": "wm_triplet_state",
+          "names": [
+            "WMTripletProjector"
+          ]
+        },
+        {
+          "from": "wm_depth_adapters",
+          "names": [
+            "WMDepthAdapters",
+            "WMDepthAdaptersConfig"
+          ]
+        },
+        {
+          "from": "wm_depth_fusion",
+          "names": [
+            "WMDepthFusion",
+            "WMDepthFusionConfig"
+          ]
+        },
+        {
+          "from": "wm_quaternion_depth",
+          "names": [
+            "QuaternionDepthReplicator"
+          ]
+        },
+        {
+          "from": "wm_intra_depth_transformer",
+          "names": [
+            "WMIntraDepthTransformer",
+            "WMIntraDepthTransformerConfig"
+          ]
+        },
+        {
+          "from": "wm_cross_depth_transformer",
+          "names": [
+            "WMCrossDepthTransformer",
+            "WMCrossDepthTransformerConfig"
+          ]
+        },
+        {
+          "from": "curved_slot_state",
+          "names": [
+            "CurvedSlotStateBank",
+            "CurvedSlotStateConfig"
+          ]
+        },
+        {
+          "from": "curvature_metric_policy",
+          "names": [
+            "CurvatureMetricPolicy",
+            "CurvatureMetricPolicyConfig"
+          ]
+        },
+        {
+          "from": "depth_specific_addressing",
+          "names": [
+            "DepthSpecificAddressing",
+            "DepthSpecificAddressingConfig"
+          ]
+        },
+        {
+          "from": "curved_resonant_wm_core",
+          "names": [
+            "CurvedResonanceConfig",
+            "CurvedResonantWMCore"
+          ]
+        },
+        {
+          "from": "curved_shadow_write",
+          "names": [
+            "CurvedShadowWriteBuffer",
+            "CurvedShadowWriteConfig"
+          ]
+        },
+        {
+          "from": "wm_memory_augmented_attention",
+          "names": [
+            "WMMemoryAugmentedAttention",
+            "WMMemoryAugmentedAttentionConfig"
+          ]
+        },
+        {
+          "from": "wm_dual_fusion",
+          "names": [
+            "WMDualFusionController",
+            "WMDualFusionConfig"
+          ]
+        },
+        {
+          "from": "wm_shared_slot_store",
+          "names": [
+            "SharedSlotStore",
+            "SharedSlotStoreConfig"
+          ]
+        },
+        {
+          "from": "wm_quantum_holographic_storage",
+          "names": [
+            "QuantumHolographicStorage",
+            "QuantumHolographicStorageConfig"
+          ]
+        },
+        {
+          "from": "wm_system_commit_gate",
+          "names": [
+            "SystemCommitGate",
+            "SystemWriteProposal"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/qdt_working_memory.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "create",
+            "validate",
+            "to_trace"
+          ],
+          "name": "SystemWriteProposal"
+        },
+        {
+          "methods": [
+            "validate",
+            "to_dict"
+          ],
+          "name": "CommitGateDecision"
+        },
+        {
+          "methods": [
+            "ok",
+            "to_dict"
+          ],
+          "name": "CommitGateEvaluation"
+        },
+        {
+          "methods": [
+            "__init__",
+            "_stability_ok",
+            "stage",
+            "evaluate",
+            "commit",
+            "reject",
+            "quarantine",
+            "rollback_last",
+            "trace_summary"
+          ],
+          "name": "SystemCommitGate"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "wm_qd5a_commit_cortex_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_commit_cortex_guards",
+          "names": [
+            "ensure_commit_proposal_like",
+            "ensure_commit_decision_like",
+            "ensure_rollback_trace",
+            "ensure_compatibility_input",
+            "ensure_migration_template_safety",
+            "ensure_no_fake_real_source_patch_claim",
+            "commit_cortex_contract_trace",
+            "commit_cortex_trace"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "import": [
+            "time"
+          ]
+        },
+        {
+          "import": [
+            "uuid"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "import": [
+            "torch.nn.functional"
+          ]
+        },
+        {
+          "from": "curved_shadow_write",
+          "names": [
+            "CurvedShadowWriteBuffer"
+          ]
+        },
+        {
+          "from": "wm_shared_slot_store",
+          "names": [
+            "SharedSlotStore"
+          ]
+        },
+        {
+          "from": "wm_quantum_holographic_storage",
+          "names": [
+            "QuantumHolographicStorage",
+            "QHStorageRecord"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_system_commit_gate.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "validate",
+            "attach_qh_record",
+            "qh_trace_for_slot",
+            "to_dict"
+          ],
+          "name": "MirroredContentRule"
+        },
+        {
+          "methods": [
+            "validate"
+          ],
+          "name": "SharedSlotStoreConfig"
+        },
+        {
+          "methods": [
+            "attach_qh_record",
+            "qh_trace_for_slot",
+            "to_dict"
+          ],
+          "name": "SharedSlotWriteResult"
+        },
+        {
+          "methods": [
+            "__init__",
+            "validate_rules",
+            "write_slot",
+            "mirror_slot",
+            "mark_conflict",
+            "get_content",
+            "references_for_memory",
+            "trace_for_local_slot",
+            "attach_qh_record",
+            "qh_trace_for_slot",
+            "to_dict"
+          ],
+          "name": "SharedSlotStore"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "tensor_fingerprint",
+        "wm_qd4a_external_memory_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_external_memory_guards",
+          "names": [
+            "ensure_external_memory_response",
+            "ensure_mann_trace_visibility",
+            "ensure_fusion_inputs",
+            "ensure_shared_slot_id",
+            "ensure_shared_slot_record",
+            "ensure_qh_code_schema",
+            "ensure_qh_storage_record",
+            "interference_score",
+            "external_memory_contract_trace",
+            "external_memory_trace"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional",
+            "Sequence"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "from": "wm_shared_slot_registry",
+          "names": [
+            "SharedSlotRegistry",
+            "SharedSlotRecord",
+            "canonical_slot_id"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_shared_slot_store.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "validate",
+            "to_dict"
+          ],
+          "name": "SharedSlotMirrorRef"
+        },
+        {
+          "methods": [
+            "validate",
+            "add_or_update_mirror",
+            "set_conflict",
+            "grant_write_permission",
+            "to_dict"
+          ],
+          "name": "SharedSlotRecord"
+        },
+        {
+          "methods": [
+            "__init__",
+            "get_or_create",
+            "link_mirror",
+            "mark_conflict",
+            "grant_write",
+            "get",
+            "by_memory_type",
+            "to_dict",
+            "trace_summary"
+          ],
+          "name": "SharedSlotRegistry"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "canonical_slot_id",
+        "wm_qd4a_external_memory_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_external_memory_guards",
+          "names": [
+            "ensure_external_memory_response",
+            "ensure_mann_trace_visibility",
+            "ensure_fusion_inputs",
+            "ensure_shared_slot_id",
+            "ensure_shared_slot_record",
+            "ensure_qh_code_schema",
+            "ensure_qh_storage_record",
+            "interference_score",
+            "external_memory_contract_trace",
+            "external_memory_trace"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "Iterable",
+            "List",
+            "Optional",
+            "Sequence",
+            "Tuple"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "import": [
+            "time"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_shared_slot_registry.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "to_tuple",
+            "composite_code",
+            "to_dict"
+          ],
+          "name": "QHCodeSchema"
+        },
+        {
+          "methods": [
+            "to_dict"
+          ],
+          "name": "QHInterferenceReport"
+        },
+        {
+          "methods": [
+            "validate",
+            "to_dict"
+          ],
+          "name": "QHStorageRecord"
+        },
+        {
+          "methods": [
+            "validate"
+          ],
+          "name": "QuantumHolographicStorageConfig"
+        },
+        {
+          "methods": [
+            "__init__",
+            "_new_id",
+            "_validate_vector",
+            "check_interference",
+            "create_record",
+            "create_from_shared_slot",
+            "trace_summary",
+            "to_dict"
+          ],
+          "name": "QuantumHolographicStorage"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "_stable_code",
+        "build_qh_code_schema",
+        "wm_qd4a_external_memory_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_external_memory_guards",
+          "names": [
+            "ensure_external_memory_response",
+            "ensure_mann_trace_visibility",
+            "ensure_fusion_inputs",
+            "ensure_shared_slot_id",
+            "ensure_shared_slot_record",
+            "ensure_qh_code_schema",
+            "ensure_qh_storage_record",
+            "interference_score",
+            "external_memory_contract_trace",
+            "external_memory_trace"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "import": [
+            "hashlib"
+          ]
+        },
+        {
+          "import": [
+            "time"
+          ]
+        },
+        {
+          "import": [
+            "uuid"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "import": [
+            "torch.nn.functional"
+          ]
+        },
+        {
+          "from": "wm_shared_slot_store",
+          "names": [
+            "SharedSlotStore",
+            "SharedSlotStoreConfig",
+            "tensor_fingerprint"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_quantum_holographic_storage.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "to_dict"
+          ],
+          "name": "QuaternionDepthTrace"
+        },
+        {
+          "methods": [
+            "validate"
+          ],
+          "name": "QuaternionDepthConfig"
+        },
+        {
+          "methods": [
+            "__init__",
+            "normalized_depth_quaternions",
+            "_rotate_packed_blocks",
+            "replicate",
+            "forward",
+            "depth_consistency_report",
+            "set_depth_quaternion",
+            "dual_quaternion_status"
+          ],
+          "name": "QuaternionDepthReplicator"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "normalize_quaternion",
+        "quaternion_conjugate",
+        "quaternion_multiply",
+        "rotate_vectors_by_quaternion",
+        "wm_qd2a_depth_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_depth_guards",
+          "names": [
+            "ensure_depth_state",
+            "ensure_token_state",
+            "ensure_triplet_axis",
+            "normalize_quaternion",
+            "ensure_quaternion_pack",
+            "depth_contract_trace",
+            "assert_depth_compatible_tokens"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "import": [
+            "torch.nn"
+          ]
+        },
+        {
+          "import": [
+            "torch.nn.functional"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_quaternion_depth.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "to_dict"
+          ],
+          "name": "TraceItem"
+        },
+        {
+          "methods": [
+            "add",
+            "merge_dict",
+            "set_paamax",
+            "update_scores",
+            "to_dict",
+            "summary"
+          ],
+          "name": "WMTrace"
+        },
+        {
+          "methods": [
+            "start",
+            "finish"
+          ],
+          "name": "WMTraceEmitter"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "wm_qd2a_depth_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_depth_guards",
+          "names": [
+            "ensure_depth_state",
+            "ensure_token_state",
+            "ensure_triplet_axis",
+            "normalize_quaternion",
+            "ensure_quaternion_pack",
+            "depth_contract_trace",
+            "assert_depth_compatible_tokens"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "Iterable",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "import": [
+            "time"
+          ]
+        },
+        {
+          "import": [
+            "uuid"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_trace.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "validate",
+            "qdt_config",
+            "compatibility_config"
+          ],
+          "name": "CortexWorkingMemoryIntegrationConfig"
+        },
+        {
+          "methods": [
+            "to_dict"
+          ],
+          "name": "CortexWorkingMemoryMigrationResult"
+        },
+        {
+          "methods": [
+            "__init__",
+            "read_working_memory",
+            "process_working_memory",
+            "write_working_memory",
+            "forward"
+          ],
+          "name": "EnhancedMnemonicCortexQDTAdapter"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "build_qdt_working_memory_for_cortex",
+        "replace_cortex_working_memory",
+        "migration_patch_template",
+        "wm_qd5a_commit_cortex_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_commit_cortex_guards",
+          "names": [
+            "ensure_commit_proposal_like",
+            "ensure_commit_decision_like",
+            "ensure_rollback_trace",
+            "ensure_compatibility_input",
+            "ensure_migration_template_safety",
+            "ensure_no_fake_real_source_patch_claim",
+            "commit_cortex_contract_trace",
+            "commit_cortex_trace"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "import": [
+            "torch.nn"
+          ]
+        },
+        {
+          "from": "wm_config",
+          "names": [
+            "QDTWorkingMemoryConfig"
+          ]
+        },
+        {
+          "from": "qdt_working_memory",
+          "names": [
+            "QDTWorkingMemory"
+          ]
+        },
+        {
+          "from": "wm_compatibility_wrapper",
+          "names": [
+            "QDTWMCompatibilityConfig",
+            "QDTWMCompatibilityWrapper"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_cortex_integration.py"
+    },
+    {
+      "classes": [
+        {
+          "methods": [
+            "validate",
+            "to_trace"
+          ],
+          "name": "ExternalMemoryQuery"
+        },
+        {
+          "methods": [
+            "validate",
+            "to_dict"
+          ],
+          "name": "ExternalMemoryResponse"
+        },
+        {
+          "methods": [
+            "__init__",
+            "query"
+          ],
+          "name": "SyntheticExternalMemoryBank"
+        }
+      ],
+      "exists": true,
+      "functions": [
+        "wm_qd4a_external_memory_contract"
+      ],
+      "imports": [
+        {
+          "from": "__future__",
+          "names": [
+            "annotations"
+          ]
+        },
+        {
+          "from": "wm_external_memory_guards",
+          "names": [
+            "ensure_external_memory_response",
+            "ensure_mann_trace_visibility",
+            "ensure_fusion_inputs",
+            "ensure_shared_slot_id",
+            "ensure_shared_slot_record",
+            "ensure_qh_code_schema",
+            "ensure_qh_storage_record",
+            "interference_score",
+            "external_memory_contract_trace",
+            "external_memory_trace"
+          ]
+        },
+        {
+          "from": "dataclasses",
+          "names": [
+            "dataclass",
+            "field",
+            "asdict"
+          ]
+        },
+        {
+          "from": "typing",
+          "names": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "import": [
+            "time"
+          ]
+        },
+        {
+          "import": [
+            "uuid"
+          ]
+        },
+        {
+          "import": [
+            "torch"
+          ]
+        },
+        {
+          "from": "wm_shared_slot_store",
+          "names": [
+            "SharedSlotStore",
+            "SharedSlotStoreConfig"
+          ]
+        }
+      ],
+      "path": "mnemonic_cortex/working_memory/wm_external_memory_interfaces.py"
+    }
+  ],
+  "compatibility_review": {
+    "compatible": [
+      "HGM detects mnemonic_cortex.working_memory and packaged QDT/WM path without heavy imports.",
+      "HGM bridge payloads, slot hooks, memory plans, transaction previews, and logs are typed and traceable.",
+      "QDT/WM exposes SystemWriteProposal, SystemCommitGate, SharedSlotStore, SharedSlotRegistry, QuantumHolographicStorage, QDTWorkingMemory, and WM trace surfaces.",
+      "Both sides have explicit write-permission concepts and rollback/recovery concepts.",
+      "HGM-0A through HGM-10 compatibility tests still pass after audit artifact generation.",
+      "Targeted QDT/WM write/slot/QH/commit tests pass in this environment."
+    ],
+    "partial_or_blocked": [
+      "No HGM payload-to-torch.Tensor proposal materializer exists yet.",
+      "No canonical slot mapping handshake exists between hgm_slot_* and css-* identities.",
+      "No q-spin placeholder to QHCodeSchema/QHStorageRecord conversion contract exists yet.",
+      "No live write execution adapter is enabled; HGM-7 is simulation/log-only.",
+      "Rollback manifests are not yet bound to actual WM rollback_stack snapshots.",
+      "Adapter detection is presence-based, not signature-probe based."
+    ]
+  },
+  "generated_utc": "2026-06-04T08:59:16.330425+00:00",
+  "hgm_public_api_sample": [
+    "HGMConfig",
+    "DepthLayer",
+    "GeometryType",
+    "HyperedgeKind",
+    "MutationDirection",
+    "ProbabilityNormalizationMode",
+    "TraceEventKind",
+    "ValidationSeverity",
+    "P_VM",
+    "P_VMD",
+    "P_VMDC",
+    "P_VMDCT",
+    "P_VMDCTA",
+    "SHAPE_CONTRACTS",
+    "TensorShapeContract",
+    "contract_by_name",
+    "DepthLayerAssignment",
+    "HypersetMatrix",
+    "MagnitudeBin",
+    "ManifoldChart",
+    "MutationToken",
+    "QSpinSignature",
+    "ScenarioHyperedge",
+    "TraceRecord",
+    "ValidationMessage",
+    "ValidationResult",
+    "normalize_probability_payload",
+    "build_probability_expansion",
+    "expand_from_mutation_tokens",
+    "infer_probability_shape_contract"
+  ],
+  "hgm_public_api_symbols": 176,
+  "risk_register": [
+    {
+      "area": "payload materialization",
+      "finding": "HGM bridge payloads currently carry content_summary strings and metadata, while QDT/WM SystemWriteProposal requires a finite torch.Tensor content vector with a configured dimension.",
+      "id": "HGM-QDT-R1",
+      "impact": "No safe write-stage adapter can construct a real commit proposal without an explicit vector/tensor materialization contract.",
+      "mitigation": "Add a read-only materialization adapter stage that maps HGMBridgePayload / HGMEmbeddingRecord / SPCPProcedureEmbedding into bounded torch.Tensor proposals with dim negotiation and finite checks.",
+      "severity": "HIGH",
+      "status": "open"
+    },
+    {
+      "area": "slot identity",
+      "finding": "HGM SharedSlotLatticeHook.target_slot_id uses hgm_slot_* IDs, while WM SharedSlotRegistry.canonical_slot_id creates css-* IDs from namespace/local_slot/fingerprint.",
+      "id": "HGM-QDT-R2",
+      "impact": "Direct commit would create mismatched or duplicated slot identities.",
+      "mitigation": "Add a canonical-slot mapping adapter that treats HGM target_slot_id as local_slot_id and lets WM generate css-* canonical IDs, then records both IDs in lineage.",
+      "severity": "HIGH",
+      "status": "open"
+    },
+    {
+      "area": "depth mapping",
+      "finding": "HGM DepthLayer enum carries semantic depth labels; WM write APIs expect integer depth_index.",
+      "id": "HGM-QDT-R3",
+      "impact": "Depth routing can be off-by-one or semantically wrong if converted implicitly.",
+      "mitigation": "Freeze an explicit mapping D0_OBSERVATION=0 through D7_STRATEGIC=7 and validate all write plans before proposal generation.",
+      "severity": "MEDIUM",
+      "status": "open"
+    },
+    {
+      "area": "geometry mapping",
+      "finding": "HGM GeometryType enum must be converted to WM geometry_map strings.",
+      "id": "HGM-QDT-R4",
+      "impact": "Geometry-specific memory policy may be lost or misrouted.",
+      "mitigation": "Add a geometry-map translation table with fail-closed behavior for unsupported geometries.",
+      "severity": "MEDIUM",
+      "status": "open"
+    },
+    {
+      "area": "q-spin / QH code",
+      "finding": "HGM-4 generates qspin_placeholder_* values when q-spin is missing; WM QuantumHolographicStorage expects QH code/record semantics, not placeholder identity alone.",
+      "id": "HGM-QDT-R5",
+      "impact": "Write-stage integration could incorrectly treat placeholder IDs as real QH addressing codes.",
+      "mitigation": "Introduce QSpin/QH-code conversion and require real QHCodeSchema compatibility before write enablement.",
+      "severity": "HIGH",
+      "status": "open"
+    },
+    {
+      "area": "write permission semantics",
+      "finding": "HGM write permission records are preview-only, while WM SystemCommitGate uses SystemWriteProposal.write_permission and require_write_permission at commit time.",
+      "id": "HGM-QDT-R6",
+      "impact": "Granting HGM preview permission must not be confused with WM commit permission.",
+      "mitigation": "Add explicit two-key handshake: HGM write execution approval + WM SystemWriteProposal.write_permission, both recorded in audit trace.",
+      "severity": "HIGH",
+      "status": "open"
+    },
+    {
+      "area": "rollback semantics",
+      "finding": "HGM rollback manifests currently describe rollback coverage, while WM SystemCommitGate.rollback_stack stores actual pre-commit snapshots after real commit.",
+      "id": "HGM-QDT-R7",
+      "impact": "Rollback readiness cannot be certified until HGM can verify actual snapshot references.",
+      "mitigation": "Add a pre-commit snapshot reference protocol and require WM rollback_stack linkage in any live write stage.",
+      "severity": "HIGH",
+      "status": "open"
+    },
+    {
+      "area": "adapter detection",
+      "finding": "HGM adapter detection checks package paths/specs without heavy imports; this proves presence, not callable API compatibility.",
+      "id": "HGM-QDT-R8",
+      "impact": "Runtime integration may fail after passing path-based detection.",
+      "mitigation": "Add a contract probe that inspects signatures for SystemWriteProposal, SystemCommitGate, SharedSlotStore, QuantumHolographicStorage, and QDTWorkingMemory without executing writes.",
+      "severity": "MEDIUM",
+      "status": "open"
+    },
+    {
+      "area": "dependency boundary",
+      "finding": "QDT/WM write surfaces depend on torch; HGM bridge/evaluation layers intentionally avoid hard torch dependency.",
+      "id": "HGM-QDT-R9",
+      "impact": "Write stage needs controlled optional dependency handling.",
+      "mitigation": "Add torch availability preflight and dependency-isolated adapter module; fail closed when torch is unavailable.",
+      "severity": "MEDIUM",
+      "status": "open"
+    },
+    {
+      "area": "trace redaction",
+      "finding": "HGM traces are redaction-compatible, but WM proposal metadata and shared-slot metadata can carry arbitrary dictionaries.",
+      "id": "HGM-QDT-R10",
+      "impact": "Secrets could leak if HGM metadata is passed through unchanged.",
+      "mitigation": "Redact metadata before SystemWriteProposal creation and store full sensitive payloads nowhere in HGM traces.",
+      "severity": "MEDIUM",
+      "status": "open"
+    },
+    {
+      "area": "read-only status",
+      "finding": "HGM-4 through HGM-9 correctly preserve dry-run/evaluation-first behavior.",
+      "id": "HGM-QDT-R11",
+      "impact": "Good safety posture; no remediation required.",
+      "mitigation": "Keep this invariant in HGM-QDT-AUDIT-2 and any write-prep stage.",
+      "severity": "LOW",
+      "status": "monitor"
+    }
+  ],
+  "source_archive": "/mnt/data/current-branch-HGM-10-patched.zip",
+  "stage": "HGM-QDT-AUDIT-1",
+  "tests": {
+    "compileall": "passed for HGM and working_memory",
+    "hgm_0a_through_hgm_10": "153 passed in 1.86s",
+    "qdt_wm_targeted": "22 passed in 1.13s"
+  }
+}

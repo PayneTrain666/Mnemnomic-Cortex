@@ -1,0 +1,20 @@
+{
+  "changed_files": [
+    "docs/hgm_hpme/HGM_QDT_WRITE_PREP_3.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep3_result.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_synthetic_slot_store.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_in_memory_commitgate_simulation.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_rollback_replay_verification.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm_qdt_write_prep3_pipeline.py",
+    "mnemonic_cortex/hypergraph_manifold/qdt_dry_run_proposal_builder.py",
+    "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "tests/test_hgm_qdt_write_prep_3.py",
+    "release/hgm_qdt_write_prep_3/pytest_output.txt",
+    "release/hgm_qdt_write_prep_3/compatibility_pytest_output.txt",
+    "release/hgm_qdt_write_prep_3/qdt_wm_targeted_pytest_output.txt",
+    "release/hgm_qdt_write_prep_3/compile_output.txt",
+    "release/hgm_qdt_write_prep_3/changed_files.json",
+    "release/hgm_qdt_write_prep_3/manifest.json",
+    "release/hgm_qdt_write_prep_3/ship_check.md"
+  ]
+}

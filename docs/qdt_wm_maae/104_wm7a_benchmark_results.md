@@ -1,0 +1,184 @@
+# WM-7A Benchmark Results
+
+## Benchmark harness
+
+`benchmarks/benchmark_qdt_wm_maae.py`
+
+## Benchmark stdout
+
+```text
+{
+  "benchmark_name": "qdt_wm_maae_wm7a_smoke_benchmark",
+  "config": {
+    "batch": 1,
+    "tokens": 3,
+    "dim": 32,
+    "iterations": 1
+  },
+  "latency_smoke": {
+    "read": {
+      "iterations": 1,
+      "mean_ms": 278.0281900013506,
+      "min_ms": 278.0281900013506,
+      "max_ms": 278.0281900013506
+    },
+    "process": {
+      "iterations": 1,
+      "mean_ms": 121.25054399984947,
+      "min_ms": 121.25054399984947,
+      "max_ms": 121.25054399984947
+    },
+    "write": {
+      "iterations": 1,
+      "mean_ms": 73.08913400083838,
+      "min_ms": 73.08913400083838,
+      "max_ms": 73.08913400083838
+    }
+  },
+  "trace_size_smoke": {
+    "read": {
+      "json_bytes": 25805,
+      "trace_items": 15,
+      "output_shape": [
+        1,
+        3,
+        32
+      ],
+      "finite": true
+    },
+    "process": {
+      "json_bytes": 25977,
+      "trace_items": 15,
+      "output_shape": [
+        1,
+        3,
+        32
+      ],
+      "finite": true
+    },
+    "write": {
+      "json_bytes": 8983,
+      "trace_items": 6,
+      "output_shape": [
+        1,
+        3,
+        32
+      ],
+      "finite": true
+    }
+  },
+  "slot_qh_commit_gate_growth_smoke": [
+    {
+      "step": 0,
+      "finite": true,
+      "shared_slot_records": 15,
+      "qh_records": 4,
+      "commit_decisions": 2
+    },
+    {
+      "step": 1,
+      "finite": true,
+      "shared_slot_records": 16,
+      "qh_records": 5,
+      "commit_decisions": 3
+    }
+  ],
+  "compatibility_wrapper_process_latency": {
+    "iterations": 1,
+    "mean_ms": 105.98533900156326,
+    "min_ms": 105.98533900156326,
+    "max_ms": 105.98533900156326
+  },
+  "pass": true
+}
+
+```
+
+## Parsed benchmark JSON
+
+```json
+{
+  "benchmark_name": "qdt_wm_maae_wm7a_smoke_benchmark",
+  "config": {
+    "batch": 1,
+    "tokens": 3,
+    "dim": 32,
+    "iterations": 1
+  },
+  "latency_smoke": {
+    "read": {
+      "iterations": 1,
+      "mean_ms": 278.0281900013506,
+      "min_ms": 278.0281900013506,
+      "max_ms": 278.0281900013506
+    },
+    "process": {
+      "iterations": 1,
+      "mean_ms": 121.25054399984947,
+      "min_ms": 121.25054399984947,
+      "max_ms": 121.25054399984947
+    },
+    "write": {
+      "iterations": 1,
+      "mean_ms": 73.08913400083838,
+      "min_ms": 73.08913400083838,
+      "max_ms": 73.08913400083838
+    }
+  },
+  "trace_size_smoke": {
+    "read": {
+      "json_bytes": 25805,
+      "trace_items": 15,
+      "output_shape": [
+        1,
+        3,
+        32
+      ],
+      "finite": true
+    },
+    "process": {
+      "json_bytes": 25977,
+      "trace_items": 15,
+      "output_shape": [
+        1,
+        3,
+        32
+      ],
+      "finite": true
+    },
+    "write": {
+      "json_bytes": 8983,
+      "trace_items": 6,
+      "output_shape": [
+        1,
+        3,
+        32
+      ],
+      "finite": true
+    }
+  },
+  "slot_qh_commit_gate_growth_smoke": [
+    {
+      "step": 0,
+      "finite": true,
+      "shared_slot_records": 15,
+      "qh_records": 4,
+      "commit_decisions": 2
+    },
+    {
+      "step": 1,
+      "finite": true,
+      "shared_slot_records": 16,
+      "qh_records": 5,
+      "commit_decisions": 3
+    }
+  ],
+  "compatibility_wrapper_process_latency": {
+    "iterations": 1,
+    "mean_ms": 105.98533900156326,
+    "min_ms": 105.98533900156326,
+    "max_ms": 105.98533900156326
+  },
+  "pass": true
+}
+```

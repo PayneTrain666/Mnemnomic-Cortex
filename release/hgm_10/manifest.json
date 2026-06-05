@@ -1,0 +1,39 @@
+{
+  "stage": "HGM-10",
+  "release_name": "Final HGM Release Consolidation, API Freeze, Documentation Pack, and Integration Roadmap",
+  "version": "HGM-v0.1",
+  "source_of_truth": "/mnt/data/current-branch-HGM-9-patched.zip",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "additive_only": true,
+  "live_qdt_write": false,
+  "production_enabled": false,
+  "api_symbol_count": 176,
+  "module_count": 56,
+  "manifest_summary_count": 10,
+  "roadmap_item_count": 6,
+  "tests": {
+    "targeted": "10 passed",
+    "compatibility": "153 passed",
+    "compileall": "passed"
+  },
+  "files": [
+    "docs/hgm_hpme/11_hgm_10_release_consolidation.md",
+    "docs/hgm_hpme/HGM_V0_1_API_FREEZE.md",
+    "docs/hgm_hpme/HGM_V0_1_INTEGRATION_ROADMAP.md",
+    "docs/hgm_hpme/HGM_V0_1_RELEASE_NOTES.md",
+    "mnemonic_cortex/hypergraph_manifold/api_freeze.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm10_pipeline.py",
+    "mnemonic_cortex/hypergraph_manifold/hgm10_result.py",
+    "mnemonic_cortex/hypergraph_manifold/integration_roadmap.py",
+    "mnemonic_cortex/hypergraph_manifold/release_consolidation.py",
+    "mnemonic_cortex/hypergraph_manifold/__init__.py",
+    "release/hgm_10/changed_files.json",
+    "release/hgm_10/compatibility_pytest_output.txt",
+    "release/hgm_10/compile_output.txt",
+    "release/hgm_10/manifest.json",
+    "release/hgm_10/pytest_output.txt",
+    "release/hgm_10/ship_check.md",
+    "tests/test_hgm_10_release_consolidation.py"
+  ],
+  "next_exact_command": "DEV-FLOW FINALIZE HGM-V0.1 \u2014 Preserve Hypergraph Manifold / Hyperset Probability Matrix Expansion Release State"
+}

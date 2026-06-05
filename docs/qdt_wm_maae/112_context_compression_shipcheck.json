@@ -1,0 +1,22 @@
+{
+  "stage": "WM-CONTEXT-COMP-1A",
+  "stage_complete": true,
+  "parent_pack": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+  "source_files_created": [
+    "mnemonic_cortex/working_memory/context_compression_memory.py"
+  ],
+  "source_files_patched": [
+    "mnemonic_cortex/working_memory/wm_context_mount.py",
+    "mnemonic_cortex/working_memory/__init__.py"
+  ],
+  "tests_created": [
+    "tests/test_wm_context_compression_memory.py"
+  ],
+  "targeted_test_result": "6 passed",
+  "full_test_result": "not rerun in final packaging step; prior parent WM-QD6A pack had passing release tests, and the new targeted test passed",
+  "default_store_mutation": false,
+  "weight_mutation": false,
+  "parameter_refs_full_weight_storage": false,
+  "explicit_write_permission_required": true,
+  "full_depth_adequacy_gate": "PASS"
+}

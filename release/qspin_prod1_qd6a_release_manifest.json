@@ -1,0 +1,169 @@
+{
+  "stage": "QSPIN-PROD-1-QD6A",
+  "source_of_truth": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+  "current_production_baseline": "/mnt/data/qspin_prod0_qd6a_release_pack.zip",
+  "metadata_release_baseline": "/mnt/data/qspin8_qd6a_release_pack.zip",
+  "wm7a_status": {
+    "included_inside_qd6a": true,
+    "superseded_by_qd6a_where_content_differs": true,
+    "usable_only_for": [
+      "historical comparison",
+      "rollback reference",
+      "delta audit"
+    ]
+  },
+  "behavior": {
+    "shadow_activation": "dry-run/shadow-only",
+    "live_routing": false,
+    "payload_transfer": false,
+    "topology_routing": false,
+    "shared_slot_writes": false,
+    "external_memory_writes": false,
+    "qh_storage_writes": false,
+    "commit_execution": false,
+    "production_activation": false
+  },
+  "tests": {
+    "manual_runner": "python3 -S prod1_manual_runner.py",
+    "result": "PASSED 23 FAILED 0"
+  },
+  "ship_decision": "SHIP QSPIN-PROD-1-QD6A as shadow-only production-track infrastructure; NOT production-active",
+  "next_stage": "QSPIN-PROD-2-QD6A",
+  "generated_files": [
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_runtime_shadow_activation.py",
+      "size_bytes": 13860,
+      "sha256": "8036d8960c1d27a72c2c6849e1aaaef0cd4b4c2cef4762776e0fafd38029cb6b"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_commit_gate_dry_run.py",
+      "size_bytes": 11554,
+      "sha256": "892c8794d79bbcf2a44933aa6ded8014d87a806bccf471ad1a86182a4dda7abd"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_kill_switch.py",
+      "size_bytes": 5850,
+      "sha256": "b42539b7ec0f7e1d9b59f0c3664a4d325fea908c32a43af94861adb76ae165e2"
+    },
+    {
+      "path": "mnemonic_cortex/working_memory/qspin_rollback_harness.py",
+      "size_bytes": 5666,
+      "sha256": "bf61f599919bcb0f0d560473a78f6076110d5b5204e81887cc9c278ba009e76d"
+    },
+    {
+      "path": "tests/qspin_prod1_module_loader.py",
+      "size_bytes": 1199,
+      "sha256": "8f5e95e01ba926f33b0d6aaec4848c7e8778737483bb03d670120008ce89f0a2"
+    },
+    {
+      "path": "tests/test_qspin_runtime_shadow_activation.py",
+      "size_bytes": 3314,
+      "sha256": "a0e2bb8476f34c8ffc159c3d23b1a875d457d342463ee9f98af2cd0ee0472a67"
+    },
+    {
+      "path": "tests/test_qspin_commit_gate_dry_run.py",
+      "size_bytes": 2668,
+      "sha256": "d1880b9c8dc195f0e96addd2cfb6da5c3002bd1b9c38d360546c20c845e9aaeb"
+    },
+    {
+      "path": "tests/test_qspin_kill_switch.py",
+      "size_bytes": 1373,
+      "sha256": "6a5643d914a608bf0c0002dd74b7aa51d16033985f5e850f2f07a2179489b1b0"
+    },
+    {
+      "path": "tests/test_qspin_rollback_harness.py",
+      "size_bytes": 1266,
+      "sha256": "f203d5d3372397652a339eacbf92d345c401ac25c33ed1ff4623b35603ff0d1a"
+    },
+    {
+      "path": "tests/test_qspin_prod1_source_consideration_matrix.py",
+      "size_bytes": 605,
+      "sha256": "5a646a15865771babbe9266fea73ac3ab6ddc9e0980a9a0e79905c9a9a46754f"
+    },
+    {
+      "path": "tests/test_qspin_prod1_integration_shadow_activation.py",
+      "size_bytes": 716,
+      "sha256": "6fcb693a4ac4906f0138decc7ee16850f94b8aa1ec26eb9dc9623ada2e9d4550"
+    },
+    {
+      "path": "tests/test_qspin_prod1_failure_abuse_cases.py",
+      "size_bytes": 1992,
+      "sha256": "95e08896ad7d914a264ad7b744cb78e9c2c9dc1b01793738e2450a10e4e30584"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_qd6a_source_consideration_matrix.md",
+      "size_bytes": 1847,
+      "sha256": "aab041eb4bdec95dc989e0aa62044acf71afb15cd1af319b7652fa8a415ac998"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_prod0_contract_walkthrough.md",
+      "size_bytes": 516,
+      "sha256": "efb3ee124da5cf99a385f0acd7c5f353b0e1e324a8bb2ab23a132a021657798d"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_qspin8_release_walkthrough.md",
+      "size_bytes": 440,
+      "sha256": "136ae33a2494705c47268e30b62ca7581bcba5ee8ea5e4741f0465dbf564d05f"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_shadow_activation_design.md",
+      "size_bytes": 394,
+      "sha256": "aa69771f22c9d67ac8b55d8376433f755b55c75a1ad09b10d2b24ed3f7733b02"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_commit_gate_dry_run_design.md",
+      "size_bytes": 331,
+      "sha256": "d427967e6e9d43e23bf4b2df7ed04ba2a729cc6783cd06112fddb9985eeb2cf1"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_kill_switch_design.md",
+      "size_bytes": 267,
+      "sha256": "14462a49db728f14c937b2e5ea4a1c34948e9a454b49c795c39ec60d5cb4a0ad"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_rollback_harness_design.md",
+      "size_bytes": 263,
+      "sha256": "dfc9430fb222222dd4311331cb1fa087e5a5d13ca76ffa9cb77d1ba4505485db"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_integration_test_matrix.md",
+      "size_bytes": 244,
+      "sha256": "818e7a167518c6ead1f153aefb9086c3b952ab602f3076ce6da8dea092609e08"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_safety_stability_report.md",
+      "size_bytes": 369,
+      "sha256": "03caccd1743037aeeac978da7fd831c4b39f0ac05ee2ef5666786b25f4aa4c60"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_token_budget.md",
+      "size_bytes": 357,
+      "sha256": "bbe8cbaa785490582a636f330455ceff3b4e8fd042ae2129d17a544ff0e06354"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_active_patching_report.md",
+      "size_bytes": 597,
+      "sha256": "72a7097d30030f09c8227aae4d86466147c77162b8439f6152921204805a99b8"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_audit_shipcheck.md",
+      "size_bytes": 472,
+      "sha256": "8257b5a58087db95112334316831b618a18e30025075ac62823bbef794e9efbd"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod2_qd6a_next_command.md",
+      "size_bytes": 530,
+      "sha256": "0d9f3f98a7ececf888ca0c6359b6f8366677f594dd2f2cad638dbd6bbe739cd1"
+    },
+    {
+      "path": "docs/qdt_wm_maae/qspin_prod1_additive_export_diff.diff",
+      "size_bytes": 412,
+      "sha256": "b76967d943834bc98360902f5aa5634aeb8c661cc8cba47bcb0930a25f2151e8"
+    },
+    {
+      "path": "README_QSPIN_PROD1_QD6A.md",
+      "size_bytes": 271,
+      "sha256": "2f46436afaa55d1ef1637d1a35b76edb026cba0ce4fda4e1f7d75a660189d1d9"
+    }
+  ]
+}

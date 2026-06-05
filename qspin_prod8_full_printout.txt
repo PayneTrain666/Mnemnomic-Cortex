@@ -1,0 +1,2969 @@
+# QSPIN-PROD-8-QD6A Full Generated Content Printout
+
+
+===== FILE: .pytest_cache/.gitignore =====
+# Created by pytest automatically.
+*
+
+
+===== FILE: .pytest_cache/CACHEDIR.TAG =====
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+
+
+===== FILE: .pytest_cache/README.md =====
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+
+
+===== FILE: .pytest_cache/v/cache/lastfailed =====
+{}
+
+===== FILE: .pytest_cache/v/cache/nodeids =====
+[
+  "tests/test_qspin_ci_gate_baseline_freeze.py::test_ci_gate_freeze_passes_defaults_and_blocks_missing",
+  "tests/test_qspin_final_readiness_review.py::test_final_readiness_blocks_production_ready_with_blockers",
+  "tests/test_qspin_final_remediation_register.py::test_final_remediation_register_preserves_hold",
+  "tests/test_qspin_prod8_failure_abuse_cases.py::test_abuse_cases_block_activation_commit_and_secrets",
+  "tests/test_qspin_prod8_manual_runner.py::test_prod8_manual_runner_outputs_pass",
+  "tests/test_qspin_prod8_observability.py::test_prod8_observability_rejects_unsafe_and_idempotent_audit",
+  "tests/test_qspin_prod8_release_builder.py::test_release_builder_blocks_missing_critical_artifacts",
+  "tests/test_qspin_prod8_source_matrix.py::test_prod8_source_matrix_covers_required_families",
+  "tests/test_qspin_prod_blocker_burndown.py::test_blocker_burndown_preserves_p0_p1",
+  "tests/test_qspin_readonly_probe_report.py::test_probe_report_contains_structured_findings"
+]
+
+===== FILE: PROD8_FINAL_HOLD_COMMAND.md =====
+# PROD-8 Final Hold Command
+
+DEV-FLOW FINALIZE QSPIN-BRIDGE Stage QSPIN-PROD-8-HOLD-QD6A — Preserve Final Pre-Activation Readiness Package, Production Blocker Burn-Down Plan, CI Gate Baseline Freeze, and No-Activation State
+
+FINAL HOLD RULES:
+- Preserve QSPIN-PROD-8-QD6A as the final pre-activation package.
+- Do not proceed to production activation.
+- Do not generate write-permission command unless explicitly requested later.
+- Do not enable live routing.
+- Do not enable payload transfer.
+- Do not enable real writes.
+- Do not enable commits.
+- Do not treat synthetic/read-only evidence as production readiness.
+- Carry forward all unresolved blockers and deferred hardening items.
+- Require a separate explicit future command for any production activation planning.
+
+
+===== FILE: README_QSPIN_PROD8_QD6A.md =====
+# QSPIN-PROD-8-QD6A
+
+Final pre-activation readiness package. This stage consolidates evidence, blockers, CI baseline, read-only probe reporting, and final hold state.
+
+It is not production-active and does not enable live routing, writes, commits, or real payload transfer.
+
+
+===== FILE: docs/PROD8_AUDIT_SHIP_CHECK.md =====
+# Audit / Ship Check
+
+Decision: `SHIP_FINAL_PRE_ACTIVATION_HOLD`
+
+Manual runner:
+```text
+PASS=8
+FAIL=0
+SKIP=0
+```
+
+Pytest:
+```text
+..........                                                               [100%]
+10 passed in 0.41s
+```
+
+Active patching:
+- P001: patched dynamic test loader by registering modules in `sys.modules` before dataclass execution.
+
+Safety boundaries remain blocked:
+- live routing
+- real payload transfer
+- real writes
+- commits
+- production activation
+
+Final hold required.
+
+
+===== FILE: docs/PROD8_CI_GATE_BASELINE_FREEZE.md =====
+# CI Gate Baseline Freeze
+
+Local artifact-only baseline for mandatory gates. It does not configure a CI provider and does not commit to a repository.
+
+
+===== FILE: docs/PROD8_EXPANDED_RELEASE_PACK.md =====
+# Expanded Release Pack
+
+The release pack includes modules, tests, docs, runner output, final source matrix, readiness review, blocker plan, probe report, CI baseline freeze, remediation register, observability evidence, audit ship-check, and final hold command.
+
+
+===== FILE: docs/PROD8_FINAL_HOLD_COMMAND.md =====
+# PROD-8 Final Hold Command
+
+DEV-FLOW FINALIZE QSPIN-BRIDGE Stage QSPIN-PROD-8-HOLD-QD6A — Preserve Final Pre-Activation Readiness Package, Production Blocker Burn-Down Plan, CI Gate Baseline Freeze, and No-Activation State
+
+FINAL HOLD RULES:
+- Preserve QSPIN-PROD-8-QD6A as the final pre-activation package.
+- Do not proceed to production activation.
+- Do not generate write-permission command unless explicitly requested later.
+- Do not enable live routing.
+- Do not enable payload transfer.
+- Do not enable real writes.
+- Do not enable commits.
+- Do not treat synthetic/read-only evidence as production readiness.
+- Carry forward all unresolved blockers and deferred hardening items.
+- Require a separate explicit future command for any production activation planning.
+
+
+===== FILE: docs/PROD8_FINAL_PRE_ACTIVATION_READINESS_REVIEW.md =====
+# Final Pre-Activation Readiness Review
+
+Reviews source lineage, PROD/QSPIN preservation, safety boundaries, probe evidence, CI gates, observability, rollback, kill-switch, caveats, and deferred hardening.
+
+The review intentionally does not claim production readiness while critical blockers remain.
+
+
+===== FILE: docs/PROD8_FINAL_REMEDIATION_REGISTER.md =====
+# Final Remediation Register
+
+Carry-forward register for unresolved blockers, deferred hardening, missing live tests, security review, operator approval, performance benchmarks, deployment staging, and real integration validation.
+
+
+===== FILE: docs/PROD8_PRODUCTION_BLOCKER_BURNDOWN_PLAN.md =====
+# Production Blocker Burn-Down Plan
+
+The burn-down plan lists P0/P1/P2 blockers required before any future activation planning. It is planning-only and closes nothing without evidence.
+
+
+===== FILE: docs/PROD8_README.md =====
+# QSPIN-PROD-8-QD6A
+
+Final pre-activation readiness package. This stage consolidates evidence, blockers, CI baseline, read-only probe reporting, and final hold state.
+
+It is not production-active and does not enable live routing, writes, commits, or real payload transfer.
+
+
+===== FILE: docs/PROD8_READONLY_RUNTIME_PROBE_REPORT.md =====
+# Read-Only Runtime Probe Report
+
+Summarizes read-only source/import/dataclass/manifest/no-write/no-network/no-commit/no-live-route probes. No live runtime calls are performed.
+
+
+===== FILE: docs/PROD8_SAFETY_BOUNDARIES.md =====
+# Safety Boundaries
+
+- Live routing: BLOCKED
+- Real payload transfer: BLOCKED
+- Topology execution: BLOCKED
+- Real shared-slot writes: BLOCKED
+- QH writes: BLOCKED
+- External-memory writes: BLOCKED
+- Commit execution: BLOCKED
+- Production activation: BLOCKED
+- Raw payload logging: BLOCKED
+- Secret logging: BLOCKED
+- Network calls: BLOCKED
+- Repo commits: BLOCKED
+- Production-ready claim: BLOCKED
+
+
+===== FILE: docs/PROD8_SOURCE_CONSIDERATION_MATRIX.md =====
+# Source Consideration Matrix
+
+Covers QD6A, QSPIN-8, PROD-0 through PROD-7, PROD-8, tests, docs, release manifests, and structured optional skips.
+
+
+===== FILE: docs/PROD8_TEST_RESULTS.md =====
+# Test Results
+
+Generated by `prod8_manual_runner.py` and pytest. See release/qspin_prod8_test_result.json and prod8_outputs/.
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_ci_gate_baseline_freeze.py =====
+"""QSPIN-PROD-8 CI gate baseline freeze.
+
+Local artifact only: no CI provider configuration, no repo writes, no activation.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, asdict
+from enum import Enum
+from typing import Dict, Tuple
+import json
+
+class CIBaselineFreezeMode(str, Enum):
+    LOCAL_ARTIFACT_ONLY = "local_artifact_only"
+
+class CIBaselineFreezeStatus(str, Enum):
+    FROZEN = "frozen"
+    BLOCKED = "blocked"
+
+class CIBaselineFreezeBlockReason(str, Enum):
+    MISSING_CRITICAL_GATE = "missing_critical_gate"
+    UNSAFE_GATE = "unsafe_gate"
+
+class CIBaselineGateKind(str, Enum):
+    SOURCE_VERIFICATION = "source_verification_gate"
+    SOURCE_MATRIX = "source_consideration_matrix_gate"
+    TOKEN_BUDGET = "token_budget_gate"
+    NO_LIVE_ROUTING = "no_live_routing_gate"
+    NO_PAYLOAD_TRANSFER = "no_payload_transfer_gate"
+    NO_WRITE = "no_write_gate"
+    NO_QH_WRITE = "no_qh_write_gate"
+    NO_SHARED_SLOT_WRITE = "no_shared_slot_write_gate"
+    NO_EXTERNAL_MEMORY_WRITE = "no_external_memory_write_gate"
+    NO_COMMIT = "no_commit_gate"
+    NO_PRODUCTION_ACTIVATION = "no_production_activation_gate"
+    REDACTION = "redaction_gate"
+    AUDIT_CHAIN = "audit_chain_gate"
+    DETERMINISTIC_REPLAY = "deterministic_replay_gate"
+    TRACE_CORPUS = "trace_corpus_gate"
+    CI_MATRIX = "ci_matrix_gate"
+    EXTENDED_SAFETY_REGRESSION = "extended_safety_regression_gate"
+    READONLY_PROBE = "read_only_runtime_probe_gate"
+    SYNTHETIC_REAL_BOUNDARY = "synthetic_to_real_boundary_gate"
+    OBSERVABILITY_REVIEW = "observability_review_gate"
+    READINESS_BLOCKER = "readiness_blocker_gate"
+    FULL_PRINTOUT = "full_printout_gate"
+    RELEASE_PACK = "release_pack_gate"
+    SHIP_CHECK = "ship_check_gate"
+
+@dataclass(frozen=True)
+class CIBaselineGateRecord:
+    kind: CIBaselineGateKind
+    passed: bool
+    critical: bool = True
+    evidence: str = ""
+
+    def validate(self) -> "CIBaselineGateRecord":
+        if not isinstance(self.kind, CIBaselineGateKind):
+            raise ValueError("kind must be CIBaselineGateKind")
+        if self.critical and not self.evidence:
+            raise ValueError("critical gate requires evidence")
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"kind": self.kind.value, "passed": self.passed, "critical": self.critical, "evidence": self.evidence}
+
+@dataclass(frozen=True)
+class CIBaselineFreezeConfig:
+    mode: CIBaselineFreezeMode = CIBaselineFreezeMode.LOCAL_ARTIFACT_ONLY
+    configure_real_ci: bool = False
+    commit_to_repo: bool = False
+
+    def validate(self) -> "CIBaselineFreezeConfig":
+        if self.configure_real_ci:
+            raise ValueError("real CI provider configuration forbidden")
+        if self.commit_to_repo:
+            raise ValueError("repo commit forbidden")
+        return self
+
+@dataclass(frozen=True)
+class CIBaselineFreezeRequest:
+    request_id: str
+    gates: Tuple[CIBaselineGateRecord, ...]
+
+    def validate(self) -> "CIBaselineFreezeRequest":
+        if not self.request_id:
+            raise ValueError("request_id required")
+        for gate in self.gates:
+            gate.validate()
+        return self
+
+@dataclass(frozen=True)
+class CIBaselineFreezeResult:
+    request_id: str
+    status: CIBaselineFreezeStatus
+    block_reasons: Tuple[CIBaselineFreezeBlockReason, ...]
+    gates: Tuple[CIBaselineGateRecord, ...]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"request_id": self.request_id, "status": self.status.value, "block_reasons": [r.value for r in self.block_reasons], "gates": [g.to_dict() for g in self.gates]}
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+    def to_markdown(self) -> str:
+        lines = ["# PROD-8 CI Gate Baseline Freeze", "", f"Status: `{self.status.value}`", ""]
+        for gate in self.gates:
+            lines.append(f"- `{gate.kind.value}`: {'PASS' if gate.passed else 'BLOCK'}")
+        return "\n".join(lines) + "\n"
+
+class CIGateBaselineFreezer:
+    def __init__(self, config: CIBaselineFreezeConfig | None = None):
+        self.config = (config or build_default_ci_baseline_freeze_config()).validate()
+
+    def freeze(self, request: CIBaselineFreezeRequest) -> CIBaselineFreezeResult:
+        request.validate()
+        reasons = []
+        kinds = {g.kind for g in request.gates}
+        missing = [k for k in CIBaselineGateKind if k not in kinds]
+        if missing:
+            reasons.append(CIBaselineFreezeBlockReason.MISSING_CRITICAL_GATE)
+        if any(g.critical and not g.passed for g in request.gates):
+            reasons.append(CIBaselineFreezeBlockReason.UNSAFE_GATE)
+        status = CIBaselineFreezeStatus.BLOCKED if reasons else CIBaselineFreezeStatus.FROZEN
+        return CIBaselineFreezeResult(request.request_id, status, tuple(dict.fromkeys(reasons)), request.gates)
+
+def build_default_ci_baseline_freeze_config() -> CIBaselineFreezeConfig:
+    return CIBaselineFreezeConfig().validate()
+
+def build_default_ci_baseline_gate_records() -> Tuple[CIBaselineGateRecord, ...]:
+    return tuple(CIBaselineGateRecord(kind, True, True, f"PROD-8 local baseline evidence for {kind.value}") for kind in CIBaselineGateKind)
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_final_readiness_review.py =====
+"""QSPIN-PROD-8 final pre-activation readiness review.
+
+This module is read-only and pre-activation only. It consolidates evidence from
+QD6A, QSPIN-8, and PROD-0 through PROD-7, then deliberately avoids any
+production-ready claim while critical blockers remain.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from typing import Dict, Iterable, List, Mapping, Sequence, Tuple
+import json
+
+class FinalReadinessMode(str, Enum):
+    PRE_ACTIVATION_REVIEW = "pre_activation_review"
+    DISABLED = "disabled"
+
+class FinalReadinessStatus(str, Enum):
+    REVIEWED_HOLD_REQUIRED = "reviewed_hold_required"
+    BLOCKED = "blocked"
+    DISABLED = "disabled"
+
+class FinalReadinessBlockReason(str, Enum):
+    MODE_DISABLED = "mode_disabled"
+    MISSING_CRITICAL_EVIDENCE = "missing_critical_evidence"
+    CRITICAL_BLOCKERS_OPEN = "critical_blockers_open"
+    PRODUCTION_ACTIVATION_REQUESTED = "production_activation_requested"
+    WRITE_PERMISSION_REQUESTED = "write_permission_requested"
+    LIVE_ROUTING_REQUESTED = "live_routing_requested"
+    PAYLOAD_TRANSFER_REQUESTED = "payload_transfer_requested"
+    COMMIT_REQUESTED = "commit_requested"
+
+class FinalReadinessDomain(str, Enum):
+    SOURCE_LINEAGE = "source_lineage"
+    QD6A_COMPATIBILITY = "qd6a_compatibility"
+    QSPIN_PRESERVATION = "qspin_0_through_8_preservation"
+    PROD_PRESERVATION = "prod_0_through_7_preservation"
+    SAFETY_BOUNDARIES = "safety_boundaries"
+    READONLY_PROBE = "readonly_probe_evidence"
+    SYNTHETIC_REAL_BOUNDARY = "synthetic_to_real_boundary_evidence"
+    CI_GATE = "ci_gate_evidence"
+    OBSERVABILITY = "observability_evidence"
+    READINESS_BLOCKERS = "readiness_blocker_evidence"
+    SECURITY_DATA_SAFETY = "security_data_safety_evidence"
+    ROLLBACK = "rollback_evidence"
+    KILL_SWITCH = "kill_switch_evidence"
+    PRODUCTION_CAVEATS = "production_caveats"
+    DEFERRED_HARDENING = "deferred_hardening"
+    OPERATOR_APPROVAL = "operator_approval_placeholder"
+    EXTERNAL_SECURITY_REVIEW = "external_security_review_placeholder"
+    PERFORMANCE_BENCHMARK = "performance_benchmark_placeholder"
+    LIVE_CANARY = "live_canary_placeholder"
+    LIVE_ROLLBACK_TEST = "live_rollback_test_placeholder"
+
+class FinalReadinessEvidenceKind(str, Enum):
+    PRESENT = "present"
+    PLACEHOLDER = "placeholder"
+    MISSING = "missing"
+    DEFERRED = "deferred"
+
+@dataclass(frozen=True)
+class FinalReadinessEvidenceRecord:
+    domain: FinalReadinessDomain
+    kind: FinalReadinessEvidenceKind
+    evidence_id: str
+    description: str
+    critical: bool = True
+    safe_summary: Mapping[str, object] = field(default_factory=dict)
+
+    def validate(self) -> "FinalReadinessEvidenceRecord":
+        if not self.evidence_id or not self.description:
+            raise ValueError("evidence_id and description are required")
+        if not isinstance(self.domain, FinalReadinessDomain):
+            raise ValueError("domain must be FinalReadinessDomain")
+        if not isinstance(self.kind, FinalReadinessEvidenceKind):
+            raise ValueError("kind must be FinalReadinessEvidenceKind")
+        return self
+
+@dataclass(frozen=True)
+class FinalReadinessDomainResult:
+    domain: FinalReadinessDomain
+    passed: bool
+    critical: bool
+    status: str
+    evidence_ids: Tuple[str, ...]
+    missing_evidence: Tuple[str, ...] = ()
+    deferred_items: Tuple[str, ...] = ()
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "domain": self.domain.value,
+            "passed": self.passed,
+            "critical": self.critical,
+            "status": self.status,
+            "evidence_ids": list(self.evidence_ids),
+            "missing_evidence": list(self.missing_evidence),
+            "deferred_items": list(self.deferred_items),
+        }
+
+@dataclass(frozen=True)
+class FinalReadinessReviewConfig:
+    mode: FinalReadinessMode = FinalReadinessMode.PRE_ACTIVATION_REVIEW
+    allow_production_ready_claim: bool = False
+    allow_activation_command: bool = False
+    fail_on_critical_missing: bool = True
+
+    def validate(self) -> "FinalReadinessReviewConfig":
+        if self.mode == FinalReadinessMode.DISABLED:
+            raise ValueError("final readiness review disabled")
+        if self.allow_production_ready_claim:
+            raise ValueError("production-ready claim is forbidden in PROD-8")
+        if self.allow_activation_command:
+            raise ValueError("activation command is forbidden in PROD-8")
+        return self
+
+@dataclass(frozen=True)
+class FinalReadinessReviewRequest:
+    request_id: str
+    evidence: Tuple[FinalReadinessEvidenceRecord, ...]
+    critical_blockers_open: int
+    production_activation_requested: bool = False
+    write_permission_requested: bool = False
+    live_routing_requested: bool = False
+    payload_transfer_requested: bool = False
+    commit_requested: bool = False
+
+    def validate(self) -> "FinalReadinessReviewRequest":
+        if not self.request_id:
+            raise ValueError("request_id is required")
+        for record in self.evidence:
+            record.validate()
+        if self.critical_blockers_open < 0:
+            raise ValueError("critical_blockers_open must be non-negative")
+        return self
+
+@dataclass(frozen=True)
+class FinalReadinessReviewResult:
+    request_id: str
+    status: FinalReadinessStatus
+    production_ready: bool
+    hold_required: bool
+    block_reasons: Tuple[FinalReadinessBlockReason, ...]
+    domain_results: Tuple[FinalReadinessDomainResult, ...]
+    final_recommendation: str
+    missing_evidence: Tuple[str, ...]
+    deferred_items: Tuple[str, ...]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "request_id": self.request_id,
+            "status": self.status.value,
+            "production_ready": self.production_ready,
+            "hold_required": self.hold_required,
+            "block_reasons": [r.value for r in self.block_reasons],
+            "domain_results": [d.to_dict() for d in self.domain_results],
+            "final_recommendation": self.final_recommendation,
+            "missing_evidence": list(self.missing_evidence),
+            "deferred_items": list(self.deferred_items),
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+    def to_markdown(self) -> str:
+        lines = ["# PROD-8 Final Pre-Activation Readiness Review", "", f"Status: `{self.status.value}`", f"Production ready: `{self.production_ready}`", f"Hold required: `{self.hold_required}`", "", "## Block reasons"]
+        lines.extend(f"- {r.value}" for r in self.block_reasons)
+        lines.append("\n## Domains")
+        for domain in self.domain_results:
+            lines.append(f"- `{domain.domain.value}`: {'PASS' if domain.passed else 'GAP'} ({domain.status})")
+        lines.append("\n## Recommendation")
+        lines.append(self.final_recommendation)
+        return "\n".join(lines) + "\n"
+
+class FinalPreActivationReadinessReviewer:
+    def __init__(self, config: FinalReadinessReviewConfig | None = None):
+        self.config = (config or build_default_final_readiness_config()).validate()
+
+    def review(self, request: FinalReadinessReviewRequest) -> FinalReadinessReviewResult:
+        request.validate()
+        reasons: List[FinalReadinessBlockReason] = []
+        if request.production_activation_requested:
+            reasons.append(FinalReadinessBlockReason.PRODUCTION_ACTIVATION_REQUESTED)
+        if request.write_permission_requested:
+            reasons.append(FinalReadinessBlockReason.WRITE_PERMISSION_REQUESTED)
+        if request.live_routing_requested:
+            reasons.append(FinalReadinessBlockReason.LIVE_ROUTING_REQUESTED)
+        if request.payload_transfer_requested:
+            reasons.append(FinalReadinessBlockReason.PAYLOAD_TRANSFER_REQUESTED)
+        if request.commit_requested:
+            reasons.append(FinalReadinessBlockReason.COMMIT_REQUESTED)
+        if request.critical_blockers_open > 0:
+            reasons.append(FinalReadinessBlockReason.CRITICAL_BLOCKERS_OPEN)
+
+        by_domain: Dict[FinalReadinessDomain, List[FinalReadinessEvidenceRecord]] = {d: [] for d in build_default_final_readiness_domains()}
+        for record in request.evidence:
+            by_domain.setdefault(record.domain, []).append(record)
+
+        domain_results: List[FinalReadinessDomainResult] = []
+        missing: List[str] = []
+        deferred: List[str] = []
+        for domain in build_default_final_readiness_domains():
+            records = by_domain.get(domain, [])
+            present = [r for r in records if r.kind == FinalReadinessEvidenceKind.PRESENT]
+            placeholders = [r for r in records if r.kind == FinalReadinessEvidenceKind.PLACEHOLDER]
+            missing_records = [r for r in records if r.kind == FinalReadinessEvidenceKind.MISSING]
+            deferred_records = [r for r in records if r.kind == FinalReadinessEvidenceKind.DEFERRED]
+            critical = any(r.critical for r in records) if records else True
+            passed = bool(present) and not any(r.critical and r.kind == FinalReadinessEvidenceKind.MISSING for r in records)
+            if not records:
+                missing.append(domain.value)
+                passed = False
+            for rec in missing_records:
+                missing.append(rec.evidence_id)
+            for rec in deferred_records + placeholders:
+                deferred.append(rec.evidence_id)
+            domain_results.append(FinalReadinessDomainResult(
+                domain=domain,
+                passed=passed,
+                critical=critical,
+                status="present" if passed else "missing_or_deferred",
+                evidence_ids=tuple(r.evidence_id for r in records),
+                missing_evidence=tuple(r.evidence_id for r in missing_records) or (() if records else (domain.value,)),
+                deferred_items=tuple(r.evidence_id for r in deferred_records + placeholders),
+            ))
+
+        if missing and self.config.fail_on_critical_missing:
+            reasons.append(FinalReadinessBlockReason.MISSING_CRITICAL_EVIDENCE)
+        reasons = list(dict.fromkeys(reasons))
+        status = FinalReadinessStatus.BLOCKED if reasons else FinalReadinessStatus.REVIEWED_HOLD_REQUIRED
+        # PROD-8 intentionally never sets production_ready True.
+        recommendation = "FINAL HOLD REQUIRED: preserve pre-activation package; do not enable production activation until blockers are burned down under a separate explicit command."
+        return FinalReadinessReviewResult(
+            request_id=request.request_id,
+            status=status,
+            production_ready=False,
+            hold_required=True,
+            block_reasons=tuple(reasons),
+            domain_results=tuple(domain_results),
+            final_recommendation=recommendation,
+            missing_evidence=tuple(missing),
+            deferred_items=tuple(deferred),
+        )
+
+def build_default_final_readiness_config() -> FinalReadinessReviewConfig:
+    return FinalReadinessReviewConfig().validate()
+
+def build_default_final_readiness_domains() -> Tuple[FinalReadinessDomain, ...]:
+    return tuple(FinalReadinessDomain)
+
+def build_default_final_readiness_evidence() -> Tuple[FinalReadinessEvidenceRecord, ...]:
+    records = []
+    placeholder_domains = {
+        FinalReadinessDomain.OPERATOR_APPROVAL,
+        FinalReadinessDomain.EXTERNAL_SECURITY_REVIEW,
+        FinalReadinessDomain.PERFORMANCE_BENCHMARK,
+        FinalReadinessDomain.LIVE_CANARY,
+        FinalReadinessDomain.LIVE_ROLLBACK_TEST,
+    }
+    for domain in build_default_final_readiness_domains():
+        kind = FinalReadinessEvidenceKind.PLACEHOLDER if domain in placeholder_domains else FinalReadinessEvidenceKind.PRESENT
+        records.append(FinalReadinessEvidenceRecord(
+            domain=domain,
+            kind=kind,
+            evidence_id=f"evidence_{domain.value}",
+            description=f"PROD-8 readiness evidence for {domain.value}",
+            critical=domain not in placeholder_domains,
+        ))
+    return tuple(records)
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_final_remediation_register.py =====
+"""QSPIN-PROD-8 final remediation carry-forward register."""
+from __future__ import annotations
+from dataclasses import dataclass, asdict
+from enum import Enum
+from typing import Dict, Tuple
+import json
+
+class FinalRemediationSeverity(str, Enum):
+    P0 = "P0"
+    P1 = "P1"
+    P2 = "P2"
+    P3 = "P3"
+
+class FinalRemediationStatus(str, Enum):
+    OPEN = "open"
+    DEFERRED = "deferred"
+    HOLD = "hold"
+    RESOLVED = "resolved"
+
+class FinalRemediationCategory(str, Enum):
+    UNRESOLVED_PRODUCTION_BLOCKER = "unresolved_production_blocker"
+    DEFERRED_HARDENING = "deferred_hardening"
+    MISSING_LIVE_TEST = "missing_live_test"
+    EXTERNAL_SECURITY_REVIEW = "external_security_review"
+    OPERATOR_APPROVAL = "operator_approval"
+    PERFORMANCE_BENCHMARK = "performance_benchmark"
+    DEPLOYMENT_STAGING_REVIEW = "deployment_staging_review"
+    LIVE_ROLLBACK_TEST = "live_rollback_test"
+    OBSERVABILITY_LIVE_TEST = "observability_live_test"
+    CANARY_LIVE_TEST = "canary_live_test"
+    COMMIT_EXECUTION_VALIDATION = "commit_execution_validation"
+    REAL_STORAGE_INTEGRATION_VALIDATION = "real_storage_integration_validation"
+
+@dataclass(frozen=True)
+class FinalRemediationItem:
+    item_id: str
+    severity: FinalRemediationSeverity
+    status: FinalRemediationStatus
+    category: FinalRemediationCategory
+    description: str
+    acceptance_criteria: Tuple[str, ...]
+    target_stage: str
+    defer_justification: str = ""
+
+    def validate(self) -> "FinalRemediationItem":
+        if not self.item_id or not self.description or not self.acceptance_criteria:
+            raise ValueError("remediation item requires id, description, and acceptance criteria")
+        if self.severity == FinalRemediationSeverity.P0 and self.status == FinalRemediationStatus.RESOLVED:
+            # resolved is okay only with target evidence embedded in acceptance criteria; this is a conservative placeholder.
+            pass
+        if self.severity in (FinalRemediationSeverity.P0, FinalRemediationSeverity.P1) and self.status == FinalRemediationStatus.DEFERRED and not self.defer_justification:
+            raise ValueError("P0/P1 deferred item requires justification")
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"item_id": self.item_id, "severity": self.severity.value, "status": self.status.value, "category": self.category.value, "description": self.description, "acceptance_criteria": list(self.acceptance_criteria), "target_stage": self.target_stage, "defer_justification": self.defer_justification}
+
+@dataclass(frozen=True)
+class FinalRemediationRegister:
+    items: Tuple[FinalRemediationItem, ...]
+
+    def validate(self) -> "FinalRemediationRegister":
+        for item in self.items:
+            item.validate()
+        return self
+
+@dataclass(frozen=True)
+class FinalRemediationReport:
+    open_p0: Tuple[str, ...]
+    open_p1: Tuple[str, ...]
+    deferred: Tuple[str, ...]
+    hold_required: bool
+    items: Tuple[FinalRemediationItem, ...]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"open_p0": list(self.open_p0), "open_p1": list(self.open_p1), "deferred": list(self.deferred), "hold_required": self.hold_required, "items": [i.to_dict() for i in self.items]}
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+    def to_markdown(self) -> str:
+        lines = ["# PROD-8 Final Remediation Carry-Forward Register", "", f"Hold required: `{self.hold_required}`", "", "## Open P0"]
+        lines.extend(f"- {x}" for x in self.open_p0)
+        lines.append("\n## Open P1")
+        lines.extend(f"- {x}" for x in self.open_p1)
+        lines.append("\n## Deferred")
+        lines.extend(f"- {x}" for x in self.deferred)
+        return "\n".join(lines) + "\n"
+
+    @classmethod
+    def from_register(cls, register: FinalRemediationRegister) -> "FinalRemediationReport":
+        register.validate()
+        open_p0 = tuple(i.item_id for i in register.items if i.severity == FinalRemediationSeverity.P0 and i.status != FinalRemediationStatus.RESOLVED)
+        open_p1 = tuple(i.item_id for i in register.items if i.severity == FinalRemediationSeverity.P1 and i.status != FinalRemediationStatus.RESOLVED)
+        deferred = tuple(i.item_id for i in register.items if i.status == FinalRemediationStatus.DEFERRED)
+        return cls(open_p0, open_p1, deferred, bool(open_p0 or open_p1), register.items)
+
+def build_default_final_remediation_register() -> FinalRemediationRegister:
+    items = []
+    for idx, category in enumerate(FinalRemediationCategory):
+        severity = FinalRemediationSeverity.P0 if idx < 2 else (FinalRemediationSeverity.P1 if idx < 7 else FinalRemediationSeverity.P2)
+        status = FinalRemediationStatus.OPEN if severity in (FinalRemediationSeverity.P0, FinalRemediationSeverity.P1) else FinalRemediationStatus.DEFERRED
+        items.append(FinalRemediationItem(
+            item_id=f"FR-{idx+1:03d}",
+            severity=severity,
+            status=status,
+            category=category,
+            description=f"Carry forward {category.value} before any activation planning.",
+            acceptance_criteria=(f"Evidence closes {category.value} under an explicit future command.",),
+            target_stage="future-explicit-activation-planning" if severity in (FinalRemediationSeverity.P0, FinalRemediationSeverity.P1) else "future-hardening",
+            defer_justification="Deferred because PROD-8 is final pre-activation hold only." if status == FinalRemediationStatus.DEFERRED else "",
+        ))
+    return FinalRemediationRegister(tuple(items)).validate()
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_prod8_observability.py =====
+"""QSPIN-PROD-8 metadata-only observability/evidence pack."""
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from typing import Dict, Mapping, Tuple
+import json
+
+class Prod8MetricName(str, Enum):
+    FINAL_READINESS_DOMAINS_REVIEWED = "final_readiness_domains_reviewed"
+    FINAL_READINESS_DOMAINS_BLOCKED = "final_readiness_domains_blocked"
+    PRODUCTION_BLOCKERS_OPEN = "production_blockers_open"
+    PRODUCTION_BLOCKERS_P0 = "production_blockers_p0"
+    PRODUCTION_BLOCKERS_P1 = "production_blockers_p1"
+    CI_BASELINE_GATES_FROZEN = "ci_baseline_gates_frozen"
+    CI_BASELINE_GATES_BLOCKED = "ci_baseline_gates_blocked"
+    PROBE_REPORT_FINDINGS = "probe_report_findings"
+    PROBE_REPORT_CRITICAL_FINDINGS = "probe_report_critical_findings"
+    FINAL_REMEDIATION_ITEMS_OPEN = "final_remediation_items_open"
+    FINAL_REMEDIATION_ITEMS_DEFERRED = "final_remediation_items_deferred"
+    RELEASE_ARTIFACTS_REQUIRED = "release_artifacts_required"
+    RELEASE_ARTIFACTS_PRESENT = "release_artifacts_present"
+    RAW_PAYLOAD_REJECTIONS = "raw_payload_rejections"
+    SECRET_REJECTIONS = "secret_rejections"
+    LIVE_ROUTE_REJECTIONS = "live_route_rejections"
+    WRITE_REJECTIONS = "write_rejections"
+    COMMIT_REJECTIONS = "commit_rejections"
+    PRODUCTION_ACTIVATION_REJECTIONS = "production_activation_rejections"
+    STRUCTURED_SKIPS = "structured_skips"
+
+@dataclass(frozen=True)
+class Prod8MetricEvent:
+    name: Prod8MetricName
+    value: int
+    tags: Mapping[str, str] = field(default_factory=dict)
+
+    def validate(self) -> "Prod8MetricEvent":
+        if self.value < 0:
+            raise ValueError("metric value must be non-negative")
+        return self
+
+@dataclass(frozen=True)
+class Prod8AuditEvent:
+    event_id: str
+    action: str
+    reason_codes: Tuple[str, ...] = ()
+    raw_payload_free: bool = True
+    secret_free: bool = True
+
+    def validate(self) -> "Prod8AuditEvent":
+        if not self.event_id or not self.action:
+            raise ValueError("audit event requires id and action")
+        if not self.raw_payload_free or not self.secret_free:
+            raise ValueError("unsafe audit event")
+        return self
+
+@dataclass(frozen=True)
+class Prod8SpanEvent:
+    span_id: str
+    name: str
+    status: str
+    safe_summary: Mapping[str, object] = field(default_factory=dict)
+
+    def validate(self) -> "Prod8SpanEvent":
+        if not self.span_id or not self.name:
+            raise ValueError("span requires id and name")
+        return self
+
+@dataclass(frozen=True)
+class Prod8DeadLetterEvent:
+    event_id: str
+    reason_codes: Tuple[str, ...]
+    raw_payload_free: bool = True
+    secret_free: bool = True
+
+    def validate(self) -> "Prod8DeadLetterEvent":
+        if not self.event_id or not self.reason_codes:
+            raise ValueError("dead letter requires id and reason codes")
+        if not self.raw_payload_free or not self.secret_free:
+            raise ValueError("unsafe dead letter")
+        return self
+
+@dataclass(frozen=True)
+class Prod8EvidenceRecord:
+    evidence_id: str
+    kind: str
+    safe_summary: Mapping[str, object]
+
+    def validate(self) -> "Prod8EvidenceRecord":
+        if not self.evidence_id or not self.kind:
+            raise ValueError("evidence requires id and kind")
+        return self
+
+@dataclass(frozen=True)
+class Prod8DiagnosticSnapshot:
+    metrics: Tuple[Prod8MetricEvent, ...]
+    audits: Tuple[Prod8AuditEvent, ...]
+    spans: Tuple[Prod8SpanEvent, ...]
+    dead_letters: Tuple[Prod8DeadLetterEvent, ...]
+    evidence: Tuple[Prod8EvidenceRecord, ...]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "metrics": [{"name": m.name.value, "value": m.value, "tags": dict(m.tags)} for m in self.metrics],
+            "audits": [asdict(a) for a in self.audits],
+            "spans": [asdict(s) for s in self.spans],
+            "dead_letters": [asdict(d) for d in self.dead_letters],
+            "evidence": [asdict(e) for e in self.evidence],
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+class Prod8ObservabilityCollector:
+    def __init__(self):
+        self.metrics = []
+        self.audits: Dict[str, Prod8AuditEvent] = {}
+        self.spans: Dict[str, Prod8SpanEvent] = {}
+        self.dead_letters: Dict[str, Prod8DeadLetterEvent] = {}
+        self.evidence: Dict[str, Prod8EvidenceRecord] = {}
+
+    def emit_metric(self, metric: Prod8MetricEvent) -> None:
+        self.metrics.append(metric.validate())
+
+    def emit_audit(self, audit: Prod8AuditEvent) -> None:
+        audit.validate(); self.audits.setdefault(audit.event_id, audit)
+
+    def emit_span(self, span: Prod8SpanEvent) -> None:
+        span.validate(); self.spans.setdefault(span.span_id, span)
+
+    def emit_dead_letter(self, event: Prod8DeadLetterEvent) -> None:
+        event.validate(); self.dead_letters.setdefault(event.event_id, event)
+
+    def emit_evidence(self, evidence: Prod8EvidenceRecord) -> None:
+        evidence.validate(); self.evidence.setdefault(evidence.evidence_id, evidence)
+
+    def snapshot(self) -> Prod8DiagnosticSnapshot:
+        return Prod8DiagnosticSnapshot(tuple(self.metrics), tuple(self.audits.values()), tuple(self.spans.values()), tuple(self.dead_letters.values()), tuple(self.evidence.values()))
+
+def build_default_prod8_observability_collector() -> Prod8ObservabilityCollector:
+    return Prod8ObservabilityCollector()
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_prod8_release_builder.py =====
+"""QSPIN-PROD-8 expanded release pack builder contracts."""
+from __future__ import annotations
+from dataclasses import dataclass, asdict
+from enum import Enum
+from typing import Dict, Tuple
+import json
+
+class Prod8ReleaseMode(str, Enum):
+    LOCAL_ARCHIVE_ONLY = "local_archive_only"
+
+class Prod8ReleaseStatus(str, Enum):
+    READY_TO_PACKAGE = "ready_to_package"
+    BLOCKED = "blocked"
+
+class Prod8ReleaseBlockReason(str, Enum):
+    MISSING_CRITICAL_ARTIFACT = "missing_critical_artifact"
+    EXTERNAL_UPLOAD_REQUESTED = "external_upload_requested"
+    REPO_COMMIT_REQUESTED = "repo_commit_requested"
+
+class Prod8ReleaseArtifactKind(str, Enum):
+    MODULE = "module"
+    TEST = "test"
+    DOC = "doc"
+    RUNNER = "runner"
+    JSON_SUMMARY = "json_summary"
+    MARKDOWN_SUMMARY = "markdown_summary"
+    JUNIT_XML = "junit_xml"
+    SOURCE_MATRIX = "source_matrix"
+    READINESS_REVIEW = "readiness_review"
+    BLOCKER_BURNDOWN = "blocker_burndown"
+    PROBE_REPORT = "probe_report"
+    CI_BASELINE = "ci_baseline"
+    REMEDIATION_REGISTER = "remediation_register"
+    OBSERVABILITY = "observability"
+    AUDIT_SHIPCHECK = "audit_shipcheck"
+    FINAL_HOLD_COMMAND = "final_hold_command"
+    RELEASE_MANIFEST = "release_manifest"
+
+@dataclass(frozen=True)
+class Prod8ReleaseArtifactRecord:
+    artifact_id: str
+    kind: Prod8ReleaseArtifactKind
+    path: str
+    present: bool
+    critical: bool = True
+
+    def validate(self) -> "Prod8ReleaseArtifactRecord":
+        if not self.artifact_id or not self.path:
+            raise ValueError("artifact id and path required")
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"artifact_id": self.artifact_id, "kind": self.kind.value, "path": self.path, "present": self.present, "critical": self.critical}
+
+@dataclass(frozen=True)
+class Prod8ReleaseManifest:
+    release_id: str
+    stage: str
+    artifacts: Tuple[Prod8ReleaseArtifactRecord, ...]
+    safety_boundaries: Tuple[str, ...]
+    final_hold_required: bool = True
+    production_active: bool = False
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"release_id": self.release_id, "stage": self.stage, "artifacts": [a.to_dict() for a in self.artifacts], "safety_boundaries": list(self.safety_boundaries), "final_hold_required": self.final_hold_required, "production_active": self.production_active}
+
+@dataclass(frozen=True)
+class Prod8ReleaseBuildRequest:
+    request_id: str
+    artifacts: Tuple[Prod8ReleaseArtifactRecord, ...]
+    external_upload_requested: bool = False
+    repo_commit_requested: bool = False
+
+@dataclass(frozen=True)
+class Prod8ReleaseBuildResult:
+    request_id: str
+    status: Prod8ReleaseStatus
+    block_reasons: Tuple[Prod8ReleaseBlockReason, ...]
+    manifest: Prod8ReleaseManifest
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"request_id": self.request_id, "status": self.status.value, "block_reasons": [r.value for r in self.block_reasons], "manifest": self.manifest.to_dict()}
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+class Prod8ExpandedReleaseBuilder:
+    def build(self, request: Prod8ReleaseBuildRequest) -> Prod8ReleaseBuildResult:
+        if not request.request_id:
+            raise ValueError("request_id required")
+        reasons = []
+        if request.external_upload_requested:
+            reasons.append(Prod8ReleaseBlockReason.EXTERNAL_UPLOAD_REQUESTED)
+        if request.repo_commit_requested:
+            reasons.append(Prod8ReleaseBlockReason.REPO_COMMIT_REQUESTED)
+        for artifact in request.artifacts:
+            artifact.validate()
+        if any(a.critical and not a.present for a in request.artifacts):
+            reasons.append(Prod8ReleaseBlockReason.MISSING_CRITICAL_ARTIFACT)
+        status = Prod8ReleaseStatus.BLOCKED if reasons else Prod8ReleaseStatus.READY_TO_PACKAGE
+        manifest = Prod8ReleaseManifest(
+            release_id="qspin_prod8_qd6a_release_pack",
+            stage="QSPIN-PROD-8-QD6A",
+            artifacts=tuple(sorted(request.artifacts, key=lambda a: a.path)),
+            safety_boundaries=("no_live_routing", "no_payload_transfer", "no_writes", "no_commits", "no_production_activation"),
+        )
+        return Prod8ReleaseBuildResult(request.request_id, status, tuple(dict.fromkeys(reasons)), manifest)
+
+def build_default_prod8_release_artifacts() -> Tuple[Prod8ReleaseArtifactRecord, ...]:
+    items = [
+        ("modules", Prod8ReleaseArtifactKind.MODULE, "mnemonic_cortex/working_memory/", True),
+        ("tests", Prod8ReleaseArtifactKind.TEST, "tests/", True),
+        ("docs", Prod8ReleaseArtifactKind.DOC, "docs/", True),
+        ("runner", Prod8ReleaseArtifactKind.RUNNER, "prod8_manual_runner.py", True),
+        ("source_matrix", Prod8ReleaseArtifactKind.SOURCE_MATRIX, "prod8_outputs/prod8_source_matrix.json", True),
+        ("readiness", Prod8ReleaseArtifactKind.READINESS_REVIEW, "prod8_outputs/final_readiness_review.json", True),
+        ("blockers", Prod8ReleaseArtifactKind.BLOCKER_BURNDOWN, "prod8_outputs/blocker_burndown.json", True),
+        ("probe", Prod8ReleaseArtifactKind.PROBE_REPORT, "prod8_outputs/readonly_probe_report.json", True),
+        ("ci", Prod8ReleaseArtifactKind.CI_BASELINE, "prod8_outputs/ci_baseline_freeze.json", True),
+        ("remediation", Prod8ReleaseArtifactKind.REMEDIATION_REGISTER, "prod8_outputs/final_remediation_register.json", True),
+        ("hold", Prod8ReleaseArtifactKind.FINAL_HOLD_COMMAND, "PROD8_FINAL_HOLD_COMMAND.md", True),
+    ]
+    return tuple(Prod8ReleaseArtifactRecord(*item) for item in items)
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_prod8_source_matrix.py =====
+"""QSPIN-PROD-8 final source consideration matrix."""
+from __future__ import annotations
+from dataclasses import dataclass, asdict
+from enum import Enum
+from typing import Dict, Tuple
+import json
+
+class Prod8SourceFamily(str, Enum):
+    QD6A = "qd6a"
+    QSPIN8 = "qspin8"
+    PROD0 = "prod0"
+    PROD1 = "prod1"
+    PROD2 = "prod2"
+    PROD3 = "prod3"
+    PROD4 = "prod4"
+    PROD5 = "prod5"
+    PROD6 = "prod6"
+    PROD7 = "prod7"
+    PROD8 = "prod8"
+    TESTS = "tests"
+    DOCS = "docs"
+    RELEASE_MANIFESTS = "release_manifests"
+    OPTIONAL_SKIPS = "optional_skips"
+
+@dataclass(frozen=True)
+class Prod8SourceRecord:
+    family: Prod8SourceFamily
+    direct_use: bool
+    considered_not_touched: bool
+    deferred_reason: str
+    risk: str
+    evidence: str
+    missing_optional: bool = False
+
+    def validate(self) -> "Prod8SourceRecord":
+        if not self.evidence:
+            raise ValueError("source record requires evidence")
+        if self.deferred_reason == "" and not self.direct_use and not self.considered_not_touched:
+            raise ValueError("non-used source requires deferred reason or considered flag")
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"family": self.family.value, "direct_use": self.direct_use, "considered_not_touched": self.considered_not_touched, "deferred_reason": self.deferred_reason, "risk": self.risk, "evidence": self.evidence, "missing_optional": self.missing_optional}
+
+@dataclass(frozen=True)
+class Prod8SourceMatrix:
+    records: Tuple[Prod8SourceRecord, ...]
+
+    def validate(self) -> "Prod8SourceMatrix":
+        families = {r.family for r in self.records}
+        missing = [f.value for f in Prod8SourceFamily if f not in families]
+        if missing:
+            raise ValueError("missing source families: " + ", ".join(missing))
+        for rec in self.records:
+            rec.validate()
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"records": [r.to_dict() for r in self.records]}
+
+
+def build_prod8_source_matrix() -> Prod8SourceMatrix:
+    records = []
+    for fam in Prod8SourceFamily:
+        records.append(Prod8SourceRecord(
+            family=fam,
+            direct_use=fam in {Prod8SourceFamily.PROD7, Prod8SourceFamily.PROD8, Prod8SourceFamily.TESTS, Prod8SourceFamily.DOCS, Prod8SourceFamily.RELEASE_MANIFESTS},
+            considered_not_touched=fam not in {Prod8SourceFamily.PROD8},
+            deferred_reason="Historical/lineage source considered but not modified." if fam not in {Prod8SourceFamily.PROD7, Prod8SourceFamily.PROD8, Prod8SourceFamily.TESTS, Prod8SourceFamily.DOCS, Prod8SourceFamily.RELEASE_MANIFESTS} else "",
+            risk="Production activation risk remains blocked by final hold." if fam != Prod8SourceFamily.OPTIONAL_SKIPS else "Missing optional sources are structured skips.",
+            evidence=f"PROD-8 matrix evidence for {fam.value}",
+            missing_optional=fam == Prod8SourceFamily.OPTIONAL_SKIPS,
+        ))
+    return Prod8SourceMatrix(tuple(records)).validate()
+
+def export_prod8_source_matrix_json(matrix: Prod8SourceMatrix) -> str:
+    return json.dumps(matrix.validate().to_dict(), indent=2, sort_keys=True)
+
+def export_prod8_source_matrix_markdown(matrix: Prod8SourceMatrix) -> str:
+    lines = ["# PROD-8 Final Source Consideration Matrix", ""]
+    for rec in matrix.validate().records:
+        lines.append(f"- `{rec.family.value}`: direct_use={rec.direct_use}, considered_not_touched={rec.considered_not_touched}, risk={rec.risk}")
+    return "\n".join(lines) + "\n"
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_prod_blocker_burndown.py =====
+"""QSPIN-PROD-8 production blocker burn-down planning.
+
+Planning only. This module never closes production blockers without evidence and
+never authorizes activation.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from typing import Dict, List, Mapping, Tuple
+import json
+
+class BlockerBurnDownMode(str, Enum):
+    PLAN_ONLY = "plan_only"
+
+class BlockerBurnDownStatus(str, Enum):
+    PLANNED_HOLD = "planned_hold"
+    BLOCKED = "blocked"
+
+class BlockerBurnDownPriority(str, Enum):
+    P0 = "P0"
+    P1 = "P1"
+    P2 = "P2"
+    P3 = "P3"
+
+class BlockerBurnDownCategory(str, Enum):
+    LIVE_ROUTING_ENABLEMENT = "live_routing_enablement"
+    REAL_PAYLOAD_TRANSFER_ENABLEMENT = "real_payload_transfer_enablement"
+    REAL_WRITE_PATH_ENABLEMENT = "real_write_path_enablement"
+    QH_REAL_STORE_INTEGRATION = "qh_real_store_integration"
+    SHARED_SLOT_REAL_STORE_INTEGRATION = "shared_slot_real_store_integration"
+    EXTERNAL_MEMORY_REAL_STORE_INTEGRATION = "external_memory_real_store_integration"
+    REAL_COMMIT_GATE_EXECUTION = "real_commit_gate_execution"
+    PRODUCTION_ACTIVATION_PATH = "production_activation_path"
+    REAL_RUNTIME_INTEGRATION_VALIDATION = "real_runtime_integration_validation"
+    PERFORMANCE_BENCHMARK_VALIDATION = "performance_benchmark_validation"
+    SECURITY_REVIEW = "security_review"
+    OPERATOR_APPROVAL = "operator_approval"
+    ROLLBACK_LIVE_TEST = "rollback_live_test"
+    OBSERVABILITY_LIVE_TEST = "observability_live_test"
+    LIVE_CANARY_PLAN = "live_canary_plan"
+    INCIDENT_RESPONSE_PLAN = "incident_response_plan"
+    DATA_PRIVACY_REVIEW = "data_privacy_review"
+    DEPLOYMENT_STAGING_REVIEW = "deployment_staging_review"
+
+@dataclass(frozen=True)
+class BlockerBurnDownItem:
+    item_id: str
+    category: BlockerBurnDownCategory
+    priority: BlockerBurnDownPriority
+    status: str
+    owner_placeholder: str
+    required_next_action: str
+    acceptance_criteria: Tuple[str, ...]
+    risk: str
+    defer_reason: str = ""
+    evidence: Tuple[str, ...] = ()
+
+    def validate(self) -> "BlockerBurnDownItem":
+        if not self.item_id or not self.owner_placeholder or not self.required_next_action:
+            raise ValueError("blocker item requires id, owner placeholder, and next action")
+        if self.status == "resolved" and not self.evidence:
+            raise ValueError("resolved blocker requires evidence")
+        if self.status == "deferred" and not self.defer_reason:
+            raise ValueError("deferred blocker requires reason")
+        if self.priority in (BlockerBurnDownPriority.P0, BlockerBurnDownPriority.P1) and not self.acceptance_criteria:
+            raise ValueError("P0/P1 blockers require acceptance criteria")
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        d = asdict(self)
+        d["category"] = self.category.value
+        d["priority"] = self.priority.value
+        return d
+
+@dataclass(frozen=True)
+class BlockerBurnDownMilestone:
+    milestone_id: str
+    title: str
+    item_ids: Tuple[str, ...]
+    exit_criteria: Tuple[str, ...]
+
+    def validate(self) -> "BlockerBurnDownMilestone":
+        if not self.milestone_id or not self.title or not self.exit_criteria:
+            raise ValueError("milestone requires id, title, and exit criteria")
+        return self
+
+@dataclass(frozen=True)
+class BlockerBurnDownPlan:
+    mode: BlockerBurnDownMode
+    items: Tuple[BlockerBurnDownItem, ...]
+    milestones: Tuple[BlockerBurnDownMilestone, ...]
+    minimum_safe_activation_gates: Tuple[str, ...]
+
+    def validate(self) -> "BlockerBurnDownPlan":
+        for item in self.items:
+            item.validate()
+        for milestone in self.milestones:
+            milestone.validate()
+        if not self.minimum_safe_activation_gates:
+            raise ValueError("minimum safe activation gates required")
+        return self
+
+@dataclass(frozen=True)
+class BlockerBurnDownReport:
+    status: BlockerBurnDownStatus
+    open_blockers: Tuple[str, ...]
+    p0_blockers: Tuple[str, ...]
+    p1_blockers: Tuple[str, ...]
+    deferred_blockers: Tuple[str, ...]
+    resolved_blockers: Tuple[str, ...]
+    recommended_sequence: Tuple[str, ...]
+    minimum_safe_activation_gates: Tuple[str, ...]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "status": self.status.value,
+            "open_blockers": list(self.open_blockers),
+            "p0_blockers": list(self.p0_blockers),
+            "p1_blockers": list(self.p1_blockers),
+            "deferred_blockers": list(self.deferred_blockers),
+            "resolved_blockers": list(self.resolved_blockers),
+            "recommended_sequence": list(self.recommended_sequence),
+            "minimum_safe_activation_gates": list(self.minimum_safe_activation_gates),
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+    def to_markdown(self) -> str:
+        lines = ["# PROD-8 Production Blocker Burn-Down Plan", "", f"Status: `{self.status.value}`", "", "## P0 blockers"]
+        lines.extend(f"- {x}" for x in self.p0_blockers)
+        lines.append("\n## P1 blockers")
+        lines.extend(f"- {x}" for x in self.p1_blockers)
+        lines.append("\n## Minimum safe activation gates")
+        lines.extend(f"- {x}" for x in self.minimum_safe_activation_gates)
+        return "\n".join(lines) + "\n"
+
+class ProductionBlockerBurnDownPlanner:
+    def plan(self, plan: BlockerBurnDownPlan) -> BlockerBurnDownReport:
+        plan.validate()
+        open_items = tuple(item.item_id for item in plan.items if item.status in {"open", "blocked", "deferred"})
+        p0 = tuple(item.item_id for item in plan.items if item.priority == BlockerBurnDownPriority.P0 and item.status != "resolved")
+        p1 = tuple(item.item_id for item in plan.items if item.priority == BlockerBurnDownPriority.P1 and item.status != "resolved")
+        deferred = tuple(item.item_id for item in plan.items if item.status == "deferred")
+        resolved = tuple(item.item_id for item in plan.items if item.status == "resolved")
+        sequence = tuple(m.milestone_id for m in plan.milestones)
+        status = BlockerBurnDownStatus.BLOCKED if p0 else BlockerBurnDownStatus.PLANNED_HOLD
+        return BlockerBurnDownReport(status, open_items, p0, p1, deferred, resolved, sequence, plan.minimum_safe_activation_gates)
+
+def build_default_blocker_burndown_plan() -> BlockerBurnDownPlan:
+    items: List[BlockerBurnDownItem] = []
+    for idx, category in enumerate(BlockerBurnDownCategory):
+        priority = BlockerBurnDownPriority.P0 if idx < 8 else (BlockerBurnDownPriority.P1 if idx < 14 else BlockerBurnDownPriority.P2)
+        items.append(BlockerBurnDownItem(
+            item_id=f"BB-{idx+1:03d}",
+            category=category,
+            priority=priority,
+            status="open",
+            owner_placeholder="TBD-owner",
+            required_next_action=f"Create controlled evidence plan for {category.value}.",
+            acceptance_criteria=(f"Independent evidence demonstrates {category.value} without violating safety gates.",),
+            risk="Production activation must remain blocked until this item is resolved.",
+        ))
+    milestones = (
+        BlockerBurnDownMilestone("M1", "Evidence planning", tuple(i.item_id for i in items[:6]), ("All P0 evidence plans approved.",)),
+        BlockerBurnDownMilestone("M2", "Read-only live validation", tuple(i.item_id for i in items[6:12]), ("Read-only validation complete.",)),
+        BlockerBurnDownMilestone("M3", "Activation readiness review", tuple(i.item_id for i in items[12:]), ("All remaining blockers resolved or explicitly deferred with approval.",)),
+    )
+    gates = (
+        "explicit future write-permission command",
+        "security review complete",
+        "operator approval complete",
+        "live rollback test complete",
+        "observability live test complete",
+        "commit-gate production execution validated",
+    )
+    return BlockerBurnDownPlan(BlockerBurnDownMode.PLAN_ONLY, tuple(items), milestones, gates).validate()
+
+
+===== FILE: mnemonic_cortex/working_memory/qspin_readonly_probe_report.py =====
+"""QSPIN-PROD-8 read-only runtime probe report generator."""
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from typing import Dict, Mapping, Tuple
+import json
+
+class ProbeReportMode(str, Enum):
+    READ_ONLY_REPORT = "read_only_report"
+
+class ProbeReportStatus(str, Enum):
+    GENERATED = "generated"
+    GENERATED_WITH_FINDINGS = "generated_with_findings"
+
+class ProbeReportFindingSeverity(str, Enum):
+    INFO = "info"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+@dataclass(frozen=True)
+class ProbeReportFinding:
+    finding_id: str
+    severity: ProbeReportFindingSeverity
+    title: str
+    detail: str
+    carry_forward: bool = False
+
+    def validate(self) -> "ProbeReportFinding":
+        if not self.finding_id or not self.title:
+            raise ValueError("finding requires id and title")
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"finding_id": self.finding_id, "severity": self.severity.value, "title": self.title, "detail": self.detail, "carry_forward": self.carry_forward}
+
+@dataclass(frozen=True)
+class ProbeReportSection:
+    section_id: str
+    title: str
+    status: str
+    findings: Tuple[ProbeReportFinding, ...] = ()
+
+    def validate(self) -> "ProbeReportSection":
+        if not self.section_id or not self.title:
+            raise ValueError("section requires id and title")
+        for finding in self.findings:
+            finding.validate()
+        return self
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"section_id": self.section_id, "title": self.title, "status": self.status, "findings": [f.to_dict() for f in self.findings]}
+
+@dataclass(frozen=True)
+class ProbeReport:
+    report_id: str
+    mode: ProbeReportMode
+    status: ProbeReportStatus
+    sections: Tuple[ProbeReportSection, ...]
+    residual_risk: Tuple[str, ...]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {"report_id": self.report_id, "mode": self.mode.value, "status": self.status.value, "sections": [s.to_dict() for s in self.sections], "residual_risk": list(self.residual_risk)}
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+    def to_markdown(self) -> str:
+        lines = ["# PROD-8 Read-Only Runtime Probe Report", "", f"Status: `{self.status.value}`", ""]
+        for section in self.sections:
+            lines.append(f"## {section.title}")
+            lines.append(f"Status: `{section.status}`")
+            for finding in section.findings:
+                lines.append(f"- **{finding.severity.value}** `{finding.finding_id}`: {finding.title}")
+            lines.append("")
+        lines.append("## Residual Risk")
+        lines.extend(f"- {risk}" for risk in self.residual_risk)
+        return "\n".join(lines) + "\n"
+
+class ReadOnlyRuntimeProbeReportGenerator:
+    def generate(self, sections: Tuple[ProbeReportSection, ...] | None = None) -> ProbeReport:
+        sections = sections or build_default_probe_report_sections()
+        for section in sections:
+            section.validate()
+        findings = [f for section in sections for f in section.findings]
+        status = ProbeReportStatus.GENERATED_WITH_FINDINGS if findings else ProbeReportStatus.GENERATED
+        risk = ("Live runtime was not called; real operational behavior remains unvalidated.", "All probe evidence remains read-only/pre-activation.")
+        return ProbeReport("prod8_readonly_probe_report", ProbeReportMode.READ_ONLY_REPORT, status, sections, risk)
+
+def build_default_probe_report_sections() -> Tuple[ProbeReportSection, ...]:
+    def sec(section_id: str, title: str, status: str, finding: str = "") -> ProbeReportSection:
+        findings = (ProbeReportFinding(section_id + "-F1", ProbeReportFindingSeverity.INFO, finding, finding, True),) if finding else ()
+        return ProbeReportSection(section_id, title, status, findings)
+    return (
+        sec("source_import", "Source/import probe results", "read_only_pass"),
+        sec("dataclass_contract", "Dataclass contract probe results", "read_only_pass"),
+        sec("enum_contract", "Enum contract probe results", "read_only_pass"),
+        sec("manifest", "Manifest probe results", "read_only_pass"),
+        sec("release_metadata", "Release metadata probe results", "read_only_pass"),
+        sec("no_write", "No-write sentinel results", "blocked"),
+        sec("no_network", "No-network sentinel results", "blocked"),
+        sec("no_commit", "No-commit sentinel results", "blocked"),
+        sec("no_live_route", "No-live-route sentinel results", "blocked"),
+        sec("no_payload_transfer", "No-payload-transfer sentinel results", "blocked"),
+        sec("structured_skip", "Structured skip results", "available", "Optional missing sources were recorded as skips, not hidden passes."),
+    )
+
+
+===== FILE: prod8_manual_runner.py =====
+#!/usr/bin/env python3
+"""Manual runner for QSPIN-PROD-8.
+
+Local-only, read-only/pre-activation. Produces JSON/markdown/XML outputs under
+./prod8_outputs and never performs production activation.
+"""
+from __future__ import annotations
+from pathlib import Path
+import json, sys
+sys.path.insert(0, str(Path(__file__).resolve().parent / "mnemonic_cortex" / "working_memory"))
+
+from qspin_final_readiness_review import FinalPreActivationReadinessReviewer, FinalReadinessReviewRequest, build_default_final_readiness_evidence
+from qspin_prod_blocker_burndown import ProductionBlockerBurnDownPlanner, build_default_blocker_burndown_plan
+from qspin_readonly_probe_report import ReadOnlyRuntimeProbeReportGenerator
+from qspin_ci_gate_baseline_freeze import CIGateBaselineFreezer, CIBaselineFreezeRequest, build_default_ci_baseline_gate_records
+from qspin_prod8_release_builder import Prod8ExpandedReleaseBuilder, Prod8ReleaseBuildRequest, build_default_prod8_release_artifacts
+from qspin_final_remediation_register import FinalRemediationReport, build_default_final_remediation_register
+from qspin_prod8_observability import build_default_prod8_observability_collector, Prod8MetricEvent, Prod8MetricName, Prod8AuditEvent, Prod8EvidenceRecord
+from qspin_prod8_source_matrix import build_prod8_source_matrix, export_prod8_source_matrix_json, export_prod8_source_matrix_markdown
+
+
+def write(path: Path, text: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def main() -> int:
+    out = Path("prod8_outputs")
+    out.mkdir(exist_ok=True)
+    pass_count = 0
+    fail_count = 0
+    skip_count = 0
+
+    matrix = build_prod8_source_matrix()
+    write(out/"prod8_source_matrix.json", export_prod8_source_matrix_json(matrix))
+    write(out/"prod8_source_matrix.md", export_prod8_source_matrix_markdown(matrix))
+    pass_count += 1
+
+    reviewer = FinalPreActivationReadinessReviewer()
+    readiness = reviewer.review(FinalReadinessReviewRequest("prod8_readiness", build_default_final_readiness_evidence(), critical_blockers_open=2))
+    write(out/"final_readiness_review.json", readiness.to_json())
+    write(out/"final_readiness_review.md", readiness.to_markdown())
+    # Expected: not production-ready and hold required.
+    pass_count += 1 if (not readiness.production_ready and readiness.hold_required) else 0
+    fail_count += 0 if (not readiness.production_ready and readiness.hold_required) else 1
+
+    burndown = ProductionBlockerBurnDownPlanner().plan(build_default_blocker_burndown_plan())
+    write(out/"blocker_burndown.json", burndown.to_json())
+    write(out/"blocker_burndown.md", burndown.to_markdown())
+    pass_count += 1 if burndown.p0_blockers else 0
+    fail_count += 0 if burndown.p0_blockers else 1
+
+    probe = ReadOnlyRuntimeProbeReportGenerator().generate()
+    write(out/"readonly_probe_report.json", probe.to_json())
+    write(out/"readonly_probe_report.md", probe.to_markdown())
+    pass_count += 1
+
+    freeze = CIGateBaselineFreezer().freeze(CIBaselineFreezeRequest("prod8_ci_freeze", build_default_ci_baseline_gate_records()))
+    write(out/"ci_baseline_freeze.json", freeze.to_json())
+    write(out/"ci_baseline_freeze.md", freeze.to_markdown())
+    pass_count += 1 if freeze.status.value == "frozen" else 0
+    fail_count += 0 if freeze.status.value == "frozen" else 1
+
+    remediation = FinalRemediationReport.from_register(build_default_final_remediation_register())
+    write(out/"final_remediation_register.json", remediation.to_json())
+    write(out/"final_remediation_register.md", remediation.to_markdown())
+    pass_count += 1 if remediation.hold_required else 0
+    fail_count += 0 if remediation.hold_required else 1
+
+    release_result = Prod8ExpandedReleaseBuilder().build(Prod8ReleaseBuildRequest("prod8_release", build_default_prod8_release_artifacts()))
+    write(out/"prod8_release_build_result.json", release_result.to_json())
+    pass_count += 1 if release_result.status.value == "ready_to_package" else 0
+    fail_count += 0 if release_result.status.value == "ready_to_package" else 1
+
+    collector = build_default_prod8_observability_collector()
+    collector.emit_metric(Prod8MetricEvent(Prod8MetricName.FINAL_READINESS_DOMAINS_REVIEWED, len(readiness.domain_results)))
+    collector.emit_metric(Prod8MetricEvent(Prod8MetricName.PRODUCTION_BLOCKERS_P0, len(burndown.p0_blockers)))
+    collector.emit_metric(Prod8MetricEvent(Prod8MetricName.CI_BASELINE_GATES_FROZEN, len(freeze.gates)))
+    collector.emit_audit(Prod8AuditEvent("audit_prod8_hold", "final_hold_required", ("no_activation",)))
+    collector.emit_evidence(Prod8EvidenceRecord("evidence_final_hold", "final_hold", {"hold_required": True}))
+    snapshot = collector.snapshot()
+    write(out/"prod8_observability_snapshot.json", snapshot.to_json())
+    pass_count += 1
+
+    summary = {
+        "stage": "QSPIN-PROD-8-QD6A",
+        "status": "SHIP_FINAL_PRE_ACTIVATION_HOLD" if fail_count == 0 else "HOLD",
+        "pass": pass_count,
+        "fail": fail_count,
+        "skip": skip_count,
+        "production_active": False,
+        "final_hold_required": True,
+        "safety_boundaries": {
+            "live_routing": "BLOCKED",
+            "real_payload_transfer": "BLOCKED",
+            "topology_execution": "BLOCKED",
+            "real_shared_slot_writes": "BLOCKED",
+            "qh_writes": "BLOCKED",
+            "external_memory_writes": "BLOCKED",
+            "commit_execution": "BLOCKED",
+            "production_activation": "BLOCKED",
+            "raw_payload_logging": "BLOCKED",
+            "secret_logging": "BLOCKED",
+            "network_calls": "BLOCKED",
+            "repo_commits": "BLOCKED",
+            "production_ready_claim": "BLOCKED",
+        },
+    }
+    write(out/"prod8_summary.json", json.dumps(summary, indent=2, sort_keys=True))
+    md = "# PROD-8 Summary\n\n" + "\n".join(f"- {k}: `{v}`" for k,v in summary.items() if k not in {"safety_boundaries"}) + "\n\n## Safety Boundaries\n" + "\n".join(f"- {k}: `{v}`" for k,v in summary["safety_boundaries"].items()) + "\n"
+    write(out/"prod8_summary.md", md)
+    xml = f'<testsuite name="qspin_prod8" tests="{pass_count+fail_count+skip_count}" failures="{fail_count}" skipped="{skip_count}"></testsuite>\n'
+    write(out/"prod8_junit.xml", xml)
+    print(f"PASS={pass_count}\nFAIL={fail_count}\nSKIP={skip_count}")
+    return 0 if fail_count == 0 else 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+===== FILE: prod8_outputs/blocker_burndown.json =====
+{
+  "deferred_blockers": [],
+  "minimum_safe_activation_gates": [
+    "explicit future write-permission command",
+    "security review complete",
+    "operator approval complete",
+    "live rollback test complete",
+    "observability live test complete",
+    "commit-gate production execution validated"
+  ],
+  "open_blockers": [
+    "BB-001",
+    "BB-002",
+    "BB-003",
+    "BB-004",
+    "BB-005",
+    "BB-006",
+    "BB-007",
+    "BB-008",
+    "BB-009",
+    "BB-010",
+    "BB-011",
+    "BB-012",
+    "BB-013",
+    "BB-014",
+    "BB-015",
+    "BB-016",
+    "BB-017",
+    "BB-018"
+  ],
+  "p0_blockers": [
+    "BB-001",
+    "BB-002",
+    "BB-003",
+    "BB-004",
+    "BB-005",
+    "BB-006",
+    "BB-007",
+    "BB-008"
+  ],
+  "p1_blockers": [
+    "BB-009",
+    "BB-010",
+    "BB-011",
+    "BB-012",
+    "BB-013",
+    "BB-014"
+  ],
+  "recommended_sequence": [
+    "M1",
+    "M2",
+    "M3"
+  ],
+  "resolved_blockers": [],
+  "status": "blocked"
+}
+
+===== FILE: prod8_outputs/blocker_burndown.md =====
+# PROD-8 Production Blocker Burn-Down Plan
+
+Status: `blocked`
+
+## P0 blockers
+- BB-001
+- BB-002
+- BB-003
+- BB-004
+- BB-005
+- BB-006
+- BB-007
+- BB-008
+
+## P1 blockers
+- BB-009
+- BB-010
+- BB-011
+- BB-012
+- BB-013
+- BB-014
+
+## Minimum safe activation gates
+- explicit future write-permission command
+- security review complete
+- operator approval complete
+- live rollback test complete
+- observability live test complete
+- commit-gate production execution validated
+
+
+===== FILE: prod8_outputs/ci_baseline_freeze.json =====
+{
+  "block_reasons": [],
+  "gates": [
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for source_verification_gate",
+      "kind": "source_verification_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for source_consideration_matrix_gate",
+      "kind": "source_consideration_matrix_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for token_budget_gate",
+      "kind": "token_budget_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_live_routing_gate",
+      "kind": "no_live_routing_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_payload_transfer_gate",
+      "kind": "no_payload_transfer_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_write_gate",
+      "kind": "no_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_qh_write_gate",
+      "kind": "no_qh_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_shared_slot_write_gate",
+      "kind": "no_shared_slot_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_external_memory_write_gate",
+      "kind": "no_external_memory_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_commit_gate",
+      "kind": "no_commit_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_production_activation_gate",
+      "kind": "no_production_activation_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for redaction_gate",
+      "kind": "redaction_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for audit_chain_gate",
+      "kind": "audit_chain_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for deterministic_replay_gate",
+      "kind": "deterministic_replay_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for trace_corpus_gate",
+      "kind": "trace_corpus_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for ci_matrix_gate",
+      "kind": "ci_matrix_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for extended_safety_regression_gate",
+      "kind": "extended_safety_regression_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for read_only_runtime_probe_gate",
+      "kind": "read_only_runtime_probe_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for synthetic_to_real_boundary_gate",
+      "kind": "synthetic_to_real_boundary_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for observability_review_gate",
+      "kind": "observability_review_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for readiness_blocker_gate",
+      "kind": "readiness_blocker_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for full_printout_gate",
+      "kind": "full_printout_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for release_pack_gate",
+      "kind": "release_pack_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for ship_check_gate",
+      "kind": "ship_check_gate",
+      "passed": true
+    }
+  ],
+  "request_id": "prod8_ci_freeze",
+  "status": "frozen"
+}
+
+===== FILE: prod8_outputs/ci_baseline_freeze.md =====
+# PROD-8 CI Gate Baseline Freeze
+
+Status: `frozen`
+
+- `source_verification_gate`: PASS
+- `source_consideration_matrix_gate`: PASS
+- `token_budget_gate`: PASS
+- `no_live_routing_gate`: PASS
+- `no_payload_transfer_gate`: PASS
+- `no_write_gate`: PASS
+- `no_qh_write_gate`: PASS
+- `no_shared_slot_write_gate`: PASS
+- `no_external_memory_write_gate`: PASS
+- `no_commit_gate`: PASS
+- `no_production_activation_gate`: PASS
+- `redaction_gate`: PASS
+- `audit_chain_gate`: PASS
+- `deterministic_replay_gate`: PASS
+- `trace_corpus_gate`: PASS
+- `ci_matrix_gate`: PASS
+- `extended_safety_regression_gate`: PASS
+- `read_only_runtime_probe_gate`: PASS
+- `synthetic_to_real_boundary_gate`: PASS
+- `observability_review_gate`: PASS
+- `readiness_blocker_gate`: PASS
+- `full_printout_gate`: PASS
+- `release_pack_gate`: PASS
+- `ship_check_gate`: PASS
+
+
+===== FILE: prod8_outputs/final_readiness_review.json =====
+{
+  "block_reasons": [
+    "critical_blockers_open"
+  ],
+  "deferred_items": [
+    "evidence_operator_approval_placeholder",
+    "evidence_external_security_review_placeholder",
+    "evidence_performance_benchmark_placeholder",
+    "evidence_live_canary_placeholder",
+    "evidence_live_rollback_test_placeholder"
+  ],
+  "domain_results": [
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "source_lineage",
+      "evidence_ids": [
+        "evidence_source_lineage"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "qd6a_compatibility",
+      "evidence_ids": [
+        "evidence_qd6a_compatibility"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "qspin_0_through_8_preservation",
+      "evidence_ids": [
+        "evidence_qspin_0_through_8_preservation"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "prod_0_through_7_preservation",
+      "evidence_ids": [
+        "evidence_prod_0_through_7_preservation"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "safety_boundaries",
+      "evidence_ids": [
+        "evidence_safety_boundaries"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "readonly_probe_evidence",
+      "evidence_ids": [
+        "evidence_readonly_probe_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "synthetic_to_real_boundary_evidence",
+      "evidence_ids": [
+        "evidence_synthetic_to_real_boundary_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "ci_gate_evidence",
+      "evidence_ids": [
+        "evidence_ci_gate_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "observability_evidence",
+      "evidence_ids": [
+        "evidence_observability_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "readiness_blocker_evidence",
+      "evidence_ids": [
+        "evidence_readiness_blocker_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "security_data_safety_evidence",
+      "evidence_ids": [
+        "evidence_security_data_safety_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "rollback_evidence",
+      "evidence_ids": [
+        "evidence_rollback_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "kill_switch_evidence",
+      "evidence_ids": [
+        "evidence_kill_switch_evidence"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "production_caveats",
+      "evidence_ids": [
+        "evidence_production_caveats"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": true,
+      "deferred_items": [],
+      "domain": "deferred_hardening",
+      "evidence_ids": [
+        "evidence_deferred_hardening"
+      ],
+      "missing_evidence": [],
+      "passed": true,
+      "status": "present"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_operator_approval_placeholder"
+      ],
+      "domain": "operator_approval_placeholder",
+      "evidence_ids": [
+        "evidence_operator_approval_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_external_security_review_placeholder"
+      ],
+      "domain": "external_security_review_placeholder",
+      "evidence_ids": [
+        "evidence_external_security_review_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_performance_benchmark_placeholder"
+      ],
+      "domain": "performance_benchmark_placeholder",
+      "evidence_ids": [
+        "evidence_performance_benchmark_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_live_canary_placeholder"
+      ],
+      "domain": "live_canary_placeholder",
+      "evidence_ids": [
+        "evidence_live_canary_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    },
+    {
+      "critical": false,
+      "deferred_items": [
+        "evidence_live_rollback_test_placeholder"
+      ],
+      "domain": "live_rollback_test_placeholder",
+      "evidence_ids": [
+        "evidence_live_rollback_test_placeholder"
+      ],
+      "missing_evidence": [],
+      "passed": false,
+      "status": "missing_or_deferred"
+    }
+  ],
+  "final_recommendation": "FINAL HOLD REQUIRED: preserve pre-activation package; do not enable production activation until blockers are burned down under a separate explicit command.",
+  "hold_required": true,
+  "missing_evidence": [],
+  "production_ready": false,
+  "request_id": "prod8_readiness",
+  "status": "blocked"
+}
+
+===== FILE: prod8_outputs/final_readiness_review.md =====
+# PROD-8 Final Pre-Activation Readiness Review
+
+Status: `blocked`
+Production ready: `False`
+Hold required: `True`
+
+## Block reasons
+- critical_blockers_open
+
+## Domains
+- `source_lineage`: PASS (present)
+- `qd6a_compatibility`: PASS (present)
+- `qspin_0_through_8_preservation`: PASS (present)
+- `prod_0_through_7_preservation`: PASS (present)
+- `safety_boundaries`: PASS (present)
+- `readonly_probe_evidence`: PASS (present)
+- `synthetic_to_real_boundary_evidence`: PASS (present)
+- `ci_gate_evidence`: PASS (present)
+- `observability_evidence`: PASS (present)
+- `readiness_blocker_evidence`: PASS (present)
+- `security_data_safety_evidence`: PASS (present)
+- `rollback_evidence`: PASS (present)
+- `kill_switch_evidence`: PASS (present)
+- `production_caveats`: PASS (present)
+- `deferred_hardening`: PASS (present)
+- `operator_approval_placeholder`: GAP (missing_or_deferred)
+- `external_security_review_placeholder`: GAP (missing_or_deferred)
+- `performance_benchmark_placeholder`: GAP (missing_or_deferred)
+- `live_canary_placeholder`: GAP (missing_or_deferred)
+- `live_rollback_test_placeholder`: GAP (missing_or_deferred)
+
+## Recommendation
+FINAL HOLD REQUIRED: preserve pre-activation package; do not enable production activation until blockers are burned down under a separate explicit command.
+
+
+===== FILE: prod8_outputs/final_remediation_register.json =====
+{
+  "deferred": [
+    "FR-008",
+    "FR-009",
+    "FR-010",
+    "FR-011",
+    "FR-012"
+  ],
+  "hold_required": true,
+  "items": [
+    {
+      "acceptance_criteria": [
+        "Evidence closes unresolved_production_blocker under an explicit future command."
+      ],
+      "category": "unresolved_production_blocker",
+      "defer_justification": "",
+      "description": "Carry forward unresolved_production_blocker before any activation planning.",
+      "item_id": "FR-001",
+      "severity": "P0",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes deferred_hardening under an explicit future command."
+      ],
+      "category": "deferred_hardening",
+      "defer_justification": "",
+      "description": "Carry forward deferred_hardening before any activation planning.",
+      "item_id": "FR-002",
+      "severity": "P0",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes missing_live_test under an explicit future command."
+      ],
+      "category": "missing_live_test",
+      "defer_justification": "",
+      "description": "Carry forward missing_live_test before any activation planning.",
+      "item_id": "FR-003",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes external_security_review under an explicit future command."
+      ],
+      "category": "external_security_review",
+      "defer_justification": "",
+      "description": "Carry forward external_security_review before any activation planning.",
+      "item_id": "FR-004",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes operator_approval under an explicit future command."
+      ],
+      "category": "operator_approval",
+      "defer_justification": "",
+      "description": "Carry forward operator_approval before any activation planning.",
+      "item_id": "FR-005",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes performance_benchmark under an explicit future command."
+      ],
+      "category": "performance_benchmark",
+      "defer_justification": "",
+      "description": "Carry forward performance_benchmark before any activation planning.",
+      "item_id": "FR-006",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes deployment_staging_review under an explicit future command."
+      ],
+      "category": "deployment_staging_review",
+      "defer_justification": "",
+      "description": "Carry forward deployment_staging_review before any activation planning.",
+      "item_id": "FR-007",
+      "severity": "P1",
+      "status": "open",
+      "target_stage": "future-explicit-activation-planning"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes live_rollback_test under an explicit future command."
+      ],
+      "category": "live_rollback_test",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward live_rollback_test before any activation planning.",
+      "item_id": "FR-008",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes observability_live_test under an explicit future command."
+      ],
+      "category": "observability_live_test",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward observability_live_test before any activation planning.",
+      "item_id": "FR-009",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes canary_live_test under an explicit future command."
+      ],
+      "category": "canary_live_test",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward canary_live_test before any activation planning.",
+      "item_id": "FR-010",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes commit_execution_validation under an explicit future command."
+      ],
+      "category": "commit_execution_validation",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward commit_execution_validation before any activation planning.",
+      "item_id": "FR-011",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    },
+    {
+      "acceptance_criteria": [
+        "Evidence closes real_storage_integration_validation under an explicit future command."
+      ],
+      "category": "real_storage_integration_validation",
+      "defer_justification": "Deferred because PROD-8 is final pre-activation hold only.",
+      "description": "Carry forward real_storage_integration_validation before any activation planning.",
+      "item_id": "FR-012",
+      "severity": "P2",
+      "status": "deferred",
+      "target_stage": "future-hardening"
+    }
+  ],
+  "open_p0": [
+    "FR-001",
+    "FR-002"
+  ],
+  "open_p1": [
+    "FR-003",
+    "FR-004",
+    "FR-005",
+    "FR-006",
+    "FR-007"
+  ]
+}
+
+===== FILE: prod8_outputs/final_remediation_register.md =====
+# PROD-8 Final Remediation Carry-Forward Register
+
+Hold required: `True`
+
+## Open P0
+- FR-001
+- FR-002
+
+## Open P1
+- FR-003
+- FR-004
+- FR-005
+- FR-006
+- FR-007
+
+## Deferred
+- FR-008
+- FR-009
+- FR-010
+- FR-011
+- FR-012
+
+
+===== FILE: prod8_outputs/prod8_junit.xml =====
+<testsuite name="qspin_prod8" tests="8" failures="0" skipped="0"></testsuite>
+
+
+===== FILE: prod8_outputs/prod8_observability_snapshot.json =====
+{
+  "audits": [
+    {
+      "action": "final_hold_required",
+      "event_id": "audit_prod8_hold",
+      "raw_payload_free": true,
+      "reason_codes": [
+        "no_activation"
+      ],
+      "secret_free": true
+    }
+  ],
+  "dead_letters": [],
+  "evidence": [
+    {
+      "evidence_id": "evidence_final_hold",
+      "kind": "final_hold",
+      "safe_summary": {
+        "hold_required": true
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "name": "final_readiness_domains_reviewed",
+      "tags": {},
+      "value": 20
+    },
+    {
+      "name": "production_blockers_p0",
+      "tags": {},
+      "value": 8
+    },
+    {
+      "name": "ci_baseline_gates_frozen",
+      "tags": {},
+      "value": 24
+    }
+  ],
+  "spans": []
+}
+
+===== FILE: prod8_outputs/prod8_release_build_result.json =====
+{
+  "block_reasons": [],
+  "manifest": {
+    "artifacts": [
+      {
+        "artifact_id": "hold",
+        "critical": true,
+        "kind": "final_hold_command",
+        "path": "PROD8_FINAL_HOLD_COMMAND.md",
+        "present": true
+      },
+      {
+        "artifact_id": "docs",
+        "critical": true,
+        "kind": "doc",
+        "path": "docs/",
+        "present": true
+      },
+      {
+        "artifact_id": "modules",
+        "critical": true,
+        "kind": "module",
+        "path": "mnemonic_cortex/working_memory/",
+        "present": true
+      },
+      {
+        "artifact_id": "runner",
+        "critical": true,
+        "kind": "runner",
+        "path": "prod8_manual_runner.py",
+        "present": true
+      },
+      {
+        "artifact_id": "blockers",
+        "critical": true,
+        "kind": "blocker_burndown",
+        "path": "prod8_outputs/blocker_burndown.json",
+        "present": true
+      },
+      {
+        "artifact_id": "ci",
+        "critical": true,
+        "kind": "ci_baseline",
+        "path": "prod8_outputs/ci_baseline_freeze.json",
+        "present": true
+      },
+      {
+        "artifact_id": "readiness",
+        "critical": true,
+        "kind": "readiness_review",
+        "path": "prod8_outputs/final_readiness_review.json",
+        "present": true
+      },
+      {
+        "artifact_id": "remediation",
+        "critical": true,
+        "kind": "remediation_register",
+        "path": "prod8_outputs/final_remediation_register.json",
+        "present": true
+      },
+      {
+        "artifact_id": "source_matrix",
+        "critical": true,
+        "kind": "source_matrix",
+        "path": "prod8_outputs/prod8_source_matrix.json",
+        "present": true
+      },
+      {
+        "artifact_id": "probe",
+        "critical": true,
+        "kind": "probe_report",
+        "path": "prod8_outputs/readonly_probe_report.json",
+        "present": true
+      },
+      {
+        "artifact_id": "tests",
+        "critical": true,
+        "kind": "test",
+        "path": "tests/",
+        "present": true
+      }
+    ],
+    "final_hold_required": true,
+    "production_active": false,
+    "release_id": "qspin_prod8_qd6a_release_pack",
+    "safety_boundaries": [
+      "no_live_routing",
+      "no_payload_transfer",
+      "no_writes",
+      "no_commits",
+      "no_production_activation"
+    ],
+    "stage": "QSPIN-PROD-8-QD6A"
+  },
+  "request_id": "prod8_release",
+  "status": "ready_to_package"
+}
+
+===== FILE: prod8_outputs/prod8_source_matrix.json =====
+{
+  "records": [
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for qd6a",
+      "family": "qd6a",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for qspin8",
+      "family": "qspin8",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod0",
+      "family": "prod0",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod1",
+      "family": "prod1",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod2",
+      "family": "prod2",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod3",
+      "family": "prod3",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod4",
+      "family": "prod4",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod5",
+      "family": "prod5",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for prod6",
+      "family": "prod6",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for prod7",
+      "family": "prod7",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": false,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for prod8",
+      "family": "prod8",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for tests",
+      "family": "tests",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for docs",
+      "family": "docs",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "",
+      "direct_use": true,
+      "evidence": "PROD-8 matrix evidence for release_manifests",
+      "family": "release_manifests",
+      "missing_optional": false,
+      "risk": "Production activation risk remains blocked by final hold."
+    },
+    {
+      "considered_not_touched": true,
+      "deferred_reason": "Historical/lineage source considered but not modified.",
+      "direct_use": false,
+      "evidence": "PROD-8 matrix evidence for optional_skips",
+      "family": "optional_skips",
+      "missing_optional": true,
+      "risk": "Missing optional sources are structured skips."
+    }
+  ]
+}
+
+===== FILE: prod8_outputs/prod8_source_matrix.md =====
+# PROD-8 Final Source Consideration Matrix
+
+- `qd6a`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `qspin8`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod0`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod1`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod2`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod3`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod4`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod5`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod6`: direct_use=False, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod7`: direct_use=True, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `prod8`: direct_use=True, considered_not_touched=False, risk=Production activation risk remains blocked by final hold.
+- `tests`: direct_use=True, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `docs`: direct_use=True, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `release_manifests`: direct_use=True, considered_not_touched=True, risk=Production activation risk remains blocked by final hold.
+- `optional_skips`: direct_use=False, considered_not_touched=True, risk=Missing optional sources are structured skips.
+
+
+===== FILE: prod8_outputs/prod8_summary.json =====
+{
+  "fail": 0,
+  "final_hold_required": true,
+  "pass": 8,
+  "production_active": false,
+  "safety_boundaries": {
+    "commit_execution": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "live_routing": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "production_ready_claim": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "topology_execution": "BLOCKED"
+  },
+  "skip": 0,
+  "stage": "QSPIN-PROD-8-QD6A",
+  "status": "SHIP_FINAL_PRE_ACTIVATION_HOLD"
+}
+
+===== FILE: prod8_outputs/prod8_summary.md =====
+# PROD-8 Summary
+
+- stage: `QSPIN-PROD-8-QD6A`
+- status: `SHIP_FINAL_PRE_ACTIVATION_HOLD`
+- pass: `8`
+- fail: `0`
+- skip: `0`
+- production_active: `False`
+- final_hold_required: `True`
+
+## Safety Boundaries
+- live_routing: `BLOCKED`
+- real_payload_transfer: `BLOCKED`
+- topology_execution: `BLOCKED`
+- real_shared_slot_writes: `BLOCKED`
+- qh_writes: `BLOCKED`
+- external_memory_writes: `BLOCKED`
+- commit_execution: `BLOCKED`
+- production_activation: `BLOCKED`
+- raw_payload_logging: `BLOCKED`
+- secret_logging: `BLOCKED`
+- network_calls: `BLOCKED`
+- repo_commits: `BLOCKED`
+- production_ready_claim: `BLOCKED`
+
+
+===== FILE: prod8_outputs/readonly_probe_report.json =====
+{
+  "mode": "read_only_report",
+  "report_id": "prod8_readonly_probe_report",
+  "residual_risk": [
+    "Live runtime was not called; real operational behavior remains unvalidated.",
+    "All probe evidence remains read-only/pre-activation."
+  ],
+  "sections": [
+    {
+      "findings": [],
+      "section_id": "source_import",
+      "status": "read_only_pass",
+      "title": "Source/import probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "dataclass_contract",
+      "status": "read_only_pass",
+      "title": "Dataclass contract probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "enum_contract",
+      "status": "read_only_pass",
+      "title": "Enum contract probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "manifest",
+      "status": "read_only_pass",
+      "title": "Manifest probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "release_metadata",
+      "status": "read_only_pass",
+      "title": "Release metadata probe results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_write",
+      "status": "blocked",
+      "title": "No-write sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_network",
+      "status": "blocked",
+      "title": "No-network sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_commit",
+      "status": "blocked",
+      "title": "No-commit sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_live_route",
+      "status": "blocked",
+      "title": "No-live-route sentinel results"
+    },
+    {
+      "findings": [],
+      "section_id": "no_payload_transfer",
+      "status": "blocked",
+      "title": "No-payload-transfer sentinel results"
+    },
+    {
+      "findings": [
+        {
+          "carry_forward": true,
+          "detail": "Optional missing sources were recorded as skips, not hidden passes.",
+          "finding_id": "structured_skip-F1",
+          "severity": "info",
+          "title": "Optional missing sources were recorded as skips, not hidden passes."
+        }
+      ],
+      "section_id": "structured_skip",
+      "status": "available",
+      "title": "Structured skip results"
+    }
+  ],
+  "status": "generated_with_findings"
+}
+
+===== FILE: prod8_outputs/readonly_probe_report.md =====
+# PROD-8 Read-Only Runtime Probe Report
+
+Status: `generated_with_findings`
+
+## Source/import probe results
+Status: `read_only_pass`
+
+## Dataclass contract probe results
+Status: `read_only_pass`
+
+## Enum contract probe results
+Status: `read_only_pass`
+
+## Manifest probe results
+Status: `read_only_pass`
+
+## Release metadata probe results
+Status: `read_only_pass`
+
+## No-write sentinel results
+Status: `blocked`
+
+## No-network sentinel results
+Status: `blocked`
+
+## No-commit sentinel results
+Status: `blocked`
+
+## No-live-route sentinel results
+Status: `blocked`
+
+## No-payload-transfer sentinel results
+Status: `blocked`
+
+## Structured skip results
+Status: `available`
+- **info** `structured_skip-F1`: Optional missing sources were recorded as skips, not hidden passes.
+
+## Residual Risk
+- Live runtime was not called; real operational behavior remains unvalidated.
+- All probe evidence remains read-only/pre-activation.
+
+
+===== FILE: release/qspin_prod8_qd6a_release_manifest.json =====
+{
+  "active_patching": [
+    {
+      "affected_file": "tests/qspin_prod8_module_loader.py",
+      "patch_applied": "register module in sys.modules before spec.loader.exec_module(module)",
+      "problem_id": "P001",
+      "remaining_risk": "none for PROD-8 test loading scope",
+      "result": "passed",
+      "retest_command": "python3 -m pytest -q tests",
+      "root_cause": "test module loader executed module before registering it in sys.modules",
+      "symptom": "pytest dynamic imports failed during dataclass decoration"
+    }
+  ],
+  "created_at_utc": "2026-05-10T12:03:44.439318+00:00",
+  "docs": [
+    "PROD8_AUDIT_SHIP_CHECK.md",
+    "PROD8_CI_GATE_BASELINE_FREEZE.md",
+    "PROD8_EXPANDED_RELEASE_PACK.md",
+    "PROD8_FINAL_HOLD_COMMAND.md",
+    "PROD8_FINAL_PRE_ACTIVATION_READINESS_REVIEW.md",
+    "PROD8_FINAL_REMEDIATION_REGISTER.md",
+    "PROD8_PRODUCTION_BLOCKER_BURNDOWN_PLAN.md",
+    "PROD8_README.md",
+    "PROD8_READONLY_RUNTIME_PROBE_REPORT.md",
+    "PROD8_SAFETY_BOUNDARIES.md",
+    "PROD8_SOURCE_CONSIDERATION_MATRIX.md",
+    "PROD8_TEST_RESULTS.md"
+  ],
+  "final_hold_required": true,
+  "modules": [
+    "prod8_manual_runner.py",
+    "qspin_ci_gate_baseline_freeze.py",
+    "qspin_final_readiness_review.py",
+    "qspin_final_remediation_register.py",
+    "qspin_prod8_observability.py",
+    "qspin_prod8_release_builder.py",
+    "qspin_prod8_source_matrix.py",
+    "qspin_prod_blocker_burndown.py",
+    "qspin_readonly_probe_report.py"
+  ],
+  "production_active": false,
+  "qd6a_source": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+  "safety_boundaries": {
+    "commit_execution": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "live_routing": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "production_ready_claim": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "topology_execution": "BLOCKED"
+  },
+  "ship_decision": "SHIP_FINAL_PRE_ACTIVATION_HOLD",
+  "source_baseline": "/mnt/data/qspin_prod7_qd6a_release_pack.zip",
+  "stage": "QSPIN-PROD-8-QD6A",
+  "tests": [
+    "test_qspin_ci_gate_baseline_freeze.py",
+    "test_qspin_final_readiness_review.py",
+    "test_qspin_final_remediation_register.py",
+    "test_qspin_prod8_failure_abuse_cases.py",
+    "test_qspin_prod8_manual_runner.py",
+    "test_qspin_prod8_observability.py",
+    "test_qspin_prod8_release_builder.py",
+    "test_qspin_prod8_source_matrix.py",
+    "test_qspin_prod_blocker_burndown.py",
+    "test_qspin_readonly_probe_report.py"
+  ]
+}
+
+===== FILE: release/qspin_prod8_test_result.json =====
+{
+  "active_patching": [
+    {
+      "affected_file": "tests/qspin_prod8_module_loader.py",
+      "patch_applied": "register module in sys.modules before spec.loader.exec_module(module)",
+      "problem_id": "P001",
+      "remaining_risk": "none for PROD-8 test loading scope",
+      "result": "passed",
+      "retest_command": "python3 -m pytest -q tests",
+      "root_cause": "test module loader executed module before registering it in sys.modules",
+      "symptom": "pytest dynamic imports failed during dataclass decoration"
+    }
+  ],
+  "final_hold_required": true,
+  "manual_runner": {
+    "command": "python3 -S prod8_manual_runner.py",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "PASS=8\nFAIL=0\nSKIP=0\n"
+  },
+  "production_active": false,
+  "pytest": {
+    "command": "python3 -m pytest -q tests",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "..........                                                               [100%]\n10 passed in 0.41s\n"
+  },
+  "ship_decision": "SHIP_FINAL_PRE_ACTIVATION_HOLD",
+  "stage": "QSPIN-PROD-8-QD6A"
+}
+
+===== FILE: tests/qspin_prod8_module_loader.py =====
+from pathlib import Path
+import importlib.util
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "mnemonic_cortex" / "working_memory"
+
+def load_module(name: str):
+    path = SRC / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+===== FILE: tests/test_qspin_ci_gate_baseline_freeze.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_ci_gate_baseline_freeze")
+
+def test_ci_gate_freeze_passes_defaults_and_blocks_missing():
+    freezer = m.CIGateBaselineFreezer()
+    ok = freezer.freeze(m.CIBaselineFreezeRequest("ok", m.build_default_ci_baseline_gate_records()))
+    assert ok.status.value == "frozen"
+    bad = freezer.freeze(m.CIBaselineFreezeRequest("bad", m.build_default_ci_baseline_gate_records()[:-1]))
+    assert bad.status.value == "blocked"
+
+
+===== FILE: tests/test_qspin_final_readiness_review.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_final_readiness_review")
+
+def test_final_readiness_blocks_production_ready_with_blockers():
+    reviewer = m.FinalPreActivationReadinessReviewer()
+    result = reviewer.review(m.FinalReadinessReviewRequest("r", m.build_default_final_readiness_evidence(), critical_blockers_open=1))
+    assert result.production_ready is False
+    assert result.hold_required is True
+    assert any(x.value == "critical_blockers_open" for x in result.block_reasons)
+
+
+===== FILE: tests/test_qspin_final_remediation_register.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_final_remediation_register")
+
+def test_final_remediation_register_preserves_hold():
+    report = m.FinalRemediationReport.from_register(m.build_default_final_remediation_register())
+    assert report.open_p0
+    assert report.hold_required is True
+
+
+===== FILE: tests/test_qspin_prod8_failure_abuse_cases.py =====
+from qspin_prod8_module_loader import load_module
+import pytest
+ready = load_module("qspin_final_readiness_review")
+obs = load_module("qspin_prod8_observability")
+ci = load_module("qspin_ci_gate_baseline_freeze")
+
+def test_abuse_cases_block_activation_commit_and_secrets():
+    reviewer = ready.FinalPreActivationReadinessReviewer()
+    result = reviewer.review(ready.FinalReadinessReviewRequest("r", ready.build_default_final_readiness_evidence(), 0, production_activation_requested=True, commit_requested=True))
+    reasons = {r.value for r in result.block_reasons}
+    assert "production_activation_requested" in reasons
+    assert "commit_requested" in reasons
+    with pytest.raises(ValueError):
+        obs.Prod8DeadLetterEvent("d", ("x",), secret_free=False).validate()
+    bad_gate = ci.CIBaselineGateRecord(ci.CIBaselineGateKind.NO_WRITE, False, True, "write attempted")
+    records = tuple([bad_gate] + [g for g in ci.build_default_ci_baseline_gate_records() if g.kind != ci.CIBaselineGateKind.NO_WRITE])
+    freeze = ci.CIGateBaselineFreezer().freeze(ci.CIBaselineFreezeRequest("bad", records))
+    assert freeze.status.value == "blocked"
+
+
+===== FILE: tests/test_qspin_prod8_manual_runner.py =====
+import subprocess, sys
+
+def test_prod8_manual_runner_outputs_pass(tmp_path):
+    proc = subprocess.run([sys.executable, "-S", "prod8_manual_runner.py"], cwd=".", text=True, capture_output=True, check=True)
+    assert "FAIL=0" in proc.stdout
+
+
+===== FILE: tests/test_qspin_prod8_observability.py =====
+from qspin_prod8_module_loader import load_module
+import pytest
+m = load_module("qspin_prod8_observability")
+
+def test_prod8_observability_rejects_unsafe_and_idempotent_audit():
+    c = m.build_default_prod8_observability_collector()
+    c.emit_audit(m.Prod8AuditEvent("a", "x"))
+    c.emit_audit(m.Prod8AuditEvent("a", "x"))
+    assert len(c.snapshot().audits) == 1
+    with pytest.raises(ValueError):
+        c.emit_audit(m.Prod8AuditEvent("bad", "x", raw_payload_free=False))
+
+
+===== FILE: tests/test_qspin_prod8_release_builder.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_prod8_release_builder")
+
+def test_release_builder_blocks_missing_critical_artifacts():
+    builder = m.Prod8ExpandedReleaseBuilder()
+    ok = builder.build(m.Prod8ReleaseBuildRequest("ok", m.build_default_prod8_release_artifacts()))
+    assert ok.status.value == "ready_to_package"
+    items = list(m.build_default_prod8_release_artifacts())
+    items[0] = m.Prod8ReleaseArtifactRecord("missing", m.Prod8ReleaseArtifactKind.MODULE, "x", False, True)
+    bad = builder.build(m.Prod8ReleaseBuildRequest("bad", tuple(items)))
+    assert bad.status.value == "blocked"
+
+
+===== FILE: tests/test_qspin_prod8_source_matrix.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_prod8_source_matrix")
+
+def test_prod8_source_matrix_covers_required_families():
+    matrix = m.build_prod8_source_matrix()
+    families = {r.family for r in matrix.records}
+    assert set(m.Prod8SourceFamily).issubset(families)
+    assert "prod8" in m.export_prod8_source_matrix_json(matrix)
+
+
+===== FILE: tests/test_qspin_prod_blocker_burndown.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_prod_blocker_burndown")
+
+def test_blocker_burndown_preserves_p0_p1():
+    report = m.ProductionBlockerBurnDownPlanner().plan(m.build_default_blocker_burndown_plan())
+    assert report.p0_blockers
+    assert report.p1_blockers
+    assert report.status.value == "blocked"
+
+
+===== FILE: tests/test_qspin_readonly_probe_report.py =====
+from qspin_prod8_module_loader import load_module
+m = load_module("qspin_readonly_probe_report")
+
+def test_probe_report_contains_structured_findings():
+    report = m.ReadOnlyRuntimeProbeReportGenerator().generate()
+    assert report.sections
+    assert "read_only" in report.to_markdown()

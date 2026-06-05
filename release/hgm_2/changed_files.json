@@ -1,0 +1,15 @@
+[
+  "docs/hgm_hpme/03_hgm_2_manifold_router.md",
+  "mnemonic_cortex/hypergraph_manifold/__init__.py",
+  "mnemonic_cortex/hypergraph_manifold/depth_retrieval.py",
+  "mnemonic_cortex/hypergraph_manifold/geometry_distance.py",
+  "mnemonic_cortex/hypergraph_manifold/hgm2_result.py",
+  "mnemonic_cortex/hypergraph_manifold/manifold_router.py",
+  "release/hgm_2/changed_files.json",
+  "release/hgm_2/compatibility_pytest_output.txt",
+  "release/hgm_2/compile_output.txt",
+  "release/hgm_2/manifest.json",
+  "release/hgm_2/pytest_output.txt",
+  "release/hgm_2/ship_check.md",
+  "tests/test_hgm_2_manifold_router.py"
+]

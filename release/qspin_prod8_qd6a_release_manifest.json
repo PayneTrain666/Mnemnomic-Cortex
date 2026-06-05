@@ -1,0 +1,73 @@
+{
+  "active_patching": [
+    {
+      "affected_file": "tests/qspin_prod8_module_loader.py",
+      "patch_applied": "register module in sys.modules before spec.loader.exec_module(module)",
+      "problem_id": "P001",
+      "remaining_risk": "none for PROD-8 test loading scope",
+      "result": "passed",
+      "retest_command": "python3 -m pytest -q tests",
+      "root_cause": "test module loader executed module before registering it in sys.modules",
+      "symptom": "pytest dynamic imports failed during dataclass decoration"
+    }
+  ],
+  "created_at_utc": "2026-05-10T12:03:44.439318+00:00",
+  "docs": [
+    "PROD8_AUDIT_SHIP_CHECK.md",
+    "PROD8_CI_GATE_BASELINE_FREEZE.md",
+    "PROD8_EXPANDED_RELEASE_PACK.md",
+    "PROD8_FINAL_HOLD_COMMAND.md",
+    "PROD8_FINAL_PRE_ACTIVATION_READINESS_REVIEW.md",
+    "PROD8_FINAL_REMEDIATION_REGISTER.md",
+    "PROD8_PRODUCTION_BLOCKER_BURNDOWN_PLAN.md",
+    "PROD8_README.md",
+    "PROD8_READONLY_RUNTIME_PROBE_REPORT.md",
+    "PROD8_SAFETY_BOUNDARIES.md",
+    "PROD8_SOURCE_CONSIDERATION_MATRIX.md",
+    "PROD8_TEST_RESULTS.md"
+  ],
+  "final_hold_required": true,
+  "modules": [
+    "prod8_manual_runner.py",
+    "qspin_ci_gate_baseline_freeze.py",
+    "qspin_final_readiness_review.py",
+    "qspin_final_remediation_register.py",
+    "qspin_prod8_observability.py",
+    "qspin_prod8_release_builder.py",
+    "qspin_prod8_source_matrix.py",
+    "qspin_prod_blocker_burndown.py",
+    "qspin_readonly_probe_report.py"
+  ],
+  "production_active": false,
+  "qd6a_source": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+  "safety_boundaries": {
+    "commit_execution": "BLOCKED",
+    "external_memory_writes": "BLOCKED",
+    "live_routing": "BLOCKED",
+    "network_calls": "BLOCKED",
+    "production_activation": "BLOCKED",
+    "production_ready_claim": "BLOCKED",
+    "qh_writes": "BLOCKED",
+    "raw_payload_logging": "BLOCKED",
+    "real_payload_transfer": "BLOCKED",
+    "real_shared_slot_writes": "BLOCKED",
+    "repo_commits": "BLOCKED",
+    "secret_logging": "BLOCKED",
+    "topology_execution": "BLOCKED"
+  },
+  "ship_decision": "SHIP_FINAL_PRE_ACTIVATION_HOLD",
+  "source_baseline": "/mnt/data/qspin_prod7_qd6a_release_pack.zip",
+  "stage": "QSPIN-PROD-8-QD6A",
+  "tests": [
+    "test_qspin_ci_gate_baseline_freeze.py",
+    "test_qspin_final_readiness_review.py",
+    "test_qspin_final_remediation_register.py",
+    "test_qspin_prod8_failure_abuse_cases.py",
+    "test_qspin_prod8_manual_runner.py",
+    "test_qspin_prod8_observability.py",
+    "test_qspin_prod8_release_builder.py",
+    "test_qspin_prod8_source_matrix.py",
+    "test_qspin_prod_blocker_burndown.py",
+    "test_qspin_readonly_probe_report.py"
+  ]
+}

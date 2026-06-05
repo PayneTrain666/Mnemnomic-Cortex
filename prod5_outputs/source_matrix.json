@@ -1,0 +1,92 @@
+[
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qdt_wm_maae_wm_qd6a_quality_deepened_final_release_pack.zip",
+    "risk": "low",
+    "source_id": "QD6A",
+    "status": "USED",
+    "use_decision": "active source of truth"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin8_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "QSPIN-8",
+    "status": "USED",
+    "use_decision": "lineage baseline"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod0_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-0",
+    "status": "USED",
+    "use_decision": "preserved contract lineage"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod1_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-1",
+    "status": "USED",
+    "use_decision": "preserved contract lineage"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod2_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-2",
+    "status": "USED",
+    "use_decision": "preserved contract lineage"
+  },
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod3_qd6a_release_pack_refresh.zip",
+    "risk": "low",
+    "source_id": "PROD-3",
+    "status": "USED",
+    "use_decision": "refreshed production baseline"
+  },
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod4_qd6a_release_pack.zip",
+    "risk": "low",
+    "source_id": "PROD-4",
+    "status": "USED",
+    "use_decision": "immediate previous release"
+  },
+  {
+    "confidence": "high",
+    "exclusion_reason": "",
+    "exists": true,
+    "path": "/mnt/data/qspin_prod4_full_printout.txt",
+    "risk": "low",
+    "source_id": "PROD-4-PRINTOUT",
+    "status": "USED",
+    "use_decision": "immediate previous full printout"
+  },
+  {
+    "confidence": "medium",
+    "exclusion_reason": "Superseded by QD6A; reference only for rollback/delta audit.",
+    "exists": true,
+    "path": "/mnt/data/qdt_wm_maae_all_wm_zip_archives_bundle.zip",
+    "risk": "medium",
+    "source_id": "WM-7A",
+    "status": "REFERENCE_ONLY",
+    "use_decision": "historical comparison only"
+  }
+]

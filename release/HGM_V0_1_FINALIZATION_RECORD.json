@@ -1,0 +1,37 @@
+{
+  "finalization": "HGM-V0.1",
+  "timestamp_utc": "2026-06-04T08:46:24Z",
+  "baseline_archive": "/mnt/data/current-branch-HGM-10-patched.zip",
+  "baseline_sha256": "b5b314f15f4527b49dd08d446243243893281257eea6c03458d82c6a6080d81e",
+  "baseline_file_count": 838,
+  "baseline_zip_integrity": "passed",
+  "focused_release_pack": "/mnt/data/HGM-10-release-consolidation-pack.zip",
+  "focused_release_sha256": "bdaaa48b09b78dfd1b2a262bf4aa07e1db4537e5cf7deaa1bc6eec4088983c0a",
+  "focused_release_file_count": 17,
+  "focused_release_zip_integrity": "passed",
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "version": "HGM-v0.1",
+  "lineage": "HGM-0A through HGM-10",
+  "final_state": "current stable additive HGM/HPME release baseline",
+  "evaluation_first": true,
+  "live_qdt_wm_writes": false,
+  "production_write_enabled": false,
+  "write_capable_runtime_integration_requires_later_explicit_permission_stage": true,
+  "tests": {
+    "targeted": "10 passed",
+    "compatibility": "153 passed",
+    "compileall": "passed"
+  },
+  "api_symbol_count": 176,
+  "module_count": 56,
+  "roadmap_item_count": 6,
+  "known_limits": [
+    "HGM v0.1 is additive only.",
+    "HGM v0.1 does not execute live QDT/WM writes.",
+    "HGM v0.1 does not mutate working_memory/QDT internals.",
+    "HGM v0.1 does not enable production execution.",
+    "HGM v0.1 does not execute robotics actions.",
+    "Write-capable runtime integration requires a later explicit permission stage."
+  ],
+  "next_recommended_command": "DEV-FLOW RUN HGM-QDT-AUDIT-1 \u2014 Read-Only QDT/WM Contract Audit, Bridge Compatibility Review, and Write-Stage Risk Register"
+}

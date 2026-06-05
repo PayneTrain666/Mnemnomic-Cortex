@@ -1,0 +1,331 @@
+{
+  "corpus_hash": "97e3049986a7d033148e0fa34790b84bbb27935d78aba5ce12d68c3a9b3d918c",
+  "coverage": {
+    "active_dry_run_executor_event": true,
+    "audit_chain_canary": true,
+    "commit_gate_no_commit_canary": true,
+    "concurrency_guard_canary": true,
+    "expanded_commit_gate_event": true,
+    "external_memory_no_write_canary": true,
+    "malformed_input_canary": true,
+    "payload_integrity_canary": true,
+    "qh_no_write_canary": true,
+    "redaction_canary": true,
+    "remediation_event": true,
+    "route_shape_canary": true,
+    "safety_regression_event": true,
+    "shared_slot_no_write_canary": true,
+    "skip_degradation_event": true,
+    "synthetic_payload_harness_event": true,
+    "synthetic_sandbox_event": true,
+    "timeout_bound_canary": true,
+    "topology_no_execute_canary": true
+  },
+  "records": [
+    {
+      "kind": "active_dry_run_executor_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "active_dry_run_executor_event_606_15",
+      "record_id": "7010aa6d30f152f7c1bc904a",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 15,
+        "synthetic": true
+      },
+      "stable_hash": "a78f05f8310fd84729b62a90261f78b9b3026b6fdb972a77c9ea83f2de62e7ee"
+    },
+    {
+      "kind": "audit_chain_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "audit_chain_canary_606_7",
+      "record_id": "1518c9152009587fc5b57719",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 7,
+        "synthetic": true
+      },
+      "stable_hash": "611032fcdb842300cad0354d2bd482fd4b0dec74d87d689a72a95b52fb8028f6"
+    },
+    {
+      "kind": "commit_gate_no_commit_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "commit_gate_no_commit_canary_606_6",
+      "record_id": "868bc9a6caee903164c5f2a4",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 6,
+        "synthetic": true
+      },
+      "stable_hash": "06abd519b5fbf95b2b7369a3a7dfdb77d571bb6105061ad999caf123204424d0"
+    },
+    {
+      "kind": "concurrency_guard_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "concurrency_guard_canary_606_9",
+      "record_id": "b1ef76515033e583eb808eaf",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 9,
+        "synthetic": true
+      },
+      "stable_hash": "72244cc216ac2b20dc93cd94f9f21046cd38aaf51195d48ad83e66b6c1045d32"
+    },
+    {
+      "kind": "expanded_commit_gate_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "expanded_commit_gate_event_606_14",
+      "record_id": "145f6e056d64988e676cb361",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 14,
+        "synthetic": true
+      },
+      "stable_hash": "34cd922700b91f24a4e4e0483db0f6f5567d19f1c8f9c972f79942fa9cfc9b2e"
+    },
+    {
+      "kind": "external_memory_no_write_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "external_memory_no_write_canary_606_4",
+      "record_id": "ef87e8c5ffdc9bc897ea7b00",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 4,
+        "synthetic": true
+      },
+      "stable_hash": "06a402d0cfc1615c3ab3c363765ee63a0ec6d215fbaff2a95ce380f42d7cc77f"
+    },
+    {
+      "kind": "malformed_input_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "malformed_input_canary_606_11",
+      "record_id": "f6c1e1672ea1d0cee8bc4f48",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 11,
+        "synthetic": true
+      },
+      "stable_hash": "d31ed39063fc911b5cd72a5eef5103d27a2c909203c6a227a7f02620fd35763a"
+    },
+    {
+      "kind": "payload_integrity_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "payload_integrity_canary_606_1",
+      "record_id": "4ec103a8506e102fdf3ca347",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 1,
+        "synthetic": true
+      },
+      "stable_hash": "16db5c3b76fabd5ceb3bc36f2fad4736853fcaa24929485be333ea6c0b1bcfb9"
+    },
+    {
+      "kind": "qh_no_write_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "qh_no_write_canary_606_2",
+      "record_id": "d31e04e6d06c139870befc77",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 2,
+        "synthetic": true
+      },
+      "stable_hash": "2de35175d1a4ae61c6d8291405f02ca5613224cfa3cd73db5ecb019f5e58f80a"
+    },
+    {
+      "kind": "redaction_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "redaction_canary_606_8",
+      "record_id": "4dc12567f69b9878e65d9023",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 8,
+        "synthetic": true
+      },
+      "stable_hash": "c640ccc108b632f83db3716672fc7a9159996a6fb8099d17c6b8aeafa7d6e6b5"
+    },
+    {
+      "kind": "remediation_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "remediation_event_606_18",
+      "record_id": "0293b73794623017960fdd07",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 18,
+        "synthetic": true
+      },
+      "stable_hash": "d144d3988ae441e5aa9009c377d8dedbceda6b47b0dc13620979fbd7acf52fd8"
+    },
+    {
+      "kind": "route_shape_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "route_shape_canary_606_0",
+      "record_id": "f786d594bbab9c3fc6d8dfc9",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 0,
+        "synthetic": true
+      },
+      "stable_hash": "d2b2846a3885e42ac3e0db498cbfea822f0ea1eafc3a9e38f9f45d1694ff56fa"
+    },
+    {
+      "kind": "safety_regression_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "safety_regression_event_606_16",
+      "record_id": "dc0dcd05a7c283707d1e4679",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 16,
+        "synthetic": true
+      },
+      "stable_hash": "555652f36a30b1807e851ce10254576f97678834eaf0fe3f2511dd31b09e7abf"
+    },
+    {
+      "kind": "shared_slot_no_write_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "shared_slot_no_write_canary_606_3",
+      "record_id": "da540b91f589e712de15361c",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 3,
+        "synthetic": true
+      },
+      "stable_hash": "2aef4a922ebd16011c35e80d27a7b2fb7144f627650fc7b749e8e18e40787802"
+    },
+    {
+      "kind": "skip_degradation_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "skip_degradation_event_606_17",
+      "record_id": "3e9747e892644f4fa8192636",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 17,
+        "synthetic": true
+      },
+      "stable_hash": "17c59b604d39cf832a55c0100e77f32933974d63120719ad1aa8e3f7e7f47d93"
+    },
+    {
+      "kind": "synthetic_payload_harness_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "synthetic_payload_harness_event_606_12",
+      "record_id": "01390d28e5f308b37905798b",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 12,
+        "synthetic": true
+      },
+      "stable_hash": "53568887282ff800d35e9059476783206df714ff764a19d6e0cb0864ad52bdc5"
+    },
+    {
+      "kind": "synthetic_sandbox_event",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "synthetic_sandbox_event_606_13",
+      "record_id": "f4251e56c2bae8507ce0e5ff",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 13,
+        "synthetic": true
+      },
+      "stable_hash": "1e96b2af8b4a8aec99551546b61e420f5cd4efe08f03340a8e0450a32f61dfe8"
+    },
+    {
+      "kind": "timeout_bound_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "timeout_bound_canary_606_10",
+      "record_id": "78ecbddf62c9ce8609a66bd8",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 10,
+        "synthetic": true
+      },
+      "stable_hash": "f69dbcdadc6d16400ac4c7b3cc3ab92604a26fe781311ec8ff5a1f2ede8609df"
+    },
+    {
+      "kind": "topology_no_execute_canary",
+      "lineage": [
+        "QSPIN-PROD-6-QD6A"
+      ],
+      "logical_id": "topology_no_execute_canary_606_5",
+      "record_id": "62724ffd49ea9f9d000a9579",
+      "safe_summary": {
+        "dry_run": true,
+        "safe": true,
+        "sandbox": true,
+        "sequence": 5,
+        "synthetic": true
+      },
+      "stable_hash": "875e9fb8048f446a99d5fdd7e1c6ac0726f5245afc0eefdc79b32a2ad0a31a5b"
+    }
+  ],
+  "status": "built"
+}

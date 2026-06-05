@@ -1,0 +1,3 @@
+# QSPIN-PROD-4-QD6A Preservation Walkthrough
+
+PROD-4 is synthetic/sandbox-only and not production-active. It preserves QD6A, QSPIN-0 through QSPIN-8, PROD-0, PROD-1, PROD-2, and PROD-3 contracts. It adds guarded synthetic payload execution, isolated synthetic QH/shared-slot sandboxing, expanded commit-gate dry-run evidence checks, runtime safety regression cases, and metadata-only observability. No live routing, real payload transfer, real writes, real QH/shared-slot/external-memory mutation, commit execution, or production activation is allowed. All generated content is rollback-friendly and covered by focused tests. production caveats remain in force.

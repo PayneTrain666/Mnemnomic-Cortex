@@ -1,0 +1,70 @@
+{
+  "release_id": "HGM-0B",
+  "title": "Hyperset Probability Expander, Normalization Runtime, and Scenario Top-K Extraction",
+  "created_utc": "2026-06-04T06:49:59Z",
+  "source_of_truth": "/mnt/data/current-branch-HGM-0A-patched.zip",
+  "lineage": [
+    "MnemonicCortex",
+    "HGM",
+    "HPME",
+    "HGM-0A",
+    "HGM-0B"
+  ],
+  "package_path": "mnemonic_cortex/hypergraph_manifold/",
+  "safety": "dry-run safe; additive extension; no destructive rewrites",
+  "changed_files": {
+    "added": [
+      "docs/hgm_hpme/01_hgm_0b_probability_expander.md",
+      "mnemonic_cortex/hypergraph_manifold/normalization.py",
+      "mnemonic_cortex/hypergraph_manifold/probability_expander.py",
+      "mnemonic_cortex/hypergraph_manifold/runtime_result.py",
+      "mnemonic_cortex/hypergraph_manifold/scenario_extraction.py",
+      "release/hgm_0b/changed_files.json",
+      "release/hgm_0b/compatibility_pytest_output.txt",
+      "release/hgm_0b/compile_output.txt",
+      "release/hgm_0b/manifest.json",
+      "release/hgm_0b/pytest_output.txt",
+      "release/hgm_0b/ship_check.md",
+      "tests/test_hgm_0b_probability_expander.py"
+    ],
+    "modified": [
+      "mnemonic_cortex/hypergraph_manifold/__init__.py",
+      "mnemonic_cortex/hypergraph_manifold/enums.py"
+    ],
+    "deleted": [],
+    "ignored": [
+      ".pytest_cache",
+      "__pycache__",
+      "*.pyc"
+    ]
+  },
+  "tests": {
+    "targeted": "python -m pytest tests/test_hgm_0b_probability_expander.py -q",
+    "compatibility": "python -m pytest tests/test_hgm_0a_foundation_types.py tests/test_hgm_0b_probability_expander.py -q",
+    "compile": "python -m compileall -q mnemonic_cortex/hypergraph_manifold"
+  },
+  "results": {
+    "targeted": "13 passed",
+    "compatibility": "21 passed",
+    "compileall": "passed"
+  },
+  "runtime_functions": [
+    "infer_probability_shape_contract",
+    "validate_probability_payload",
+    "normalize_probability_payload",
+    "expand_from_mutation_tokens",
+    "extract_top_k_scenarios",
+    "build_probability_expansion"
+  ],
+  "dataclasses": [
+    "NormalizationReport",
+    "ProbabilityExpansionResult",
+    "ScenarioCandidate",
+    "ScenarioExtractionResult"
+  ],
+  "known_limits": [
+    "HGM-0B extracts individual probability-cell candidates only; multi-node hyperedge binding is HGM-1.",
+    "No torch dependency is required; tensor libraries are accepted via tolist/shape duck typing only.",
+    "MutationToken expansion enforces HGM-0A probability bounds; logits belong in matrix payloads with SOFTMAX mode."
+  ]
+}

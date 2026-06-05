@@ -1,0 +1,21 @@
+{
+  "stage": "HGM-7",
+  "added_files": [
+    "docs/hgm_hpme/08_hgm_7_write_execution_adapter.md",
+    "mnemonic_cortex/hypergraph_manifold/hgm7_result.py",
+    "mnemonic_cortex/hypergraph_manifold/transaction_log.py",
+    "mnemonic_cortex/hypergraph_manifold/recovery_verification.py",
+    "mnemonic_cortex/hypergraph_manifold/write_execution_adapter.py",
+    "tests/test_hgm_7_write_execution_adapter.py",
+    "release/hgm_7/changed_files.json",
+    "release/hgm_7/compatibility_pytest_output.txt",
+    "release/hgm_7/compile_output.txt",
+    "release/hgm_7/manifest.json",
+    "release/hgm_7/pytest_output.txt",
+    "release/hgm_7/ship_check.md"
+  ],
+  "modified_files": [
+    "mnemonic_cortex/hypergraph_manifold/__init__.py"
+  ],
+  "non_hgm_runtime_files_modified": []
+}

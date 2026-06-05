@@ -1,0 +1,41 @@
+{
+  "audits": [
+    {
+      "action": "final_hold_required",
+      "event_id": "audit_prod8_hold",
+      "raw_payload_free": true,
+      "reason_codes": [
+        "no_activation"
+      ],
+      "secret_free": true
+    }
+  ],
+  "dead_letters": [],
+  "evidence": [
+    {
+      "evidence_id": "evidence_final_hold",
+      "kind": "final_hold",
+      "safe_summary": {
+        "hold_required": true
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "name": "final_readiness_domains_reviewed",
+      "tags": {},
+      "value": 20
+    },
+    {
+      "name": "production_blockers_p0",
+      "tags": {},
+      "value": 8
+    },
+    {
+      "name": "ci_baseline_gates_frozen",
+      "tags": {},
+      "value": 24
+    }
+  ],
+  "spans": []
+}

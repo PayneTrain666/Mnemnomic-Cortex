@@ -1,0 +1,105 @@
+{
+  "stage": "REASON-1C",
+  "stage_complete": true,
+  "source_pack": "/mnt/data/mnemonic_reasoning_latest_development_integration_pack.zip",
+  "token_budget": {
+    "target_scope": "REASON-1C MANN depth SlotKV bank + MANNDepthAdapter, hop traces, shadow write proposals, non-destructive integration hook, tests, docs, package, and print sequence.",
+    "minimum_complete_version_tokens_est": 11000,
+    "deep_implementation_version_tokens_est": 30000,
+    "generated_content_total_tokens_est": 70000,
+    "max_safe_response_budget_tokens_est": 18000,
+    "fits_single_response": false,
+    "binding_split_decision": "Implementation/package completed in one execution; printout split into REASON-1C-PRINT-P1/P2/P3 at file boundaries.",
+    "estimated_file_module_count": {
+      "new_source_files": 3,
+      "patched_source_files": 2,
+      "new_tests": 7,
+      "new_docs": 5,
+      "updated_tracker": 1,
+      "release_manifest": 1,
+      "benchmark_count": 0
+    },
+    "selected_split_scope": "Full REASON-1C implementation + package; source printout begins in final response.",
+    "clean_split_points": [
+      "source-integrity audit",
+      "MANNSlotKVDepthBank",
+      "MANNDepthAdapter",
+      "non-destructive MANN integration helper",
+      "tests",
+      "docs/tracker/ship-check",
+      "package bundles",
+      "print sequence"
+    ],
+    "explicit_out_of_scope": [
+      "LTM depth adapter integration (REASON-1D)",
+      "SPCP procedural bank integration",
+      "actual MANN runtime destructive replacement",
+      "permanent memory consolidation",
+      "model weight mutation",
+      "optimizer mutation",
+      "direct shared physical tensor storage with LTM",
+      "fake quantum hardware backend",
+      "real external memory-store activation"
+    ]
+  },
+  "shipcheck": {
+    "stage": "REASON-1C",
+    "stage_complete": true,
+    "source_pack": "/mnt/data/mnemonic_reasoning_latest_development_integration_pack.zip",
+    "source_info": {
+      "latest_development_pack_exists": true,
+      "reason1b_pack_exists": true,
+      "wm_pack_exists": true,
+      "active_source_pack": "/mnt/data/mnemonic_reasoning_latest_development_integration_pack.zip",
+      "active_source_sha256": "415611feeb252100f49141614e6e627567ee228b27c1134591b00ce78e2a319f",
+      "reason1b_sha256": "84f5ab3e88a00da50e6720a014c2e071a4d8de1cabb4c7f80fc4295254395140",
+      "wm_pack_sha256": "1302773410ceb42172f9fc7b1b26411ff4ed3aad8f126c25d6c6f5de58f90dac",
+      "depth_indexed_slot_lattice_exists": true,
+      "wm_depth_controller_exists": true,
+      "qdt_working_memory_exists": true,
+      "mann_related_files_found": [
+        "mnemonic_cortex/working_memory/wm_mann_cross_attention.py"
+      ]
+    },
+    "source_files_created": [
+      "mnemonic_cortex/reasoning_depth/mann_slotkv_depth_bank.py",
+      "mnemonic_cortex/reasoning_depth/mann_depth_adapter.py",
+      "mnemonic_cortex/working_memory/mann_depth_integration.py"
+    ],
+    "source_files_patched": [
+      "mnemonic_cortex/reasoning_depth/__init__.py",
+      "mnemonic_cortex/working_memory/__init__.py"
+    ],
+    "tests_created": [
+      "tests/test_reason1c_mann_slotkv_depth_bank.py",
+      "tests/test_reason1c_mann_depth_adapter_disabled.py",
+      "tests/test_reason1c_mann_depth_adapter_enabled.py",
+      "tests/test_reason1c_mann_hop_trace.py",
+      "tests/test_reason1c_mann_write_proposals.py",
+      "tests/test_reason1c_shared_canonical_ids_no_shared_tensors.py",
+      "tests/test_reason1c_reason1b_compatibility.py"
+    ],
+    "docs_created": [
+      "docs/reasoning_engine/20_mann_depth_integration_design.md",
+      "docs/reasoning_engine/21_mann_depth_integration_api.md",
+      "docs/reasoning_engine/22_mann_depth_integration_tests.md",
+      "docs/reasoning_engine/23_mann_depth_integration_shipcheck.md",
+      "docs/reasoning_engine/24_exact_reason_1d_command.md"
+    ],
+    "full_test_result": "\u001b[32m\u001b[32m\u001b[1m31 passed\u001b[0m\u001b[32m in 0.69s\u001b[0m\u001b[0m",
+    "default_inert_behavior_preserved": true,
+    "destructive_mann_replacement": false,
+    "mann_ltm_shared_physical_tensors": false,
+    "write_routes": [
+      "Z4 reasoning_transform",
+      "Z5 hop_history",
+      "Z6 candidate_hypothesis",
+      "Z7 scratch_trace"
+    ],
+    "default_write_mutation": false,
+    "printout_status": "split_required; PRINT-P1 source files begins in assistant final response",
+    "redo_required": false,
+    "full_depth_adequacy_gate": "PASS"
+  },
+  "next_stage": "REASON-1D"
+}

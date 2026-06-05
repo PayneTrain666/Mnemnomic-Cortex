@@ -1,0 +1,151 @@
+{
+  "block_reasons": [],
+  "gates": [
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for source_verification_gate",
+      "kind": "source_verification_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for source_consideration_matrix_gate",
+      "kind": "source_consideration_matrix_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for token_budget_gate",
+      "kind": "token_budget_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_live_routing_gate",
+      "kind": "no_live_routing_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_payload_transfer_gate",
+      "kind": "no_payload_transfer_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_write_gate",
+      "kind": "no_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_qh_write_gate",
+      "kind": "no_qh_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_shared_slot_write_gate",
+      "kind": "no_shared_slot_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_external_memory_write_gate",
+      "kind": "no_external_memory_write_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_commit_gate",
+      "kind": "no_commit_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for no_production_activation_gate",
+      "kind": "no_production_activation_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for redaction_gate",
+      "kind": "redaction_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for audit_chain_gate",
+      "kind": "audit_chain_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for deterministic_replay_gate",
+      "kind": "deterministic_replay_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for trace_corpus_gate",
+      "kind": "trace_corpus_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for ci_matrix_gate",
+      "kind": "ci_matrix_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for extended_safety_regression_gate",
+      "kind": "extended_safety_regression_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for read_only_runtime_probe_gate",
+      "kind": "read_only_runtime_probe_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for synthetic_to_real_boundary_gate",
+      "kind": "synthetic_to_real_boundary_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for observability_review_gate",
+      "kind": "observability_review_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for readiness_blocker_gate",
+      "kind": "readiness_blocker_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for full_printout_gate",
+      "kind": "full_printout_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for release_pack_gate",
+      "kind": "release_pack_gate",
+      "passed": true
+    },
+    {
+      "critical": true,
+      "evidence": "PROD-8 local baseline evidence for ship_check_gate",
+      "kind": "ship_check_gate",
+      "passed": true
+    }
+  ],
+  "request_id": "prod8_ci_freeze",
+  "status": "frozen"
+}

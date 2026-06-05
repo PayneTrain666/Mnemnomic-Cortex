@@ -1,0 +1,9 @@
+--- qspin_prod0/mnemonic_cortex/working_memory/__init__.py
++++ qspin_prod1/mnemonic_cortex/working_memory/__init__.py
+@@
++# QSPIN-PROD-1 shadow-only production-track infrastructure exports.
++# These are additive and do not activate runtime routing.
++from .qspin_runtime_shadow_activation import *
++from .qspin_commit_gate_dry_run import *
++from .qspin_kill_switch import *
++from .qspin_rollback_harness import *
