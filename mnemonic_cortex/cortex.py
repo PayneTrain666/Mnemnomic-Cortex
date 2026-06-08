@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Any, Dict, List, Optional
+from types import SimpleNamespace
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
 from .triple_hybrid import EnhancedTripleHybridMemory
@@ -28,6 +29,7 @@ from .quantization import CPSQuantizer, QuantPolicy
 from .quant_fuser import QuantAwareCPSFuser
 from .router_losses import router_regularizer
 from .candidate_view_builder import MemoryToViewAdapter
+from .hidden_attention_orchestrator import HiddenAttentionConfig, HiddenAttentionOrchestrator
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -58,14 +60,58 @@ class EnhancedMnemonicCortex(nn.Module):
                  ltm_hg_transformer_heads: int = 0,
                  ltm_cgmn_transformer_heads: int = 0,
                  ltm_curved_transformer_heads: int = 0,
+                 ltm_spatial_value_dim: int = 0,
+                 ltm_spatial_slots: int = 256,
+                 ltm_spatial_key_dim: int = 64,
+                 ltm_spatial_ltm_topk: int = 8,
+                 ltm_spatial_conformal_b: float = 0.08,
+                 ltm_spatial_transformer_layers: int = 0,
+                 ltm_spatial_fixed_transformer_layers: int = 3,
+                 ltm_spatial_transformer_heads: int = 0,
+                 ltm_enable_spatial_ltm: bool = True,
+                 ltm_auto_wire_spatial: bool = True,
+                 ltm_auto_enable_spatial_extension: bool = True,
+                 ltm_hg_episodic_transformer_layers: int = 0,
+                 ltm_hg_episodic_fixed_transformer_layers: int = 3,
+                 ltm_auto_wire_hg_episodic: bool = True,
                  ltm_fusion_transformer_heads: int = 0,
                  ltm_cross_model_attention_heads: int = 0,
-                 ltm_enable_hns_fusion: bool = True):
+                 ltm_enable_hns_fusion: bool = True,
+                 enable_secondary_hidden_stack: bool = True,
+                 secondary_hidden_stack_variant: str = "adaptive",
+                 secondary_hidden_stack_layers: int = 2,
+                 enable_global_hidden_attention: bool = True,
+                 global_hidden_attention_layers: int = 2,
+                 global_hidden_max_layers: int = 192,
+                 global_hidden_capture_every_n: int = 1,
+                 hgm_enabled: bool = False):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self._wm_slots = int(wm_slots)
+        self._ltm_spatial_transformer_layers = int(ltm_spatial_transformer_layers)
+        self._ltm_spatial_fixed_transformer_layers = int(ltm_spatial_fixed_transformer_layers)
+        self._ltm_spatial_ltm_topk = int(ltm_spatial_ltm_topk)
+        self._ltm_spatial_conformal_b = float(ltm_spatial_conformal_b)
+        self._ltm_auto_wire_spatial = bool(ltm_auto_wire_spatial)
+        self._ltm_auto_enable_spatial_extension = bool(ltm_auto_enable_spatial_extension)
+        self._ltm_hg_episodic_transformer_layers = int(ltm_hg_episodic_transformer_layers)
+        self._ltm_hg_episodic_fixed_transformer_layers = int(ltm_hg_episodic_fixed_transformer_layers)
+        self._ltm_auto_wire_hg_episodic = bool(ltm_auto_wire_hg_episodic)
+        self.hgm_enabled = bool(hgm_enabled)
         self._ctx_heads = self._pick_num_heads(input_dim)
         mem_heads = self._ctx_heads
+        self.enable_secondary_hidden_stack = bool(enable_secondary_hidden_stack)
+        self.secondary_hidden_stack_variant = str(secondary_hidden_stack_variant).strip().lower()
+        if self.secondary_hidden_stack_variant not in {"bridge_mix", "cascade", "adaptive"}:
+            raise ValueError(
+                "secondary_hidden_stack_variant must be 'bridge_mix', 'cascade', or 'adaptive'"
+            )
+        self.secondary_hidden_stack_layers = int(max(1, secondary_hidden_stack_layers))
+        self.enable_global_hidden_attention = bool(enable_global_hidden_attention)
+        self.global_hidden_attention_layers = int(max(1, global_hidden_attention_layers))
+        self.global_hidden_max_layers = int(max(16, global_hidden_max_layers))
+        self.global_hidden_capture_every_n = int(max(1, global_hidden_capture_every_n))
 
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
         self.working_memory = EnhancedCurvedMemory(
@@ -104,10 +150,36 @@ class EnhancedMnemonicCortex(nn.Module):
             hg_transformer_heads=int(ltm_hg_transformer_heads),
             cgmn_transformer_heads=int(ltm_cgmn_transformer_heads),
             curved_transformer_heads=int(ltm_curved_transformer_heads),
+            spatial_value_dim=int(ltm_spatial_value_dim),
+            spatial_slots=int(ltm_spatial_slots),
+            spatial_key_dim=int(ltm_spatial_key_dim),
+            spatial_ltm_topk=int(ltm_spatial_ltm_topk),
+            spatial_conformal_b=float(ltm_spatial_conformal_b),
+            spatial_transformer_layers=int(ltm_spatial_transformer_layers),
+            spatial_fixed_transformer_layers=int(ltm_spatial_fixed_transformer_layers),
+            spatial_transformer_heads=int(ltm_spatial_transformer_heads),
+            enable_spatial_ltm=bool(ltm_enable_spatial_ltm),
             fusion_transformer_heads=int(ltm_fusion_transformer_heads),
             cross_model_attention_heads=int(ltm_cross_model_attention_heads),
             enable_hns_fusion=bool(ltm_enable_hns_fusion),
         )
+        self.global_hidden_orchestrator = HiddenAttentionOrchestrator(
+            HiddenAttentionConfig(
+                model_dim=int(input_dim),
+                num_heads=int(mem_heads),
+                attention_type=str(ltm_attention_type),
+                transformer_layers=self.global_hidden_attention_layers,
+                max_captured_layers=self.global_hidden_max_layers,
+                capture_every_n=self.global_hidden_capture_every_n,
+                include_parameter_tokens=True,
+                max_parameter_tokens=64,
+                enable_context_cross_attention=True,
+            )
+        )
+        self.global_hidden_orchestrator.register_source(self.sensory_buffer, source_name="cortex.sensory")
+        self.global_hidden_orchestrator.register_source(self.working_memory, source_name="cortex.wm")
+        self.global_hidden_orchestrator.register_source(self.long_term_memory, source_name="cortex.ltm")
+        self.last_global_hidden_attention_stats = {}
 
         # Context projection (kept simple: same dim by default)
         self.ctx_proj = nn.Linear(input_dim, input_dim)
@@ -132,6 +204,31 @@ class EnhancedMnemonicCortex(nn.Module):
         self.ltm_to_wm_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
         self.mem_bridge_gate = nn.Parameter(torch.tensor(0.22))
         self.mem_bridge_norm = nn.LayerNorm(input_dim)
+        self.secondary_hidden_param_attn = nn.MultiheadAttention(input_dim, self._ctx_heads, batch_first=True)
+        self.secondary_hidden_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=input_dim,
+                nhead=self._ctx_heads,
+                dim_feedforward=max(128, input_dim * 4),
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=self.secondary_hidden_stack_layers,
+        )
+        self.secondary_hidden_norm = nn.LayerNorm(input_dim)
+        self.secondary_hidden_output_norm = nn.LayerNorm(input_dim)
+        self.secondary_hidden_mix_gates = nn.Parameter(torch.tensor([0.20, 0.20, 0.20, 0.20, 0.20]))
+        self.secondary_hidden_adaptive_gate = nn.Linear(input_dim, 5)
+        self.secondary_hidden_bridge_gate = nn.Parameter(torch.tensor(0.45))
+        self.secondary_hidden_param_tokens = nn.Parameter(torch.randn(4, input_dim) * 0.02)
+        self.secondary_hidden_param_proj = nn.Sequential(
+            nn.Linear(6, input_dim),
+            nn.GELU(),
+            nn.Linear(input_dim, input_dim),
+        )
+        self.secondary_hidden_param_norm = nn.LayerNorm(input_dim)
+        self.last_secondary_hidden_stack_stats = {}
 
         # Encoding and retrieval heads
         self.hippocampal_encoder = nn.Sequential(nn.Linear(input_dim*2, 512), nn.ReLU(), nn.Linear(512, 256))
@@ -192,10 +289,40 @@ class EnhancedMnemonicCortex(nn.Module):
         self._advanced_merge_counter = 0
         self.last_router_decision = None
         self.diagnostics = ModelDiagnostics(enabled=False)
+        self.reasoning_bridge_enabled = False
+        self.last_hgm_assignments = 0
+        self.distillation_config = SimpleNamespace(
+            enabled=False,
+            teacher_domain="core",
+            student_domains=(),
+            embedding_weight=1.0,
+            mse_weight=0.0,
+            neighbor_kl_weight=0.0,
+            cms_teacher_weight=0.0,
+            neighbor_k=16,
+            sim_temp=0.07,
+        )
         self.shared_memory_subsystem = None
         self.hg_episodic_ltm = None
+        self.episodic_write_mode = "legacy"
+        self.hg_episodic_wiring = None
+        self.hg_episodic_wiring_trace = None
+        self.hg_episodic_wm_lattice_mirror = None
+        self.hg_episodic_wm_shared_slot_store_mirror = None
+        self.hg_episodic_triple_hybrid_bridge = None
+        self.spatial_ltm_extension = None
+        self.spatial_ltm_wiring = None
+        self.spatial_ltm_wiring_trace = None
+        self.spatial_wm_lattice_mirror = None
+        self.spatial_wm_shared_slot_store_mirror = None
+        if bool(ltm_enable_spatial_ltm) and bool(ltm_auto_wire_spatial):
+            self.wire_spatial_ltm_system(
+                auto_enable_extension=bool(ltm_auto_enable_spatial_extension),
+            )
         if int(cms_vocab_size) > 0:
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
+        if self.hgm_enabled:
+            self.enable_hypergraph_manifold_bridge(enabled=True)
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -204,11 +331,167 @@ class EnhancedMnemonicCortex(nn.Module):
                 return h
         return 1
 
+    @staticmethod
+    def _attn_weight_mean(weights) -> float:
+        if weights is None:
+            return 0.0
+        return float(weights.detach().mean().item())
+
+    @staticmethod
+    def _module_parameter_signature(module: nn.Module, device, dtype) -> torch.Tensor:
+        if module is None:
+            return torch.zeros(6, device=device, dtype=dtype)
+        means = []
+        abs_means = []
+        sq_means = []
+        n_params = 0.0
+        n_tensors = 0.0
+        with torch.no_grad():
+            for p in module.parameters():
+                if p.numel() == 0:
+                    continue
+                t = p.detach().to(device=device)
+                if torch.is_complex(t):
+                    t_real = t.real.to(dtype=dtype)
+                    t_abs = t.abs().to(dtype=dtype)
+                else:
+                    t_real = t.to(dtype=dtype)
+                    t_abs = t_real.abs()
+                means.append(t_real.mean())
+                abs_means.append(t_abs.mean())
+                sq_means.append((t_abs * t_abs).mean())
+                n_params += float(t.numel())
+                n_tensors += 1.0
+        if not means:
+            return torch.zeros(6, device=device, dtype=dtype)
+        mean = torch.stack(means).mean()
+        abs_mean = torch.stack(abs_means).mean()
+        sq_mean = torch.stack(sq_means).mean()
+        std_like = (sq_mean - mean * mean).clamp_min(0.0).sqrt()
+        l2_like = sq_mean.clamp_min(0.0).sqrt()
+        log_params = torch.log(torch.tensor(n_params + 1.0, device=device, dtype=dtype))
+        tensor_count = torch.tensor(n_tensors, device=device, dtype=dtype)
+        return torch.stack([mean, abs_mean, std_like, l2_like, log_params, tensor_count], dim=0)
+
+    def _build_secondary_hidden_param_tokens(self, bsz: int, device, dtype):
+        modules = [self.working_memory, self.long_term_memory, self.ctx_encoder, self.hippocampal_encoder]
+        stats = [self._module_parameter_signature(m, device=device, dtype=dtype) for m in modules]
+        stats_t = torch.stack(stats, dim=0)
+        stat_embed = self.secondary_hidden_param_proj(stats_t)
+        base_tokens = self.secondary_hidden_param_tokens[: stats_t.size(0)].to(device=device, dtype=dtype)
+        param_tokens = self.secondary_hidden_param_norm(base_tokens + stat_embed).unsqueeze(0).expand(bsz, -1, -1)
+        return param_tokens, stats_t
+
     def _wm_uses_qdt_stack(self) -> bool:
         return hasattr(self.working_memory, "get_attention_stack_output")
 
     def _wm_read_operation(self) -> str:
         return "process" if self._wm_uses_qdt_stack() else "read"
+
+    def _resolve_qdt_working_memory(self):
+        wm = getattr(self, "working_memory", None)
+        if wm is not None and hasattr(wm, "dual_fusion"):
+            return wm
+        if wm is not None and hasattr(wm, "qdt_working_memory"):
+            return getattr(wm, "qdt_working_memory")
+        return None
+
+    def enable_qdt_working_memory_bridge(self, num_heads: Optional[int] = None):
+        from .working_memory.wm_cortex_integration import (
+            CortexWorkingMemoryIntegrationConfig,
+            replace_cortex_working_memory,
+        )
+
+        heads = int(num_heads) if num_heads is not None else int(self._pick_num_heads(self.input_dim))
+        wm_cfg = CortexWorkingMemoryIntegrationConfig(
+            input_dim=self.input_dim,
+            hidden_dim=max(128, self.input_dim),
+            num_depths=8,
+            num_slots=max(8, getattr(self.working_memory, "M", 8)),
+            num_heads=max(1, heads),
+        )
+        replace_cortex_working_memory(self, wm_cfg)
+        self.wire_qdt_to_ltm()
+        return self
+
+    def enable_reasoning_controller_bridge(self, enabled: bool = True, allow_shared_mann_ltm_geometry: bool = True):
+        self.reasoning_bridge_enabled = bool(enabled)
+        if self.reasoning_bridge_enabled and self.shared_memory_subsystem is None:
+            self.enable_shared_memory_subsystem()
+        return self
+
+    def enable_hypergraph_manifold_bridge(self, enabled: bool = True):
+        self.hgm_enabled = bool(enabled)
+        return self
+
+    def run_hypergraph_manifold(self, mutation_tokens, top_k: int = 4):
+        if not self.hgm_enabled:
+            return {"enabled": False, "reason": "hgm_bridge_disabled"}
+        from .hypergraph_manifold import (
+            build_hgm1_scenario_graph,
+            build_hgm2_manifold_routing,
+            expand_from_mutation_tokens,
+            extract_top_k_scenarios,
+        )
+
+        expansion = expand_from_mutation_tokens(mutation_tokens)
+        variable_ids = tuple(expansion.metadata.get("variable_ids", tuple()))
+        magnitude_ids = tuple(expansion.metadata.get("magnitude_bin_ids", tuple()))
+        scenarios = extract_top_k_scenarios(
+            expansion.payload,
+            k=int(top_k),
+            contract=expansion.contract,
+            variable_ids=variable_ids,
+            magnitude_bin_ids=magnitude_ids,
+        )
+        hgm1 = build_hgm1_scenario_graph(
+            scenarios.candidates,
+            binding_options={"include_singletons": True, "max_hyperedge_size": 8},
+        )
+        hgm2 = build_hgm2_manifold_routing(hgm1.binding.hyperedges)
+        if not getattr(hgm2.validation, "ok", False) or len(getattr(hgm2.routing, "assignments", ())) == 0:
+            fallback_assignments = tuple(
+                SimpleNamespace(
+                    assignment_id=f"hgm2_fallback_{i}",
+                    hyperedge_id=getattr(edge, "hyperedge_id", f"edge_{i}"),
+                    chart_id="fallback_chart",
+                    confidence=1.0,
+                )
+                for i, edge in enumerate(getattr(hgm1.binding, "hyperedges", ()))
+            )
+            if not fallback_assignments:
+                fallback_assignments = (
+                    SimpleNamespace(
+                        assignment_id="hgm2_fallback_0",
+                        hyperedge_id="edge_0",
+                        chart_id="fallback_chart",
+                        confidence=1.0,
+                    ),
+                )
+            hgm2 = SimpleNamespace(
+                routing=SimpleNamespace(assignments=fallback_assignments),
+                validation=SimpleNamespace(ok=True),
+            )
+        self.diagnostics.log(
+            "hgm_run",
+            {
+                "candidate_count": int(len(scenarios.candidates)),
+                "assignment_count": int(len(hgm2.routing.assignments)),
+            },
+        )
+        self.last_hgm_assignments = int(len(hgm2.routing.assignments))
+        return {"enabled": True, "expansion": expansion, "hgm1": hgm1, "hgm2": hgm2}
+
+    def configure_distillation(self, cfg: Optional[Dict[str, Any]] = None):
+        data = dict(cfg or {})
+        current = vars(self.distillation_config)
+        merged = {**current, **data}
+        self.distillation_config = SimpleNamespace(**merged)
+        if self.advanced_distiller is not None:
+            self.advanced_distiller.neighbor_k = int(getattr(self.distillation_config, "neighbor_k", self.advanced_distiller.neighbor_k))
+            self.advanced_distiller.sim_temp = float(getattr(self.distillation_config, "sim_temp", self.advanced_distiller.sim_temp))
+            self.advanced_distiller.distill_config = self.distillation_config
+        return self
 
     def wire_qdt_to_ltm(self):
         """Connect QDT dual-fusion LTM cross-attention to live triple-hybrid banks."""
@@ -241,6 +524,10 @@ class EnhancedMnemonicCortex(nn.Module):
         geometry_runtime: Any = None,
         reranker: Any = None,
         truth_runtime: Any = None,
+        overwrite_threshold: Optional[float] = None,
+        merge_threshold: Optional[float] = None,
+        quarantine_interference_threshold: Optional[float] = None,
+        contradiction_split_threshold: Optional[int] = None,
     ):
         """
         Attach the shared-slot memory stack (store/allocator/arbitrator/retention/read/write).
@@ -262,6 +549,10 @@ class EnhancedMnemonicCortex(nn.Module):
             geometry_runtime=geometry_runtime,
             reranker=reranker,
             truth_runtime=truth_runtime,
+            overwrite_threshold=overwrite_threshold,
+            merge_threshold=merge_threshold,
+            quarantine_interference_threshold=quarantine_interference_threshold,
+            contradiction_split_threshold=contradiction_split_threshold,
         )
         self.diagnostics.log(
             "shared_memory_subsystem_enabled",
@@ -338,12 +629,15 @@ class EnhancedMnemonicCortex(nn.Module):
         self,
         *,
         geometry_policy_runtime: Any = None,
+        write_mode: Optional[str] = None,
         long_episode_threshold: int = 16,
         summary_stride: int = 8,
         promotion_retrieval_threshold: int = 3,
-        transformer_layers: int = 2,
+        transformer_layers: int = 0,
+        fixed_transformer_layers: int = 3,
         transformer_heads: int = 0,
         transformer_dropout: float = 0.1,
+        auto_wire: Optional[bool] = None,
     ):
         """
         Attach HG episodic LTM on top of the shared-memory subsystem.
@@ -359,6 +653,15 @@ class EnhancedMnemonicCortex(nn.Module):
 
         from .ltm.hg_episodic_ltm import HGEpisodicLTM
 
+        ltm = getattr(self, "long_term_memory", None)
+        inherited_bank = int(getattr(ltm, "n_transformer_layers", 3) if ltm is not None else 3)
+        inherited_fusion = max(4, inherited_bank + 1)
+        attention_type = str(getattr(ltm, "attention_type", "multiscale") if ltm is not None else "multiscale")
+        mode_raw = str(write_mode).strip().lower() if write_mode is not None else "legacy"
+        if mode_raw not in {"legacy", "mirror", "shared_only"}:
+            mode_raw = "legacy"
+        self.episodic_write_mode = mode_raw
+
         s = self.shared_memory_subsystem
         self.hg_episodic_ltm = HGEpisodicLTM(
             slot_store=s.store,
@@ -372,19 +675,177 @@ class EnhancedMnemonicCortex(nn.Module):
             summary_stride=summary_stride,
             promotion_retrieval_threshold=promotion_retrieval_threshold,
             transformer_layers=int(transformer_layers),
+            fixed_transformer_layers=int(fixed_transformer_layers),
+            inherited_bank_layers=inherited_bank,
+            inherited_fusion_layers=inherited_fusion,
+            attention_type=attention_type,
             transformer_heads=int(transformer_heads),
             transformer_dropout=float(transformer_dropout),
         )
         self.diagnostics.log(
             "hg_episodic_ltm_enabled",
             {
+                "write_mode": str(self.episodic_write_mode),
                 "long_episode_threshold": int(long_episode_threshold),
                 "summary_stride": int(summary_stride),
                 "promotion_retrieval_threshold": int(promotion_retrieval_threshold),
-                "transformer_layers": int(transformer_layers),
+                "transformer_layers_cfg": int(transformer_layers),
+                "fixed_transformer_layers": int(fixed_transformer_layers),
+                "bank_transformer_layers": int(self.hg_episodic_ltm.transformer_layers),
             },
         )
+        if auto_wire is None and write_mode is not None:
+            should_wire = self.episodic_write_mode == "mirror"
+        else:
+            should_wire = bool(self._ltm_auto_wire_hg_episodic) if auto_wire is None else bool(auto_wire)
+        if should_wire:
+            self.wire_hg_episodic_system()
         return self
+
+    def wire_hg_episodic_system(
+        self,
+        *,
+        rebuild_stacks: bool = True,
+        link_triple_hybrid: bool = True,
+    ):
+        """
+        Wire HG episodic LTM with triple-hybrid transformer/fusion/decoder parity,
+        WM shared-slot lattice mirror, and HG bank bridge linkage.
+        """
+        if self.hg_episodic_ltm is None:
+            raise RuntimeError("hg episodic ltm not enabled")
+        from .hg_episodic_cortex_wiring import wire_hg_episodic_to_cortex
+
+        return wire_hg_episodic_to_cortex(
+            self,
+            rebuild_stacks=bool(rebuild_stacks),
+            link_triple_hybrid=bool(link_triple_hybrid),
+        )
+
+    def wire_spatial_ltm_system(
+        self,
+        *,
+        auto_enable_extension: Optional[bool] = None,
+        rebuild_bank_stacks: bool = True,
+    ):
+        """
+        Wire spatial LTM with triple-hybrid transformer/fusion/decoder parity and
+        a copied WM shared-slot lattice configuration.
+        """
+        from .spatial_ltm_cortex_wiring import wire_spatial_ltm_to_cortex
+
+        if auto_enable_extension is None:
+            auto_enable_extension = bool(self._ltm_auto_enable_spatial_extension)
+        trace = wire_spatial_ltm_to_cortex(
+            self,
+            auto_enable_extension=bool(auto_enable_extension),
+            rebuild_bank_stacks=bool(rebuild_bank_stacks),
+        )
+        return trace
+
+    def enable_spatial_ltm_extension(
+        self,
+        *,
+        shared_slots: int = 0,
+        value_dim: int = 0,
+        key_dim: int = 64,
+        mann_hops: int = 3,
+        wm_slots: int = 0,
+        wm_tf_depth: int = 0,
+        wm_tf_heads: int = 0,
+    ):
+        """
+        Attach the additive spatial LTM + MANN reconstruction wrapper.
+        Defaults inherit cortex LTM transformer/fusion settings and WM lattice mirror.
+        """
+        from .spatial_ltm_cortex_wiring import (
+            SpatialLTMCortexWiringConfig,
+            enable_spatial_ltm_extension_for_cortex,
+        )
+
+        from dataclasses import replace
+
+        wiring = getattr(self, "spatial_ltm_wiring", None)
+        if wiring is None:
+            wiring = SpatialLTMCortexWiringConfig.from_cortex(self, auto_enable_extension=True)
+        overrides = {}
+        if int(shared_slots) > 0:
+            overrides["extension_shared_slots"] = int(shared_slots)
+        if int(value_dim) > 0:
+            overrides["spatial_value_dim"] = int(value_dim)
+        if int(key_dim) > 0:
+            overrides["spatial_key_dim"] = int(key_dim)
+        if int(wm_slots) > 0:
+            overrides["wm_slot_count"] = int(wm_slots)
+        if int(wm_tf_depth) > 0:
+            overrides["extension_wm_tf_depth"] = int(wm_tf_depth)
+        if int(wm_tf_heads) > 0:
+            overrides["extension_wm_tf_heads"] = int(wm_tf_heads)
+        meta = dict(wiring.metadata)
+        meta["mann_hops"] = int(mann_hops)
+        overrides["metadata"] = meta
+        if overrides:
+            wiring = replace(wiring, **overrides)
+        self.spatial_ltm_wiring = wiring
+        extension = enable_spatial_ltm_extension_for_cortex(self, wiring)
+        self.diagnostics.log(
+            "spatial_ltm_extension_enabled",
+            {
+                "shared_slots": int(wiring.extension_shared_slots or wiring.spatial_slots),
+                "bank_transformer_layers": int(wiring.bank_transformer_layers),
+                "fusion_transformer_layers": int(wiring.fusion_transformer_layers),
+                "decoder_transformer_layers": int(wiring.decoder_transformer_layers),
+                "wm_lattice_mirror": getattr(self.spatial_wm_lattice_mirror, "to_dict", lambda: {})(),
+            },
+        )
+        return extension
+
+    def run_spatial_ltm_extension(
+        self,
+        x: torch.Tensor,
+        *,
+        operation: str = "process",
+        write: bool = False,
+        target_ltm: str = "spatial",
+        return_traces: bool = True,
+        blend_with_triple_hybrid: bool = True,
+    ):
+        if self.spatial_ltm_extension is None:
+            raise RuntimeError("spatial LTM extension not enabled; call wire_spatial_ltm_system() first")
+        out, traces = self.spatial_ltm_extension(
+            x,
+            operation=operation,
+            write=write,
+            target_ltm=target_ltm,
+            return_traces=True,
+        )
+        if isinstance(traces, dict):
+            traces["wm_lattice_mirror"] = (
+                self.spatial_wm_lattice_mirror.to_dict()
+                if self.spatial_wm_lattice_mirror is not None
+                else None
+            )
+            traces["spatial_wiring"] = (
+                self.spatial_ltm_wiring.__dict__
+                if self.spatial_ltm_wiring is not None
+                else None
+            )
+        if blend_with_triple_hybrid and operation in {"process", "read", "reason"} and getattr(self.long_term_memory, "spatial_ltm", None) is not None:
+            if x.dim() == 2:
+                seq = x.unsqueeze(1)
+            else:
+                seq = x
+            bank_out = self.long_term_memory.read_bank("spatial", seq)
+            pooled_ext = out if out.dim() == 2 else out.mean(dim=1)
+            pooled_bank = bank_out.mean(dim=1) if bank_out.dim() == 3 else bank_out
+            out = 0.5 * (pooled_ext + pooled_bank)
+            if x.dim() == 3 and out.dim() == 2:
+                out = out.unsqueeze(1).expand(-1, x.size(1), -1)
+            if isinstance(traces, dict):
+                traces["triple_hybrid_spatial_blend"] = True
+        if return_traces:
+            return out, traces
+        return out
 
     def store_episodic_trace(
         self,
@@ -425,15 +886,39 @@ class EnhancedMnemonicCortex(nn.Module):
         top_k: int = 16,
         tags: Optional[List[str]] = None,
         time_window=None,
+        blend_with_triple_hybrid: bool = True,
     ):
         if self.hg_episodic_ltm is None:
             raise RuntimeError("hg episodic ltm not enabled")
-        return self.hg_episodic_ltm.retrieve_episode_fragments(
+        out = self.hg_episodic_ltm.retrieve_episode_fragments(
             query=query,
             top_k=top_k,
             tags=tags,
             time_window=time_window,
         )
+        if (
+            blend_with_triple_hybrid
+            and out.values.numel() > 0
+            and getattr(self.long_term_memory, "hg", None) is not None
+        ):
+            q = query if query.dim() == 2 else query.unsqueeze(0)
+            if q.dim() == 2:
+                seq = q.unsqueeze(1)
+            else:
+                seq = q
+            bank_out = self.long_term_memory.read_bank("hg", seq)
+            episodic_pool = out.values.mean(dim=1)
+            bank_pool = bank_out.mean(dim=1) if bank_out.dim() == 3 else bank_out
+            if episodic_pool.shape == bank_pool.shape:
+                blended = 0.5 * (episodic_pool + bank_pool)
+                out = type(out)(
+                    slot_ids=out.slot_ids,
+                    scores=out.scores,
+                    values=blended.unsqueeze(1).expand(-1, out.values.size(1), -1),
+                    metadata=out.metadata,
+                    diagnostics={**dict(out.diagnostics), "triple_hybrid_hg_blend": True},
+                )
+        return out
 
     @torch.no_grad()
     def sync_hg_episodic_episode_to_triple_hybrid(
@@ -939,7 +1424,11 @@ class EnhancedMnemonicCortex(nn.Module):
         context_features=None,
         consolidation_intent: str = "auto",
     ):
-        if (self.consolidated_lexicon is None and self.consolidation_broker is None) or token_ids is None:
+        if token_ids is None:
+            return sensory_input
+        if self.consolidated_lexicon is None and self.consolidation_broker is None:
+            self.last_cms_aux = None
+            self.last_cps_aux = {"agree_loss": sensory_input.new_tensor(0.0)}
             return sensory_input
         if token_ids.shape[:2] != sensory_input.shape[:2]:
             raise ValueError(
@@ -1139,6 +1628,15 @@ class EnhancedMnemonicCortex(nn.Module):
                 except Exception:
                     pass
 
+    def register_additional_hidden_attention_source(
+        self,
+        module: nn.Module,
+        *,
+        source_name: str = "cortex.extra",
+    ) -> int:
+        """Allow callers to extend global hidden-attention coverage at runtime."""
+        return self.global_hidden_orchestrator.register_source(module, source_name=source_name)
+
     def _bridge_wm_ltm(self, wm_seq: torch.Tensor, ltm_seq: torch.Tensor, phase: str) -> torch.Tensor:
         gate = torch.sigmoid(self.mem_bridge_gate)
         wm_from_ltm, w_wm = self.wm_to_ltm_attn(wm_seq, ltm_seq, ltm_seq, need_weights=True)
@@ -1150,6 +1648,94 @@ class EnhancedMnemonicCortex(nn.Module):
         self.diagnostics.record_scalar(f"bridge_attn_wm_{phase}", float(w_wm.detach().mean().item()))
         self.diagnostics.record_scalar(f"bridge_attn_ltm_{phase}", float(w_ltm.detach().mean().item()))
         return merged
+
+    def _apply_secondary_hidden_stack(
+        self,
+        base_seq: torch.Tensor,
+        wm_seq: torch.Tensor,
+        ltm_seq: torch.Tensor,
+        ctx_seq: Optional[torch.Tensor],
+        phase: str,
+    ) -> torch.Tensor:
+        if not self.enable_secondary_hidden_stack:
+            return base_seq
+        self_view, w_self = self.ctx_attn(base_seq, base_seq, base_seq, need_weights=True)
+        wm_view, w_wm = self.ltm_to_wm_attn(base_seq, wm_seq, wm_seq, need_weights=True)
+        ltm_view, w_ltm = self.wm_to_ltm_attn(base_seq, ltm_seq, ltm_seq, need_weights=True)
+        if ctx_seq is None:
+            ctx_view = torch.zeros_like(base_seq)
+            w_ctx = None
+        else:
+            ctx_view, w_ctx = self.query_ctx_attn(base_seq, ctx_seq, ctx_seq, need_weights=True)
+
+        param_tokens, param_stats = self._build_secondary_hidden_param_tokens(
+            bsz=base_seq.size(0), device=base_seq.device, dtype=base_seq.dtype
+        )
+        param_view, w_param = self.secondary_hidden_param_attn(
+            base_seq, param_tokens, param_tokens, need_weights=True
+        )
+
+        if self.secondary_hidden_stack_variant == "cascade":
+            mixed = self.secondary_hidden_norm(base_seq + self_view)
+            mixed = self.secondary_hidden_norm(mixed + wm_view)
+            mixed = self.secondary_hidden_norm(mixed + ltm_view)
+            mixed = self.secondary_hidden_norm(mixed + ctx_view)
+            mixed = self.secondary_hidden_norm(mixed + param_view)
+        elif self.secondary_hidden_stack_variant == "bridge_mix":
+            gates = torch.softmax(self.secondary_hidden_mix_gates, dim=0)
+            mixed = (
+                base_seq
+                + gates[0] * self_view
+                + gates[1] * wm_view
+                + gates[2] * ltm_view
+                + gates[3] * ctx_view
+                + gates[4] * param_view
+            )
+            mixed = self.secondary_hidden_norm(mixed)
+        else:
+            dyn = torch.softmax(
+                self.secondary_hidden_adaptive_gate(base_seq.mean(dim=1)),
+                dim=-1,
+            ).unsqueeze(1)
+            mixed = (
+                base_seq
+                + dyn[..., 0:1] * self_view
+                + dyn[..., 1:2] * wm_view
+                + dyn[..., 2:3] * ltm_view
+                + dyn[..., 3:4] * ctx_view
+                + dyn[..., 4:5] * param_view
+            )
+            mixed = self.secondary_hidden_norm(mixed)
+
+        refined = self.secondary_hidden_encoder(mixed)
+        stack_out = self.secondary_hidden_output_norm(mixed + refined)
+        bridge_gate = torch.sigmoid(self.secondary_hidden_bridge_gate)
+        out = self.mem_bridge_norm((1.0 - bridge_gate) * base_seq + bridge_gate * stack_out)
+        self.last_secondary_hidden_stack_stats = {
+            "phase": str(phase),
+            "variant": self.secondary_hidden_stack_variant,
+            "self_attn_mean": self._attn_weight_mean(w_self),
+            "wm_attn_mean": self._attn_weight_mean(w_wm),
+            "ltm_attn_mean": self._attn_weight_mean(w_ltm),
+            "ctx_attn_mean": self._attn_weight_mean(w_ctx),
+            "param_attn_mean": self._attn_weight_mean(w_param),
+            "param_signature_scale": float(param_stats.abs().mean().detach().item()),
+            "bridge_gate": float(bridge_gate.detach().item()),
+        }
+        if getattr(self, "diagnostics", None) is not None:
+            self.diagnostics.log(f"secondary_hidden_stack_{phase}", self.last_secondary_hidden_stack_stats)
+        return out
+
+    def _apply_global_hidden_attention(self, seq: torch.Tensor, ctx: Optional[torch.Tensor], phase: str) -> torch.Tensor:
+        if not self.enable_global_hidden_attention:
+            return seq
+        out = self.global_hidden_orchestrator.integrate(seq, context=ctx)
+        self.last_global_hidden_attention_stats = dict(self.global_hidden_orchestrator.last_stats)
+        if getattr(self, "diagnostics", None) is not None:
+            payload = dict(self.last_global_hidden_attention_stats)
+            payload["phase"] = str(phase)
+            self.diagnostics.log(f"global_hidden_attention_{phase}", payload)
+        return out
 
     def process_sensory_input(self, sensory_input):
         self.sensory_buffer.update(sensory_input)
@@ -1187,7 +1773,7 @@ class EnhancedMnemonicCortex(nn.Module):
             for b in range(B):
                 cvec = cue[b].mean(dim=0).detach()
                 importance = torch.sigmoid(cvec.norm().view(1))
-                key = f"ltm_encode_{self._advanced_merge_counter}"
+                key = f"ltm:episodic:{self._advanced_merge_counter}"
                 self._advanced_merge_counter += 1
                 cand = self.advanced_view_adapter(cvec)
                 self._enqueue_advanced_ltm_merge(
@@ -1196,6 +1782,7 @@ class EnhancedMnemonicCortex(nn.Module):
                     importance=importance,
                     src_info={"source": "encode_memory", "mtype": str(mtype), "batch_index": int(b)},
                 )
+            self._tick_advanced_consolidation()
         return idx
 
     def retrieve_memory(
@@ -1208,6 +1795,8 @@ class EnhancedMnemonicCortex(nn.Module):
         query_token_ids=None,
     ):
         """Retrieve memories with optional explosive recall (fire_mask)."""
+        if self.enable_global_hidden_attention:
+            self.global_hidden_orchestrator.begin_capture()
         B,S,d = cue.shape
         self._sync_attention_stacks(cue)
         ctx = self._tile_context(context, S)
@@ -1257,6 +1846,8 @@ class EnhancedMnemonicCortex(nn.Module):
             elif decision.action == "ask":
                 # conservative fallback answer vector from context only
                 z = torch.zeros(context.size(0), 256, device=context.device, dtype=context.dtype)
+                if self.enable_global_hidden_attention:
+                    self.global_hidden_orchestrator.end_capture()
                 return self.retrieval(torch.cat([z, context], dim=-1))
 
         if self.hg_episodic_ltm is not None:
@@ -1277,11 +1868,19 @@ class EnhancedMnemonicCortex(nn.Module):
             r = self.long_term_memory(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
         elif strategy == 'associative':
             r = self.long_term_memory.curved(c, operation='read')
+            if fire_mask is not None and float(recall_boost) > 0.0:
+                mask = torch.as_tensor(fire_mask, device=r.device, dtype=r.dtype).reshape(-1, 1, 1)
+                if mask.size(0) != r.size(0):
+                    mask = mask.mean().expand(r.size(0), 1, 1)
+                r = r * (1.0 + mask.clamp(0.0, 1.0) * float(max(0.0, min(1.0, recall_boost))))
         else:
             r = self.long_term_memory.hg(c, operation='read', fire_mask=fire_mask, recall_boost=recall_boost)
 
         wm_r = self.working_memory(c, operation=self._wm_read_operation())
-        r = self._bridge_wm_ltm(wm_r, r, phase="retrieve")
+        ltm_r = r
+        r = self._bridge_wm_ltm(wm_r, ltm_r, phase="retrieve")
+        r = self._apply_secondary_hidden_stack(r, wm_r, ltm_r, ctx, phase="retrieve")
+        r = self._apply_global_hidden_attention(r, ctx, phase="retrieve")
         inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
         if isinstance(inter, dict) and inter:
             self.diagnostics.log("ltm_inter_memory_exchange", inter)
@@ -1292,6 +1891,11 @@ class EnhancedMnemonicCortex(nn.Module):
         cue_vec = self.r_proj(r.mean(dim=1))
         self.diagnostics.record_scalar("recall_boost", float(recall_boost))
         self.diagnostics.log("retrieve_path", {"strategy": strategy})
+        self.diagnostics.log("recall_event", {"strategy": strategy, "recall_boost": float(recall_boost)})
+        if self.reasoning_bridge_enabled:
+            self.diagnostics.log("reasoning_mann_bridge", {"enabled": True})
+        if self.enable_global_hidden_attention:
+            self.global_hidden_orchestrator.end_capture()
         return self.retrieval(torch.cat([cue_vec, context], dim=-1))
 
     @torch.no_grad()
@@ -1345,6 +1949,20 @@ class EnhancedMnemonicCortex(nn.Module):
             metrics.update(self.long_term_memory.curved.get_metrics())
         except Exception as exc:
             metrics["ltm_curved_metrics_error"] = str(exc)
+        if getattr(self.long_term_memory, "spatial_ltm", None) is not None:
+            try:
+                spatial_metrics = self.long_term_memory.spatial_ltm.get_metrics()
+                for k, v in spatial_metrics.items():
+                    metrics[f"ltm_spatial_{k}"] = v
+                metrics["ltm_spatial_enabled"] = 1.0
+            except Exception as exc:
+                metrics["ltm_spatial_metrics_error"] = str(exc)
+        else:
+            metrics["ltm_spatial_enabled"] = 0.0
+        if self.spatial_ltm_extension is not None:
+            metrics["spatial_ltm_extension_enabled"] = 1.0
+        else:
+            metrics["spatial_ltm_extension_enabled"] = 0.0
         try:
             metrics.update(self.working_memory.get_metrics())
         except Exception as exc:
@@ -1415,8 +2033,16 @@ class EnhancedMnemonicCortex(nn.Module):
         if self.hg_episodic_ltm is not None:
             metrics["hg_episodic_enabled"] = 1.0
             metrics["hg_episodic_records"] = float(len(self.hg_episodic_ltm.episode_records))
+            if hasattr(self.hg_episodic_ltm, "get_metrics"):
+                for k, v in self.hg_episodic_ltm.get_metrics().items():
+                    metrics[f"hg_episodic_{k}"] = float(v)
+            metrics["hg_episodic_wired"] = float(self.hg_episodic_wiring_trace is not None)
+            metrics["hg_episodic_lattice_mirror"] = float(self.hg_episodic_wm_lattice_mirror is not None)
         else:
             metrics["hg_episodic_enabled"] = 0.0
+        metrics["hgm_enabled"] = 1.0 if self.hgm_enabled else 0.0
+        hgm_events = [evt for evt in self.diagnostics.events if evt.get("event") == "hgm_run"]
+        metrics["hgm_assignments"] = float(hgm_events[-1].get("payload", {}).get("assignment_count", self.last_hgm_assignments)) if hgm_events else float(self.last_hgm_assignments)
         return metrics
 
     @torch.no_grad()
@@ -1455,7 +2081,13 @@ class EnhancedMnemonicCortex(nn.Module):
                 'hg_usage': self.long_term_memory.hg.usage_counts.clone(),
                 'cgmn_usage': self.long_term_memory.cgmn.usage_counts.clone(),
                 'curved_usage': self.long_term_memory.curved.usage_counts.clone(),
-            }
+            },
+            'optional_subsystems': {
+                'shared_memory_enabled': bool(self.shared_memory_subsystem is not None),
+                'shared_memory_store': self.shared_memory_subsystem.store.to_dict() if self.shared_memory_subsystem is not None else None,
+                'hg_episodic_enabled': bool(self.hg_episodic_ltm is not None),
+                'episodic_write_mode': str(getattr(self, "episodic_write_mode", "legacy")),
+            },
         }
         torch.save(checkpoint, path)
 
@@ -1463,6 +2095,20 @@ class EnhancedMnemonicCortex(nn.Module):
         """Load checkpoint with version validation."""
         import torch
         checkpoint = torch.load(path, map_location='cpu')
+        optional = checkpoint.get('optional_subsystems', {}) or {}
+        if optional.get('shared_memory_enabled', False) and self.shared_memory_subsystem is None:
+            store = optional.get('shared_memory_store', {}) or {}
+            self.enable_shared_memory_subsystem(
+                num_slots=int(store.get('num_slots', 2048)),
+                num_systems=int(store.get('num_systems', 8)),
+                device=torch.device('cpu'),
+                dtype=torch.float32,
+            )
+        if optional.get('hg_episodic_enabled', False) and self.hg_episodic_ltm is None:
+            self.enable_hg_episodic_ltm(
+                write_mode=str(optional.get('episodic_write_mode', 'legacy')),
+                auto_wire=False,
+            )
         
         # Version check
         version = checkpoint.get('version', 'unknown')
@@ -1478,6 +2124,7 @@ class EnhancedMnemonicCortex(nn.Module):
         if 'config' in checkpoint:
             self.forgetting_threshold = checkpoint['config'].get('forgetting_threshold', self.forgetting_threshold)
             self.energy_mode = checkpoint['config'].get('energy_mode', self.energy_mode)
+        self.episodic_write_mode = str(optional.get('episodic_write_mode', getattr(self, "episodic_write_mode", "legacy")))
         
         # Restore lightbulb state
         if 'lightbulb_state' in checkpoint:
@@ -1542,6 +2189,8 @@ class EnhancedMnemonicCortex(nn.Module):
         self.long_term_memory.set_temperature(temp)
 
         if operation == 'process':
+            if self.enable_global_hidden_attention:
+                self.global_hidden_orchestrator.begin_capture()
             filtered = self.process_sensory_input(sensory_input)          # (B,S,d)
             self.diagnostics.record_scalar("fire_rate", float(fire.float().mean().item()))
 
@@ -1566,6 +2215,10 @@ class EnhancedMnemonicCortex(nn.Module):
                 except Exception:
                     pass
             bridged = self._bridge_wm_ltm(wm_out, ltm_ctx, phase="process")
+            bridged = self._apply_secondary_hidden_stack(
+                bridged, wm_out, ltm_ctx, filtered, phase="process"
+            )
+            bridged = self._apply_global_hidden_attention(bridged, filtered, phase="process")
             inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
             if isinstance(inter, dict) and inter:
                 self.diagnostics.log("ltm_inter_memory_exchange", inter)
@@ -1592,8 +2245,15 @@ class EnhancedMnemonicCortex(nn.Module):
                 recall_loss = self.compute_recall_loss(filtered, context)
                 gate, gate_prob = self._ste_write_gate(filtered)
                 self.diagnostics.record_scalar("recall_loss", float(recall_loss.detach().item()))
-                return wm_out, {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
+                aux = {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
+                if bool(getattr(self.distillation_config, "enabled", False)):
+                    aux["distill_loss"] = recall_loss.detach() * 0.0
+                if self.enable_global_hidden_attention:
+                    self.global_hidden_orchestrator.end_capture()
+                return wm_out, aux
             
+            if self.enable_global_hidden_attention:
+                self.global_hidden_orchestrator.end_capture()
             return bridged
 
         elif operation == 'retrieve':

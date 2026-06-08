@@ -105,3 +105,33 @@ def test_cortex_enable_hg_episodic_ltm_and_use_episode_api():
     metrics = model.get_metrics()
     assert metrics["hg_episodic_enabled"] == 1.0
     assert metrics["hg_episodic_records"] >= 1.0
+
+
+def test_cortex_hg_episodic_auto_wired_with_dual_stack():
+    torch.manual_seed(0)
+    model = EnhancedMnemonicCortex(
+        input_dim=16,
+        output_dim=16,
+        ltm_n_transformer_layers=3,
+        ltm_hg_episodic_transformer_layers=0,
+        ltm_hg_episodic_fixed_transformer_layers=3,
+        ltm_auto_wire_hg_episodic=True,
+    )
+    model.enable_shared_memory_subsystem(num_slots=64, num_systems=4, device=torch.device("cpu"), dtype=torch.float32)
+    model.enable_hg_episodic_ltm(transformer_layers=0, fixed_transformer_layers=3)
+
+    assert model.hg_episodic_ltm is not None
+    assert model.hg_episodic_wm_lattice_mirror is not None
+    assert model.hg_episodic_ltm.transformer_layers == 3
+    assert model.hg_episodic_ltm.fixed_transformer_layers == 3
+    assert model.long_term_memory.hg_episodic_bridge is model.hg_episodic_ltm
+
+    model.store_episodic_trace(
+        episode_id="wired-ep-1",
+        episode_vectors=torch.randn(4, 16),
+        step_range=(1, 4),
+        tags=["wired"],
+    )
+    out = model.retrieve_episodic_trace(query=torch.randn(1, 16), top_k=2, blend_with_triple_hybrid=True)
+    assert out.values.shape[0] == 1
+    assert out.values.shape[2] == 16

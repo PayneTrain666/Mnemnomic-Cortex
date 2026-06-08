@@ -9,11 +9,19 @@ class EnhancedSensoryBuffer(nn.Module):
         super().__init__()
         self.buffer_size = buffer_size
         self.input_dim = input_dim
-        self.attn = nn.MultiheadAttention(input_dim, 8, batch_first=True)
+        self.num_heads = self._pick_num_heads(int(input_dim))
+        self.attn = nn.MultiheadAttention(input_dim, self.num_heads, batch_first=True)
         self.gru = nn.GRU(input_dim, input_dim, batch_first=True)
         self.salience = nn.Sequential(nn.Linear(input_dim, 64), nn.ReLU(), nn.Linear(64,1), nn.Sigmoid())
         from collections import deque
         self._cache = deque(maxlen=buffer_size)  # store pooled summaries only
+
+    @staticmethod
+    def _pick_num_heads(dim: int) -> int:
+        for h in (8, 4, 2):
+            if dim % h == 0:
+                return h
+        return 1
 
     def update(self, x):  # x: (B,S,d)
         with torch.no_grad():

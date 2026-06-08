@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from mnemonic_cortex.cortex import EnhancedMnemonicCortex
 from mnemonic_cortex.anti_hallucination import AHGThresholds, HallucinationGuard
+from mnemonic_cortex.model_audit import run_model_audit
 from benchmark.tasks import TOK2IDX  # for SOS token when auto-shifting target inputs
 import math
 
@@ -78,6 +79,7 @@ class CortexSeqModel(nn.Module):
             fusion=fusion,
             **cortex_only_kwargs,
         )
+        self.cortex.hgm_enabled = self.hgm_enabled
         if self.hgm_enabled:
             if self.cortex.shared_memory_subsystem is None:
                 self.cortex.enable_shared_memory_subsystem(num_slots=max(256, ltm_hg_slots))
@@ -163,6 +165,45 @@ class CortexSeqModel(nn.Module):
         if hasattr(self.cortex, "flush_cms_logger"):
             return self.cortex.flush_cms_logger()
         return None
+
+    def run_full_audit(
+        self,
+        sample_batch=None,
+        *,
+        auto_probe: bool = True,
+        probe_batch_size: int = 2,
+        probe_seq_len: int = 8,
+        include_gradients: bool = False,
+        loss_fn=None,
+    ):
+        """
+        Run a full model visibility audit for this sequence model.
+        Does not require a full training run.
+        """
+        return run_model_audit(
+            self,
+            sample_batch=sample_batch,
+            auto_probe=auto_probe,
+            probe_batch_size=probe_batch_size,
+            probe_seq_len=probe_seq_len,
+            include_gradients=include_gradients,
+            loss_fn=loss_fn,
+        )
+
+    def ensure_hidden_layer_utilization(
+        self,
+        sample_batch=None,
+        *,
+        include_gradients: bool = False,
+    ):
+        """
+        Audit hidden-layer utilization using a lightweight probe path.
+        """
+        return self.run_full_audit(
+            sample_batch=sample_batch,
+            auto_probe=True,
+            include_gradients=include_gradients,
+        )
 
     def enable_hallucination_guard(
         self,

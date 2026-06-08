@@ -12,6 +12,7 @@ from ..memory.memory_update_engine import MemoryUpdateEngine
 from ..memory.memory_write_engine import MemoryWriteEngine
 from ..memory.shared_slot_schema import SlotWriteRequest
 from ..memory.shared_slot_store import SharedSlotStore
+from .transformer_policy import DualTransformerPolicy
 
 
 @dataclass
@@ -57,9 +58,18 @@ class HGEpisodicLTM(nn.Module):
         long_episode_threshold: int = 16,
         summary_stride: int = 8,
         promotion_retrieval_threshold: int = 3,
-        transformer_layers: int = 2,
+        transformer_layers: int = 0,
+        fixed_transformer_layers: int = 3,
+        fusion_transformer_layers: int = 0,
+        decoder_transformer_layers: int = 0,
+        inherited_bank_layers: int = 3,
+        inherited_fusion_layers: int | None = None,
+        cross_model_attention_layers: int = 4,
+        attention_type: str = "multiscale",
         transformer_heads: int = 0,
         transformer_dropout: float = 0.1,
+        wm_lattice_mirror: Any = None,
+        wm_shared_slot_store_mirror: Any = None,
     ) -> None:
         super().__init__()
         self.slot_store = slot_store
@@ -72,25 +82,35 @@ class HGEpisodicLTM(nn.Module):
         self.long_episode_threshold = int(max(2, long_episode_threshold))
         self.summary_stride = int(max(2, summary_stride))
         self.promotion_retrieval_threshold = int(max(1, promotion_retrieval_threshold))
-        self.transformer_layers = int(max(0, transformer_layers))
+        self.attention_type = str(attention_type).strip().lower()
+        self.transformer_dropout = float(transformer_dropout)
         self.transformer_heads = int(transformer_heads) if int(transformer_heads) > 0 else self._pick_num_heads(self.slot_dim)
-        if self.transformer_layers > 0:
-            self.sequence_transformer = nn.TransformerEncoder(
-                nn.TransformerEncoderLayer(
-                    d_model=self.slot_dim,
-                    nhead=self.transformer_heads,
-                    dim_feedforward=max(128, self.slot_dim * 2),
-                    dropout=float(transformer_dropout),
-                    activation="gelu",
-                    batch_first=True,
-                ),
-                num_layers=self.transformer_layers,
-            )
-            self.sequence_transformer_norm = nn.LayerNorm(self.slot_dim)
-        else:
-            self.sequence_transformer = None
-            self.sequence_transformer_norm = None
+        self.cross_model_attention_layers = int(max(0, cross_model_attention_layers))
+        self.transformer_policy = DualTransformerPolicy.resolve(
+            bank_layers_cfg=int(transformer_layers),
+            fixed_layers_cfg=int(fixed_transformer_layers),
+            fusion_layers_cfg=int(fusion_transformer_layers),
+            decoder_layers_cfg=int(decoder_transformer_layers),
+            inherited_bank_layers=int(inherited_bank_layers),
+            inherited_fusion_layers=inherited_fusion_layers,
+        )
+        self.transformer_layers = int(self.transformer_policy.bank_layers)
+        self.fixed_transformer_layers = int(self.transformer_policy.fixed_layers)
+        self.fusion_transformer_layers = int(self.transformer_policy.fusion_layers)
+        self.decoder_transformer_layers = int(self.transformer_policy.decoder_layers)
+        self.wm_lattice_mirror = wm_lattice_mirror
+        self.wm_shared_slot_store_mirror = wm_shared_slot_store_mirror
+        self._build_transformer_stacks(
+            bank_layers=self.transformer_layers,
+            fixed_layers=self.fixed_transformer_layers,
+            fusion_layers=self.fusion_transformer_layers,
+            decoder_layers=self.decoder_transformer_layers,
+            n_heads=self.transformer_heads,
+            attention_type=self.attention_type,
+        )
 
+        self._qh_triplets_stored = 0
+        self._qh_active_slots: Set[int] = set()
         self.episode_records: Dict[str, EpisodeRecord] = {}
         self.episode_index_by_trace_id: Dict[str, List[str]] = {}
         self.episode_index_by_time: List[Tuple[int, int, str]] = []
@@ -111,13 +131,187 @@ class HGEpisodicLTM(nn.Module):
                 return h
         return 1
 
+    def _build_transformer_stack(self, n_layers: int, n_heads: int, attention_type: str) -> nn.Module:
+        if int(n_layers) <= 0:
+            return None
+        if str(attention_type).strip().lower() == "multiscale":
+            from ..memory_attention import MultiScaleAttention
+
+            return nn.Sequential(
+                *[
+                    nn.Sequential(
+                        MultiScaleAttention(self.slot_dim, n_heads),
+                        nn.LayerNorm(self.slot_dim),
+                    )
+                    for _ in range(int(n_layers))
+                ]
+            )
+        return nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=self.slot_dim,
+                nhead=n_heads,
+                dim_feedforward=max(128, self.slot_dim * 2),
+                dropout=float(self.transformer_dropout),
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=int(n_layers),
+        )
+
+    def _build_transformer_stacks(
+        self,
+        *,
+        bank_layers: int,
+        fixed_layers: int,
+        fusion_layers: int,
+        decoder_layers: int,
+        n_heads: int,
+        attention_type: str,
+    ) -> None:
+        self.transformer_layers = int(max(0, bank_layers))
+        self.fixed_transformer_layers = int(max(0, fixed_layers))
+        self.fusion_transformer_layers = int(max(0, fusion_layers))
+        self.decoder_transformer_layers = int(max(0, decoder_layers))
+        self.transformer_heads = int(n_heads)
+        self.attention_type = str(attention_type)
+
+        self.sequence_transformer = self._build_transformer_stack(
+            self.transformer_layers,
+            self.transformer_heads,
+            self.attention_type,
+        )
+        self.sequence_transformer_norm = (
+            nn.LayerNorm(self.slot_dim) if self.sequence_transformer is not None else None
+        )
+        self.aux_transformer = self._build_transformer_stack(
+            self.fixed_transformer_layers,
+            self.transformer_heads,
+            self.attention_type,
+        )
+        self.aux_norm = nn.LayerNorm(self.slot_dim) if self.aux_transformer is not None else None
+        self.fusion_refiner = self._build_transformer_stack(
+            self.fusion_transformer_layers,
+            self.transformer_heads,
+            self.attention_type,
+        )
+        self.fusion_norm = nn.LayerNorm(self.slot_dim) if self.fusion_refiner is not None else None
+        self.decoder_stack = self._build_transformer_stack(
+            self.decoder_transformer_layers,
+            self.transformer_heads,
+            self.attention_type,
+        )
+        self.decoder_norm = nn.LayerNorm(self.slot_dim) if self.decoder_stack is not None else None
+
+    def rebuild_transformer_stacks(
+        self,
+        *,
+        bank_layers: int,
+        fixed_layers: int = 3,
+        fusion_layers: int,
+        decoder_layers: int,
+        n_heads: int,
+        attention_type: str,
+        inherited_bank_layers: int | None = None,
+        inherited_fusion_layers: int | None = None,
+    ) -> None:
+        inherited_bank = (
+            int(inherited_bank_layers)
+            if inherited_bank_layers is not None
+            else int(getattr(self.transformer_policy, "inherited_bank_layers", bank_layers))
+        )
+        self.transformer_policy = DualTransformerPolicy.resolve(
+            bank_layers_cfg=int(bank_layers),
+            fixed_layers_cfg=int(fixed_layers),
+            fusion_layers_cfg=int(fusion_layers),
+            decoder_layers_cfg=int(decoder_layers),
+            inherited_bank_layers=inherited_bank,
+            inherited_fusion_layers=inherited_fusion_layers,
+        )
+        self._build_transformer_stacks(
+            bank_layers=self.transformer_policy.bank_layers,
+            fixed_layers=self.transformer_policy.fixed_layers,
+            fusion_layers=self.transformer_policy.fusion_layers,
+            decoder_layers=self.transformer_policy.decoder_layers,
+            n_heads=n_heads,
+            attention_type=attention_type,
+        )
+
+    def attach_wm_lattice_mirror(self, mirror: Any, store: Any = None) -> None:
+        self.wm_lattice_mirror = mirror
+        self.wm_shared_slot_store_mirror = store
+
+    def _apply_transformer_stack(
+        self,
+        seq: torch.Tensor,
+        stack: Optional[nn.Module],
+        norm: Optional[nn.LayerNorm],
+    ) -> torch.Tensor:
+        if stack is None:
+            return seq
+        if isinstance(stack, nn.TransformerEncoder):
+            return norm(seq + stack(seq)) if norm is not None else stack(seq)
+        out = seq
+        for block in stack:
+            attn, block_norm = block[0], block[1]
+            attn_out, _ = attn(out, out, out, need_weights=False)
+            out = block_norm(out + attn_out)
+        return out
+
+    def _transform_sequence(self, vectors: torch.Tensor) -> torch.Tensor:
+        if vectors.dim() == 2:
+            seq = vectors.unsqueeze(0)
+            squeeze = True
+        else:
+            seq = vectors
+            squeeze = False
+        seq = self._apply_transformer_stack(seq, self.sequence_transformer, self.sequence_transformer_norm)
+        seq = self._apply_transformer_stack(seq, self.aux_transformer, self.aux_norm)
+        seq = self._apply_transformer_stack(seq, self.fusion_refiner, self.fusion_norm)
+        return seq.squeeze(0) if squeeze else seq
+
     def _transform_episode_sequence(self, vectors: torch.Tensor) -> torch.Tensor:
-        if self.sequence_transformer is None:
-            return vectors
-        seq = vectors.unsqueeze(0)  # [1,T,D]
-        seq_t = self.sequence_transformer(seq)
-        seq = self.sequence_transformer_norm(seq + seq_t)
-        return seq.squeeze(0)
+        return self._transform_sequence(vectors)
+
+    def _transform_query(self, query: torch.Tensor) -> torch.Tensor:
+        return self._transform_sequence(query.unsqueeze(1)).squeeze(1)
+
+    def _mirror_episode_to_wm_store(self, vectors: torch.Tensor, episode_id: str) -> None:
+        store = self.wm_shared_slot_store_mirror
+        if store is None or vectors.numel() == 0:
+            return
+        for i, vec in enumerate(vectors[:4]):
+            if vec.numel() != store.config.dim:
+                continue
+            try:
+                store.write_slot(
+                    memory_type="hg_episodic",
+                    local_slot_id=f"hg_episodic.{episode_id}.slot{i}",
+                    content=vec.detach().reshape(-1),
+                    owner="hg_ep_ltm",
+                    geometry_map="hyperbolic",
+                    depth_index=0,
+                    write_permission=False,
+                    metadata={"mirror_source": "hg_episodic_ltm", "episode_id": str(episode_id)},
+                )
+            except Exception:
+                continue
+
+    def qh_trace_summary(self) -> Dict[str, int]:
+        return {
+            "triplets_stored": int(self._qh_triplets_stored),
+            "active_slots": int(len(self._qh_active_slots)),
+        }
+
+    def get_metrics(self) -> Dict[str, float]:
+        return {
+            "bank_transformer_layers": float(self.transformer_layers),
+            "fixed_transformer_layers": float(self.fixed_transformer_layers),
+            "fusion_transformer_layers": float(self.fusion_transformer_layers),
+            "decoder_transformer_layers": float(self.decoder_transformer_layers),
+            "dual_stack_active": float(self.fixed_transformer_layers > 0),
+            "episode_records": float(len(self.episode_records)),
+            "wm_lattice_mirror": float(self.wm_lattice_mirror is not None),
+        }
 
     def set_external_attention_context(self, context: torch.Tensor) -> None:
         if context is None:
@@ -199,7 +393,7 @@ class HGEpisodicLTM(nn.Module):
             confidence=float(confidence),
             semantic_tags=list(tags),
             provenance_trace_ids=list(trace_ids),
-            extra=dict(extra),
+            extra={**dict(extra), "qh_hologram": True},
         )
 
     def store_episode(
@@ -242,6 +436,8 @@ class HGEpisodicLTM(nn.Module):
         )
         write_out = self.write_engine.write(request=write_request, values=vectors)
         slot_ids = [int(x) for x in write_out.written_slot_ids]
+        self._qh_triplets_stored += max(1, len(traces) * len(slot_ids))
+        self._qh_active_slots.update(int(s) for s in slot_ids)
 
         summary_slot_ids: List[int] = []
         if vectors.size(0) >= self.long_episode_threshold:
@@ -274,6 +470,7 @@ class HGEpisodicLTM(nn.Module):
             tags=ep_tags,
         )
         self._index_episode(record)
+        self._mirror_episode_to_wm_store(vectors, episode_id)
         return record
 
     def _passes_optional_filters(
@@ -301,10 +498,29 @@ class HGEpisodicLTM(nn.Module):
                 return False
         return True
 
-    def _track_retrieval_use(self, slot_ids: torch.Tensor) -> None:
+    def _track_retrieval_use(self, slot_ids: torch.Tensor, metadata: Optional[List[List[Any]]] = None) -> None:
         if slot_ids.numel() == 0:
             return
         flat_ids = [int(x) for x in slot_ids.reshape(-1).tolist()]
+        bonus_episode_slots: Set[int] = set()
+        if metadata:
+            episode_ids: Set[str] = set()
+            for row in metadata:
+                for meta in row:
+                    extra = getattr(meta, "extra", {}) or {}
+                    episode_id = extra.get("episode_id", None)
+                    if episode_id:
+                        episode_ids.add(str(episode_id))
+            for episode_id in episode_ids:
+                rec = self.episode_records.get(episode_id)
+                if rec is None:
+                    continue
+                bonus_episode_slots.update(int(s) for s in (list(rec.slot_ids) + list(rec.summary_slot_ids)))
+            if bonus_episode_slots:
+                flat_set = set(flat_ids)
+                for sid in sorted(bonus_episode_slots):
+                    if sid not in flat_set:
+                        flat_ids.append(int(sid))
         if flat_ids:
             self.slot_store.increment_usage(flat_ids, amount=1.0)
         unique_ids = sorted(set(flat_ids))
@@ -334,10 +550,7 @@ class HGEpisodicLTM(nn.Module):
             raise ValueError(f"query must be [B, D={self.slot_dim}]")
         if not torch.isfinite(query_in).all():
             raise ValueError("query contains NaN or Inf")
-        if self.sequence_transformer is not None:
-            qseq = query_in.unsqueeze(1)  # [B,1,D]
-            qseq_t = self.sequence_transformer(qseq)
-            query_in = self.sequence_transformer_norm(qseq + qseq_t).squeeze(1)
+        query_in = self._transform_query(query_in)
         if self.external_attention_context is not None:
             ctx = self.external_attention_context.to(device=query_in.device, dtype=query_in.dtype)
             if ctx.size(0) == 1 and query_in.size(0) > 1:
@@ -392,7 +605,17 @@ class HGEpisodicLTM(nn.Module):
                     diagnostics={**dict(out.diagnostics), "post_filter_top_k": int(k)},
                 )
 
-        self._track_retrieval_use(out.slot_ids)
+        if self.decoder_stack is not None and out.values.numel() > 0:
+            refined = self._apply_transformer_stack(out.values, self.decoder_stack, self.decoder_norm)
+            out = MemoryReadOutput(
+                slot_ids=out.slot_ids,
+                scores=out.scores,
+                values=refined,
+                metadata=out.metadata,
+                diagnostics={**dict(out.diagnostics), "decoder_stack_applied": True},
+            )
+
+        self._track_retrieval_use(out.slot_ids, out.metadata)
         return out
 
     def stitch_related_episodes(

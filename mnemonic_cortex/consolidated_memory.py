@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
+
 
 def _project_sphere(x: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
     return x / (x.norm(dim=-1, keepdim=True) + eps)
@@ -129,6 +131,16 @@ class ConsolidatedMemoryStore(nn.Module):
         self.read_norm = nn.LayerNorm(default_cfg.d_model)
         self.sim_temp = nn.Parameter(torch.tensor(1.0))
         self._creation_hooks = []
+        self.qh_slot_bank = QuantumHologramSlotBank(
+            QuantumHologramConfig(
+                enabled=True,
+                hrr_dim=int(default_cfg.d_model),
+                num_slots=2048,
+                num_depths=8,
+                bank_name="consolidated_store",
+            )
+        )
+        self._qh_key_slot_map: Dict[str, int] = {}
 
     def register_creation_hook(self, hook):
         self._creation_hooks.append(hook)
@@ -175,6 +187,32 @@ class ConsolidatedMemoryStore(nn.Module):
     @torch.no_grad()
     def write(self, key: str, candidate_view: Dict[str, torch.Tensor], alpha: float, src_info: Optional[Dict] = None):
         self.ensure(key).ema_merge(candidate_view, alpha=alpha, src_info=src_info)
+        if key not in self._qh_key_slot_map:
+            self._qh_key_slot_map[str(key)] = int(len(self._qh_key_slot_map) % self.qh_slot_bank.cfg.num_slots)
+        slot_id = int(self._qh_key_slot_map[str(key)])
+        anchor = torch.as_tensor(
+            candidate_view.get("E", torch.zeros(self.default_cfg.d_model)),
+            device=self.read_norm.weight.device,
+            dtype=self.read_norm.weight.dtype,
+        )
+        direction = torch.as_tensor(
+            candidate_view.get("H", anchor),
+            device=self.read_norm.weight.device,
+            dtype=self.read_norm.weight.dtype,
+        )
+        phase_src = candidate_view.get("P", None)
+        if isinstance(phase_src, tuple) and len(phase_src) == 2:
+            phase = torch.as_tensor(phase_src[1], device=anchor.device, dtype=anchor.dtype)
+        else:
+            phase = torch.roll(anchor, shifts=1, dims=-1)
+        self.qh_slot_bank.store_batch(
+            slot_indices=torch.tensor([slot_id], device=anchor.device, dtype=torch.long),
+            anchor=anchor.unsqueeze(0),
+            direction=direction.unsqueeze(0),
+            phase=phase.unsqueeze(0),
+            depth_index=0,
+            bank_name="consolidated_store",
+        )
 
     def _fused(self, unit: ConsolidatedMemoryUnit) -> torch.Tensor:
         if unit.cfg.use_euclid:
@@ -206,10 +244,17 @@ class ConsolidatedMemoryStore(nn.Module):
                 "domain": getattr(u, "domain", "general"),
                 "tags": list(getattr(u, "tags", [])),
             }
-        return {"meta": meta, "version": 1}
+        return {
+            "meta": meta,
+            "qh_key_slot_map": {str(k): int(v) for k, v in self._qh_key_slot_map.items()},
+            "version": 1,
+        }
 
     @torch.no_grad()
     def load_extra_state_dict(self, state: Dict):
+        qh_map = state.get("qh_key_slot_map", {})
+        if isinstance(qh_map, dict):
+            self._qh_key_slot_map = {str(k): int(v) for k, v in qh_map.items()}
         for k, m in state.get("meta", {}).items():
             if k not in self._registry:
                 continue

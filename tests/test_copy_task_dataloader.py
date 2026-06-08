@@ -83,3 +83,48 @@ def test_align_logits_targets_sos():
     tgt = torch.randint(0, 40, (2, 8))
     lo, ta = align_logits_targets(logits, tgt)
     assert lo.size(1) == ta.size(1)
+
+
+def test_copy_reverse_task_targets_are_flipped():
+    cfg = CopyTaskDataConfig(
+        n_samples=32,
+        max_len=6,
+        min_len=3,
+        fixed_len=4,
+        batch_size=8,
+        task_mode="reverse",
+        seed=7,
+    )
+    loader = build_copy_task_dataloader(cfg, split="all", epoch=1)
+    batch = next(iter(loader))
+    sos = TOK2IDX["<s>"]
+    eos = TOK2IDX["</s>"]
+    pad = TOK2IDX["<pad>"]
+    for i, meta in enumerate(batch["meta"]):
+        assert meta["task_mode"] == "reverse"
+        src = batch["src"][i]
+        tgt = batch["tgt"][i]
+        src_tokens = src[src != pad].tolist()
+        tgt_tokens = tgt[tgt != pad].tolist()
+        content = [t for t in src_tokens if t not in {eos}]
+        expected_tgt = [sos] + list(reversed(content)) + [eos]
+        assert tgt_tokens == expected_tgt
+
+
+def test_copy_mixed_task_emits_both_variants():
+    cfg = CopyTaskDataConfig(
+        n_samples=128,
+        max_len=5,
+        min_len=3,
+        fixed_len=4,
+        batch_size=16,
+        task_mode="mixed",
+        reverse_task_prob=0.5,
+        seed=11,
+    )
+    loader = build_copy_task_dataloader(cfg, split="all", epoch=2)
+    modes = set()
+    for batch in loader:
+        for meta in batch["meta"]:
+            modes.add(meta["task_mode"])
+    assert modes == {"copy", "reverse"}

@@ -282,6 +282,12 @@ class QDTWorkingMemory(nn.Module):
             return_trace=True,
         )
         trace.merge_dict("depth_specific_addressing", addressing_trace)
+        if context is not None:
+            trace.add(
+                "context_buffer",
+                "context_mounted",
+                context_map=context_map_name or "default",
+            )
 
         maae_tokens, maae_trace = self.memory_augmented_attention(
             curved_out,

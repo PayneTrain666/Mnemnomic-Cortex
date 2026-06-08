@@ -4,6 +4,14 @@ import torch.nn.functional as F
 import math
 from typing import Optional, Dict
 
+from geometry.manifold_utils import (
+    conformal_scale,
+    gather_curvature,
+    product_et_distance,
+    warp_distances,
+    wrap_angles,
+)
+
 # --------- Quaternion utils (spin channel) ---------
 def qnormalize(q: torch.Tensor, eps=1e-9):
     # q shape [..., 4] with (w, x, y, z)
@@ -20,18 +28,18 @@ def qangle(q1: torch.Tensor, q2: torch.Tensor, eps=1e-7):
     dot = torch.sum(q1 * q2, dim=-1).abs().clamp_(0.0, 1.0 - eps)
     return 2.0 * torch.acos(dot)
 
-# --------- Metric warps (monotone, stable) ---------
+# --------- Metric warps (monotone, stable; delegates to manifold_utils) ---------
 def euc_warp(dist: torch.Tensor) -> torch.Tensor:
     return dist
 
 def hyp_warp(dist: torch.Tensor, slot_c: torch.Tensor, alpha=0.6) -> torch.Tensor:
-    # Hyperbolic-like steepening; slot curvature shapes slope.
-    # asinh is smooth/monotone; tanh(curv) bounds influence.
-    return torch.asinh((1.0 + alpha * torch.tanh(slot_c)) * dist)
+    return warp_distances(dist, curvature_idx=slot_c, conf_scale=1.0 + alpha * torch.tanh(slot_c))
 
 def sph_warp(dist: torch.Tensor, gamma=0.9) -> torch.Tensor:
-    # Spherical-like compression for large distances; keep monotone and positive
     return (2.0 * torch.sin(0.5 * gamma * dist)).abs()
+
+def torus_warp(dist: torch.Tensor, slot_c: torch.Tensor, beta=0.5) -> torch.Tensor:
+    return warp_distances(dist, curvature_idx=0.5 * slot_c, conf_scale=conformal_scale(-slot_c, b=beta))
 
 # --------- Colored 1/f^alpha noise for exploration ---------
 @torch.no_grad()
@@ -39,7 +47,7 @@ def colored_noise_1f(size: int, device, dtype, alpha=1.0) -> torch.Tensor:
     spectrum = torch.randn(size//2 + 1, device=device, dtype=torch.cfloat)
     freqs = torch.linspace(1, size//2 + 1, steps=size//2 + 1, device=device, dtype=torch.float32)
     mag = (1.0 / (freqs**(alpha * 0.5))).to(spectrum.dtype)
-    spectrum = spectrum * mag.unsqueeze(-1)
+    spectrum = spectrum * mag
 
     full = torch.zeros(size, device=device, dtype=torch.cfloat)
     if size % 2 == 0:
@@ -103,20 +111,23 @@ class TopologyManagerV3(nn.Module):
         self.spin_scale = spin_scale
         self.gate_nudge = gate_nudge
 
-        # Lightweight learned gate: inputs=[fitness, entropy, mean|curv|, spin_coh] → weights over 4 metrics
+        # Lightweight learned gate: inputs=[fitness, entropy, mean|curv|, spin_coh] → weights over 5 metrics
         self.gates = nn.ModuleDict({
             s: nn.Sequential(
                 nn.Linear(4, 32),
                 nn.SiLU(),
-                nn.Linear(32, 4),   # [euc, hyp, sph, spin]
+                nn.Linear(32, 5),   # [euc, hyp, sph, torus, spin]
                 nn.Softmax(dim=-1)
             ) for s in self.subsystems
         })
 
         # Learn per-topology curvature warp strength if you like (optional; start at default_beta)
         self.beta_table = nn.ParameterDict({
-            # order: euc, hyp, sph, spin   (spin uses separate scale)
-            s: nn.Parameter(torch.tensor([self.default_beta, self.default_beta, self.default_beta, self.spin_scale], dtype=torch.float32))
+            # order: euc, hyp, sph, torus, spin
+            s: nn.Parameter(torch.tensor(
+                [self.default_beta, self.default_beta, self.default_beta, self.default_beta, self.spin_scale],
+                dtype=torch.float32,
+            ))
             for s in self.subsystems
         })
         self.mode_bias = {
@@ -234,7 +245,11 @@ class TopologyManagerV3(nn.Module):
         subsystem: str,
         q_query: Optional[torch.Tensor] = None,     # [B, 4] unit-ish quaternions
         q_memory: Optional[torch.Tensor] = None,    # [mem_slots, 4]
-        beta_override: Optional[torch.Tensor] = None # optional per-metric scales
+        beta_override: Optional[torch.Tensor] = None,  # optional per-metric scales
+        query_feat: Optional[torch.Tensor] = None,  # [B, D] for product E×T distance
+        key_feat: Optional[torch.Tensor] = None,    # [mem_slots, D]
+        alpha_torus: float = 1.0,
+        conformal_b: float = 0.1,
     ) -> torch.Tensor:
         """
         Returns warped distances [B, K] combining Euclidean/Hyperbolic/Spherical/Spin
@@ -248,7 +263,7 @@ class TopologyManagerV3(nn.Module):
             slot_scalar = memory_curvature.mean(dim=1)
         else:
             slot_scalar = memory_curvature
-        slot_c = slot_scalar.index_select(0, indices.view(-1)).view(B, K)
+        slot_c = gather_curvature(slot_scalar, indices)
 
         # Live stats for the gate (detached scalars)
         with torch.no_grad():
@@ -275,29 +290,44 @@ class TopologyManagerV3(nn.Module):
             spin_coh.to(dtype)                  # spin coherence signal
         ], dim=-1).unsqueeze(0)                 # [1, 4]
 
-        weights = self.gates[subsystem](gate_in).squeeze(0)     # [4], sums to 1
+        weights = self.gates[subsystem](gate_in).squeeze(0)     # [5], sums to 1
         # metric scales (learnable, per-subsystem)
-        beta_vec = self.beta_table[subsystem] if beta_override is None else beta_override  # [4]
+        beta_vec = self.beta_table[subsystem] if beta_override is None else beta_override  # [5]
 
         # Individual warped terms (all [B, K])
         de = euc_warp(dist)
         dh = hyp_warp(dist, slot_c, alpha=beta_vec[1].item())
         ds = sph_warp(dist, gamma=beta_vec[2].item())
+        dt = torus_warp(dist, slot_c, beta=beta_vec[3].item())
+
+        if (query_feat is not None) and (key_feat is not None) and query_feat.size(-1) >= 4:
+            half = query_feat.size(-1) // 2
+            if half > 0 and key_feat.size(-1) >= half * 2:
+                q_e = query_feat[:, :half]
+                q_t = wrap_angles(query_feat[:, half : half * 2])
+                k_flat = key_feat.index_select(0, indices.view(-1))
+                k_sel = k_flat.view(B, K, -1)
+                k_e = k_sel[..., :half]
+                k_t = wrap_angles(k_sel[..., half : half * 2])
+                d_prod = product_et_distance(q_e, q_t, k_e, k_t, alpha=alpha_torus)
+                dt = 0.5 * dt + 0.5 * d_prod
 
         dspin = 0.0
         if (q_query is not None) and (q_memory is not None):
             q_query = qnormalize(q_query)
             q_mem_sel = qnormalize(q_memory.index_select(0, indices.view(-1))).view(B, K, 4)
             ang = qangle(q_query.unsqueeze(1).expand(B, K, 4), q_mem_sel)  # [B,K]
-            dspin = beta_vec[3].item() * (ang / math.pi)                   # normalize to [0,1]
+            dspin = beta_vec[4].item() * (ang / math.pi)
 
         # Blend (weights are scalars here; broadcasting across [B,K] is fine)
-        d_mix = (weights[0] * de +
-                 weights[1] * dh +
-                 weights[2] * ds +
-                 weights[3] * (dspin if isinstance(dspin, torch.Tensor) else 0.0))
+        d_mix = (
+            weights[0] * de
+            + weights[1] * dh
+            + weights[2] * ds
+            + weights[3] * dt
+            + weights[4] * (dspin if isinstance(dspin, torch.Tensor) else 0.0)
+        )
 
-        # Final curvature-coupled micro-warp (like V2) for extra slot-local shaping
-        beta_local = self.default_beta
-        d_final = d_mix * (1.0 + beta_local * torch.tanh(slot_c) * d_mix)
-        return d_final
+        phi = slot_c
+        omega = conformal_scale(phi, b=conformal_b)
+        return warp_distances(d_mix, curvature_idx=slot_c, conf_scale=omega)

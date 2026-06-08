@@ -52,6 +52,12 @@ def _build_stack():
         long_episode_threshold=6,
         summary_stride=3,
         promotion_retrieval_threshold=2,
+        transformer_layers=0,
+        fixed_transformer_layers=0,
+        inherited_bank_layers=0,
+        fusion_transformer_layers=0,
+        decoder_transformer_layers=0,
+        cross_model_attention_layers=0,
     )
     return episodic, store, geometry_runtime
 

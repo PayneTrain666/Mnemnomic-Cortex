@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 
-EPS = 1e-8
+EPS = 1e-6
 
 
 def conformal_scale(phi: torch.Tensor, b: float = 0.1) -> torch.Tensor:
+    """Tiny conformal magnification Ω(x) = 1 + b * tanh(phi(x)). Keep b <= 0.2."""
     b = float(max(0.0, min(0.2, b)))
     raw = 1.0 + b * torch.tanh(phi)
-    return raw.clamp(1.0 - b, 1.0 + b)
+    return raw.clamp(1.0 - b, 1.0 + b).clamp_min(1e-4)
+
+
+def safe_norm(x: torch.Tensor, dim: int = -1, keepdim: bool = False) -> torch.Tensor:
+    return torch.linalg.norm(x, ord=2, dim=dim, keepdim=keepdim).clamp_min(EPS)
 
 
 def euc_distance(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -33,9 +38,15 @@ def euc_project(x: torch.Tensor) -> torch.Tensor:
 def poincare_proj(x: torch.Tensor, c: float, eps: float = 1e-5) -> torch.Tensor:
     sqrt_c = torch.tensor(c, dtype=x.dtype, device=x.device).sqrt()
     max_norm = (1.0 - eps) / sqrt_c
-    norm = x.norm(dim=-1, keepdim=True).clamp_min(EPS)
+    norm = safe_norm(x, dim=-1, keepdim=True)
     factor = torch.where(norm < max_norm, torch.ones_like(norm), max_norm / norm)
     return x * factor
+
+
+def poincare_project_ball(x: torch.Tensor, max_norm: float = 0.9) -> torch.Tensor:
+    n = safe_norm(x, dim=-1, keepdim=True)
+    scale = (max_norm / n).clamp_max(1.0)
+    return x * scale
 
 
 def mobius_add(x: torch.Tensor, y: torch.Tensor, c: float) -> torch.Tensor:
@@ -101,6 +112,10 @@ def wrap_angles(theta: torch.Tensor) -> torch.Tensor:
     return (theta + torch.pi) % (2 * torch.pi) - torch.pi
 
 
+def torus_add(theta: torch.Tensor, delta: torch.Tensor) -> torch.Tensor:
+    return wrap_angles(theta + delta)
+
+
 def torus_log_map(theta_x: torch.Tensor, theta_y: torch.Tensor) -> torch.Tensor:
     return wrap_angles(theta_y - theta_x)
 
@@ -109,8 +124,17 @@ def torus_exp_map(theta_x: torch.Tensor, delta: torch.Tensor) -> torch.Tensor:
     return wrap_angles(theta_x + delta)
 
 
-def torus_distance(theta_x: torch.Tensor, theta_y: torch.Tensor) -> torch.Tensor:
-    return wrap_angles(theta_y - theta_x).norm(dim=-1, keepdim=True).clamp_min(EPS)
+def torus_distance(
+    theta_x: torch.Tensor,
+    theta_y: torch.Tensor,
+    weights: Optional[torch.Tensor] = None,
+    *,
+    keepdim: bool = True,
+) -> torch.Tensor:
+    d = wrap_angles(theta_x - theta_y)
+    if weights is not None:
+        d = d * weights
+    return safe_norm(d, dim=-1, keepdim=keepdim)
 
 
 def torus_sincos_embed(theta: torch.Tensor) -> torch.Tensor:
@@ -125,15 +149,13 @@ def product_et_distance(
     alpha: float = 1.0,
 ) -> torch.Tensor:
     """
-    Product manifold distance on E x T:
-      sqrt( ||q_e-k_e||^2 + alpha * ||wrap(q_t-k_t)||^2 )
+    Combined distance on E×T: sqrt( ||q_e-k_e||^2 + alpha * ||Δ_torus||^2 )
     Shapes:
-      q_e: (B,De), q_t: (B,Kt), k_e: (B,K,De), k_t: (B,K,Kt)
-      -> (B,K)
+      q_e: (B,De), q_t: (B,Kt), k_e: (B,K,De), k_t: (B,K,Kt) -> (B,K)
     """
-    de = (q_e.unsqueeze(1) - k_e).norm(dim=-1).clamp_min(EPS)
-    dt = wrap_angles(q_t.unsqueeze(1).expand_as(k_t) - k_t).norm(dim=-1).clamp_min(EPS)
-    return torch.sqrt(de.pow(2) + float(alpha) * dt.pow(2)).clamp_min(EPS)
+    de = safe_norm(q_e.unsqueeze(1) - k_e, dim=-1)
+    dt = torus_distance(q_t.unsqueeze(1).expand_as(k_t), k_t, keepdim=False)
+    return torch.sqrt((de ** 2) + float(alpha) * (dt ** 2)).clamp_min(EPS)
 
 
 def symplectic_leapfrog(
@@ -169,6 +191,23 @@ def complex_inner_prod(z: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
     return torch.stack([re, im], dim=-1)
 
 
+def normalize_complex(z_re: torch.Tensor, z_im: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    norm = torch.sqrt((z_re ** 2 + z_im ** 2).sum(dim=-1, keepdim=True)).clamp_min(1e-8)
+    return z_re / norm, z_im / norm
+
+
+def fubini_study_distance(
+    z1_re: torch.Tensor,
+    z1_im: torch.Tensor,
+    z2_re: torch.Tensor,
+    z2_im: torch.Tensor,
+) -> torch.Tensor:
+    ip_re = (z1_re * z2_re + z1_im * z2_im).sum(dim=-1)
+    ip_im = (z1_im * z2_re - z1_re * z2_im).sum(dim=-1)
+    ip_abs = torch.sqrt(ip_re ** 2 + ip_im ** 2).clamp(0, 1.0)
+    return torch.acos(ip_abs.clamp(0, 1.0 - 1e-6))
+
+
 def cp_distance(z: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
     z = complex_normalize(z)
     w = complex_normalize(w)
@@ -194,6 +233,34 @@ def grassmann_distance(u: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
 
 
 Geom = Literal["euclid", "hyperbolic", "sphere", "torus", "cp", "grassmann"]
+
+GEOMETRY_NAME_TO_GEOM: dict[str, Geom] = {
+    "euclidean": "euclid",
+    "euclid": "euclid",
+    "hyperbolic": "hyperbolic",
+    "poincare": "hyperbolic",
+    "spherical": "sphere",
+    "sphere": "sphere",
+    "torus": "torus",
+    "complex": "cp",
+    "complex_projective": "cp",
+    "cp_kahler": "cp",
+    "cp": "cp",
+    "grassmann": "grassmann",
+    "subspace": "grassmann",
+    "product": "torus",
+    "holographic_phase": "cp",
+    "quaternion": "sphere",
+    "spatial_se3": "euclid",
+    "spcp": "cp",
+    "fiber_bundle": "hyperbolic",
+    "tangent_bridge": "euclid",
+    "dual_quaternion": "sphere",
+}
+
+
+def geometry_name_to_geom(name: str) -> Geom:
+    return GEOMETRY_NAME_TO_GEOM.get(str(name).lower(), "euclid")
 
 
 def project_to_manifold(geom: Geom, x: torch.Tensor, **kwargs) -> torch.Tensor:
@@ -264,6 +331,62 @@ def distance(geom: Geom, x: torch.Tensor, y: torch.Tensor, **kwargs) -> torch.Te
     raise ValueError(f"Unknown geom: {geom}")
 
 
+def retract_sphere(x: torch.Tensor) -> torch.Tensor:
+    return sphere_project(x)
+
+
+def retract_poincare(x: torch.Tensor, max_norm: float = 0.98) -> torch.Tensor:
+    return poincare_project_ball(x, max_norm=max_norm)
+
+
+def retract_torus(theta: torch.Tensor) -> torch.Tensor:
+    return wrap_angles(theta)
+
+
+def retract_unit_complex(z_re: torch.Tensor, z_im: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    return normalize_complex(z_re, z_im)
+
+
+def proj_to_sphere(x: torch.Tensor) -> torch.Tensor:
+    return sphere_project(x)
+
+
+def retract_to_manifold(geom: Geom, x: torch.Tensor, **kwargs) -> torch.Tensor:
+    return project_to_manifold(geom, x, **kwargs)
+
+
+def _chart_geom_for_tensor(geom: Geom, x: torch.Tensor) -> Geom:
+    """Pick a slot-vector-safe chart when the symbolic geometry needs higher rank."""
+    if x.dim() == 2 and geom in ("cp", "grassmann"):
+        return "sphere"
+    if x.dim() == 2 and geom == "hyperbolic" and x.size(-1) > 32:
+        return "sphere"
+    return geom
+
+
+def chart_transform(
+    x: torch.Tensor,
+    *,
+    geometry: str,
+    depth_index: int = 0,
+    gain: float = 1.0,
+    kappa: float = -0.1,
+) -> Tuple[torch.Tensor, dict]:
+    """Project onto the named geometry chart, then apply a gentle depth gain."""
+    geom = _chart_geom_for_tensor(geometry_name_to_geom(geometry), x)
+    depth_scale = 1.0 + 0.04 * float(depth_index + 1)
+    projected = project_to_manifold(geom, x, kappa=kappa)
+    scaled = torch.tanh(projected * (gain * depth_scale)) + 0.1 * torch.sin(projected * depth_scale)
+    retracted = retract_to_manifold(geom, scaled, kappa=kappa)
+    return retracted, {
+        "geometry": geometry,
+        "geom": geom,
+        "depth_index": int(depth_index),
+        "gain": float(gain),
+        "depth_scale": float(depth_scale),
+    }
+
+
 @torch.no_grad()
 def frechet_mean(geom: Geom, points: torch.Tensor, iters: int = 15, step: float = 1.0, **kwargs):
     if points.ndim < 2:
@@ -291,20 +414,26 @@ def frechet_mean(geom: Geom, points: torch.Tensor, iters: int = 15, step: float 
     raise ValueError(f"frechet_mean not implemented for {geom}")
 
 
-def gather_curvature(curv_per_slot: torch.Tensor, knn_indices: torch.Tensor) -> torch.Tensor:
-    return curv_per_slot[knn_indices]
+def gather_curvature(curv_per_slot: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
+    """curv_per_slot: (M,), indices: (B,K) -> (B,K)"""
+    curv_sel = curv_per_slot[indices.view(-1)].view(*indices.shape)
+    return torch.clamp(curv_sel, -1.0, 1.0)
 
 
 def warp_distances(
-    dist: torch.Tensor,
+    distances: torch.Tensor,
     curvature_idx: Optional[torch.Tensor] = None,
     conf_scale: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    d = dist.clamp_min(EPS)
+    """
+    Stable quadratic curvature warp + conformal magnification:
+    d' = Ω * [ d * (1 + c * d^2) ]
+    """
+    d = distances.clamp_min(EPS)
     if curvature_idx is not None:
-        c = curvature_idx.clamp(-1.0, 1.0)
-        d = d * (1.0 + c * (d**2))
+        c = torch.clamp(curvature_idx, -1.0, 1.0)
+        d = d * (1.0 + c * (d ** 2))
     if conf_scale is not None:
-        d = d * conf_scale
-    return d
+        d = conf_scale * d
+    return d.clamp_min(1e-7)
 

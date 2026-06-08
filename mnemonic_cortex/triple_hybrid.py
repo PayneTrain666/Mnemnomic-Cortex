@@ -3,18 +3,22 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from .hybrid_router_v2 import HybridRouterV2
 from .lightbulb_event_logger import LightbulbEventLogger
 from .ltm_aux_memory import ConsolidatedLTMBank, NeuralFieldMemory
 from .memory_attention import MultiScaleAttention
+from .hidden_attention_orchestrator import HiddenAttentionConfig, HiddenAttentionOrchestrator
+from .model_audit import run_model_audit
 from .memory_consolidation_manager_v2 import MemoryConsolidationManagerV2
 from .memory_transformer_v2 import (
     EnhancedCGMNMemoryWithTransformerV2,
     EnhancedCurvedMemoryWithTransformerV2,
     EnhancedHyperGeometricMemoryWithTransformerV2,
+    EnhancedSpatialLTMMemoryWithTransformerV2,
 )
+from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 from .topology_manager import TopologyManagerV3
 
 logger = logging.getLogger(__name__)
@@ -58,6 +62,15 @@ class EnhancedTripleHybridMemory(nn.Module):
         hg_transformer_heads: int = 0,
         cgmn_transformer_heads: int = 0,
         curved_transformer_heads: int = 0,
+        spatial_value_dim: int = 0,
+        spatial_slots: int = 256,
+        spatial_key_dim: int = 64,
+        spatial_ltm_topk: int = 8,
+        spatial_conformal_b: float = 0.08,
+        spatial_transformer_layers: int = 0,
+        spatial_fixed_transformer_layers: int = 3,
+        spatial_transformer_heads: int = 0,
+        enable_spatial_ltm: bool = True,
         fusion_transformer_heads: int = 0,
         cross_model_attention_heads: int = 0,
         enable_hns_fusion: bool = True,
@@ -68,6 +81,14 @@ class EnhancedTripleHybridMemory(nn.Module):
         dynamic_consolidation: bool = True,
         consolidation_threshold: float = 0.6,
         hns_fusion_layers: int = 2,
+        enable_hidden_attention_stack: bool = True,
+        hidden_attention_variant: str = "adaptive",
+        hidden_attention_integration: str = "post_external",
+        hidden_attention_layers: int = 2,
+        enable_global_hidden_attention: bool = True,
+        global_hidden_attention_layers: int = 2,
+        global_hidden_max_layers: int = 192,
+        global_hidden_capture_every_n: int = 1,
     ):
         super().__init__()
         self.input_dim = int(input_dim)
@@ -85,16 +106,37 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.curved_hidden_dim = int(curved_hidden)
         self.curved_curvature_dim = int(curved_curvature)
         self.curved_slots = int(curved_slots)
+        self.enable_spatial_ltm = bool(enable_spatial_ltm)
+        self.spatial_value_dim = int(spatial_value_dim) if int(spatial_value_dim) > 0 else min(256, self.input_dim)
+        self.spatial_slots = int(spatial_slots)
+        self.spatial_key_dim = int(spatial_key_dim)
         self.n_transformer_layers = int(max(1, n_transformer_layers))
         self.n_heads = int(max(1, n_heads))
         self.attention_type = str(attention_type).strip().lower()
         if self.attention_type not in {"multiscale", "standard"}:
             raise ValueError("attention_type must be 'multiscale' or 'standard'")
+        self.enable_hidden_attention_stack = bool(enable_hidden_attention_stack)
+        self.hidden_attention_variant = str(hidden_attention_variant).strip().lower()
+        if self.hidden_attention_variant not in {"parallel", "cascade", "adaptive"}:
+            raise ValueError("hidden_attention_variant must be 'parallel', 'cascade', or 'adaptive'")
+        self.hidden_attention_integration = str(hidden_attention_integration).strip().lower()
+        if self.hidden_attention_integration not in {"post_external", "pre_external", "blended"}:
+            raise ValueError(
+                "hidden_attention_integration must be 'post_external', 'pre_external', or 'blended'"
+            )
+        self.hidden_attention_layers = int(max(1, hidden_attention_layers))
+        self.enable_global_hidden_attention = bool(enable_global_hidden_attention)
+        self.global_hidden_attention_layers = int(max(1, global_hidden_attention_layers))
+        self.global_hidden_max_layers = int(max(16, global_hidden_max_layers))
+        self.global_hidden_capture_every_n = int(max(1, global_hidden_capture_every_n))
 
         bank_layers = self.n_transformer_layers
         hg_layers = int(hg_transformer_layers) if int(hg_transformer_layers) > 0 else bank_layers
         cg_layers = int(cgmn_transformer_layers) if int(cgmn_transformer_layers) > 0 else bank_layers
         cv_layers = int(curved_transformer_layers) if int(curved_transformer_layers) > 0 else bank_layers
+        sp_layers_cfg = int(spatial_transformer_layers)
+        sp_layers = bank_layers if sp_layers_cfg <= 0 else sp_layers_cfg
+        sp_fixed_layers = int(max(0, spatial_fixed_transformer_layers))
         fusion_layers = int(fusion_transformer_layers) if int(fusion_transformer_layers) > 0 else max(4, bank_layers + 1)
         cross_layers = int(cross_model_attention_layers) if int(cross_model_attention_layers) > 0 else max(4, bank_layers + 1)
         prefusion_layers = int(prefusion_specialization_layers) if int(prefusion_specialization_layers) > 0 else max(2, bank_layers - 1)
@@ -104,6 +146,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         hg_heads = self._resolve_heads(self.input_dim, self.n_heads, hg_transformer_heads)
         cg_heads = self._resolve_heads(self.input_dim, self.n_heads, cgmn_transformer_heads)
         cv_heads = self._resolve_heads(self.input_dim, self.n_heads, curved_transformer_heads)
+        sp_heads = self._resolve_heads(self.input_dim, self.n_heads, spatial_transformer_heads)
 
         self.hyper_geometric = EnhancedHyperGeometricMemoryWithTransformerV2(
             input_dim,
@@ -139,8 +182,34 @@ class EnhancedTripleHybridMemory(nn.Module):
             use_tcn=bool(curved_use_tcn),
         )
         self.hg = self.hyper_geometric
-        self.topology_manager = TopologyManagerV3(subsystems=("hg", "cgmn", "curved"))
-        self.mix = nn.Parameter(torch.tensor([0.34, 0.33, 0.33]))  # [hg, cgmn, curved]
+        self.hg_episodic_bridge = None
+        self.spatial_ltm = None
+        self.spatial_fusion_layers = int(fusion_layers)
+        self.spatial_decoder_layers = int(bank_layers)
+        if self.enable_spatial_ltm:
+            self.spatial_ltm = EnhancedSpatialLTMMemoryWithTransformerV2(
+                input_dim,
+                self.spatial_value_dim,
+                self.spatial_slots,
+                self.spatial_key_dim,
+                sp_layers,
+                sp_heads,
+                self.attention_type,
+                ltm_topk=int(spatial_ltm_topk),
+                conformal_b=float(spatial_conformal_b),
+                transformer_layers_cfg=sp_layers_cfg,
+                inherited_bank_layers=bank_layers,
+                inherited_fusion_layers=fusion_layers,
+                fixed_transformer_layers=sp_fixed_layers,
+                fusion_transformer_layers=0,
+                decoder_transformer_layers=0,
+                cross_model_attention_layers=int(cross_layers),
+            )
+        topo_subsystems = ("hg", "cgmn", "curved", "spatial") if self.enable_spatial_ltm else ("hg", "cgmn", "curved")
+        self.topology_manager = TopologyManagerV3(subsystems=topo_subsystems)
+        n_banks = 4 if self.enable_spatial_ltm else 3
+        mix_init = torch.ones(n_banks) / float(n_banks)
+        self.mix = nn.Parameter(mix_init)
         self.enable_hns_fusion = bool(enable_hns_fusion)
         self.n_routed_tokens = 5
         self.n_total_tokens_for_fusion = 6
@@ -154,10 +223,11 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.lightbulb_decay = 0.9
         self.lightbulb_logger = LightbulbEventLogger()
         self.register_buffer("consolidated_usage", torch.zeros(int(consolidated_slots)))
+        router_feat_dim = 12 + (4 if self.enable_spatial_ltm else 0)
         self.router = nn.Sequential(
-            nn.Linear(input_dim + 12, 128),
+            nn.Linear(input_dim + router_feat_dim, 128),
             nn.ReLU(),
-            nn.Linear(128, 3),
+            nn.Linear(128, n_banks),
             nn.Softmax(dim=-1),
         )
         self.hns_router = HybridRouterV2(
@@ -203,14 +273,15 @@ class EnhancedTripleHybridMemory(nn.Module):
             nn.Linear(64, 1),
             nn.Sigmoid(),
         )
+        cons_in = self.input_dim * n_banks
         self.consolidation_gates = nn.Sequential(
-            nn.Linear(self.input_dim * 3, 64),
+            nn.Linear(cons_in, 64),
             nn.ReLU(),
-            nn.Linear(64, 3),
+            nn.Linear(64, n_banks),
             nn.Sigmoid(),
         )
         self.consolidation_network = nn.Sequential(
-            nn.Linear(self.input_dim * 3, 256),
+            nn.Linear(cons_in, 256),
             nn.ReLU(),
             nn.Linear(256, self.input_dim),
         )
@@ -253,6 +324,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.qdt_to_hg_attn = self._make_attention(cross_model_heads)
         self.qdt_to_cg_attn = self._make_attention(cross_model_heads)
         self.qdt_to_cv_attn = self._make_attention(cross_model_heads)
+        self.qdt_to_spatial_attn = self._make_attention(cross_model_heads) if self.enable_spatial_ltm else None
         self.cross_model_stack = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(
                 d_model=input_dim,
@@ -283,6 +355,67 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.prefusion_propagation_norm = nn.LayerNorm(input_dim)
         self.prefusion_propagation_gate = nn.Parameter(torch.tensor(0.24))
         self.last_prefusion_specialization_stats = {}
+        self.hidden_stack_self_attn = self._make_attention(cross_model_heads)
+        self.hidden_stack_param_attn = self._make_attention(cross_model_heads)
+        self.hidden_stack_ctx_attn = self._make_attention(cross_model_heads)
+        self.hidden_stack_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=input_dim,
+                nhead=cross_model_heads,
+                dim_feedforward=max(128, input_dim * 2),
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+            ),
+            num_layers=self.hidden_attention_layers,
+        )
+        self.hidden_stack_norm = nn.LayerNorm(input_dim)
+        self.hidden_stack_output_norm = nn.LayerNorm(input_dim)
+        self.hidden_stack_parallel_gates = nn.Parameter(torch.tensor([0.45, 0.35, 0.20]))
+        self.hidden_stack_adaptive_gate = nn.Linear(input_dim, 3)
+        self.hidden_stack_bridge_gate = nn.Parameter(torch.tensor(0.5))
+        self.hidden_param_tokens = nn.Parameter(torch.randn(4, input_dim) * 0.02)
+        self.hidden_param_stat_proj = nn.Sequential(
+            nn.Linear(6, input_dim),
+            nn.GELU(),
+            nn.Linear(input_dim, input_dim),
+        )
+        self.hidden_param_norm = nn.LayerNorm(input_dim)
+        self.last_hidden_stack_stats = {}
+        self.global_hidden_orchestrator = HiddenAttentionOrchestrator(
+            HiddenAttentionConfig(
+                model_dim=self.input_dim,
+                num_heads=cross_model_heads,
+                attention_type=self.attention_type,
+                transformer_layers=self.global_hidden_attention_layers,
+                max_captured_layers=self.global_hidden_max_layers,
+                capture_every_n=self.global_hidden_capture_every_n,
+                include_parameter_tokens=True,
+                max_parameter_tokens=48,
+                enable_context_cross_attention=True,
+            )
+        )
+        self.global_hidden_orchestrator.register_source(self.hg, source_name="triple.hg")
+        self.global_hidden_orchestrator.register_source(self.cgmn, source_name="triple.cgmn")
+        self.global_hidden_orchestrator.register_source(self.curved, source_name="triple.curved")
+        if self.spatial_ltm is not None:
+            self.global_hidden_orchestrator.register_source(self.spatial_ltm, source_name="triple.spatial")
+        self.last_global_hidden_attention_stats = {}
+        self.qh_banks = {
+            "hg": QuantumHologramSlotBank(
+                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.hg_slots), bank_name="triple_hg")
+            ),
+            "cgmn": QuantumHologramSlotBank(
+                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.cgmn_slots), bank_name="triple_cgmn")
+            ),
+            "curved": QuantumHologramSlotBank(
+                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.curved_slots), bank_name="triple_curved")
+            ),
+        }
+        if self.enable_spatial_ltm:
+            self.qh_banks["spatial"] = QuantumHologramSlotBank(
+                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.spatial_slots), bank_name="triple_spatial")
+            )
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -314,10 +447,144 @@ class EnhancedTripleHybridMemory(nn.Module):
             return 0.0
         return float(weights.detach().mean().item())
 
+    @staticmethod
+    def _module_parameter_signature(module: nn.Module, device, dtype) -> torch.Tensor:
+        if module is None:
+            return torch.zeros(6, device=device, dtype=dtype)
+        means = []
+        abs_means = []
+        sq_means = []
+        max_abs = torch.tensor(0.0, device=device, dtype=dtype)
+        n_params = 0.0
+        n_tensors = 0.0
+        with torch.no_grad():
+            for p in module.parameters():
+                if p.numel() == 0:
+                    continue
+                t = p.detach().to(device=device)
+                if torch.is_complex(t):
+                    t_real = t.real.to(dtype=dtype)
+                    t_abs = t.abs().to(dtype=dtype)
+                else:
+                    t_real = t.to(dtype=dtype)
+                    t_abs = t_real.abs()
+                means.append(t_real.mean())
+                abs_means.append(t_abs.mean())
+                sq_means.append((t_abs * t_abs).mean())
+                max_abs = torch.maximum(max_abs, t_abs.max())
+                n_params += float(t.numel())
+                n_tensors += 1.0
+        if not means:
+            return torch.zeros(6, device=device, dtype=dtype)
+        mean = torch.stack(means).mean()
+        abs_mean = torch.stack(abs_means).mean()
+        sq_mean = torch.stack(sq_means).mean()
+        std_like = (sq_mean - mean * mean).clamp_min(0.0).sqrt()
+        l2_like = sq_mean.clamp_min(0.0).sqrt()
+        log_params = torch.log(torch.tensor(n_params + 1.0, device=device, dtype=dtype))
+        tensor_count = torch.tensor(n_tensors, device=device, dtype=dtype)
+        return torch.stack([mean, abs_mean, std_like, l2_like, log_params, tensor_count], dim=0)
+
+    def _build_hidden_parameter_tokens(self, bsz: int, device, dtype):
+        modules = [self.hg, self.cgmn, self.curved]
+        if self.spatial_ltm is not None:
+            modules.append(self.spatial_ltm)
+        stats = [self._module_parameter_signature(m, device=device, dtype=dtype) for m in modules]
+        stats_t = torch.stack(stats, dim=0)
+        stat_embed = self.hidden_param_stat_proj(stats_t)
+        base_tokens = self.hidden_param_tokens[: stats_t.size(0)].to(device=device, dtype=dtype)
+        param_tokens = self.hidden_param_norm(base_tokens + stat_embed).unsqueeze(0).expand(bsz, -1, -1)
+        return param_tokens, stats_t
+
+    @staticmethod
+    def _align_context_to_batch(ctx: torch.Tensor, batch_size: int, ref: torch.Tensor) -> torch.Tensor:
+        if ctx is None:
+            return None
+        out = ctx.to(device=ref.device, dtype=ref.dtype)
+        if out.dim() == 2:
+            out = out.unsqueeze(0)
+        if out.size(0) == 1 and batch_size > 1:
+            out = out.expand(batch_size, -1, -1)
+        elif out.size(0) != batch_size:
+            out = out.mean(dim=0, keepdim=True).expand(batch_size, -1, -1)
+        return out
+
+    def _apply_hidden_attention_stack(self, rhg, rcg, rcv, rsp=None, context=None):
+        if not self.enable_hidden_attention_stack:
+            return rhg, rcg, rcv, rsp
+        parts = [rhg, rcg, rcv]
+        if rsp is not None:
+            parts.append(rsp)
+        seq_lens = [p.size(1) for p in parts]
+        hidden = torch.cat(parts, dim=1)
+        bsz = hidden.size(0)
+
+        self_out, self_w = self.hidden_stack_self_attn(hidden, hidden, hidden, need_weights=True)
+        param_tokens, param_stats = self._build_hidden_parameter_tokens(
+            bsz=bsz, device=hidden.device, dtype=hidden.dtype
+        )
+        param_out, param_w = self.hidden_stack_param_attn(
+            hidden, param_tokens, param_tokens, need_weights=True
+        )
+        ctx = self._align_context_to_batch(context, batch_size=bsz, ref=hidden)
+        if ctx is None:
+            ctx_out = hidden.new_zeros(hidden.shape)
+            ctx_w = None
+        else:
+            ctx_out, ctx_w = self.hidden_stack_ctx_attn(hidden, ctx, ctx, need_weights=True)
+
+        if self.hidden_attention_variant == "cascade":
+            mixed = self.hidden_stack_norm(hidden + self_out)
+            mixed = self.hidden_stack_norm(mixed + param_out)
+            mixed = self.hidden_stack_norm(mixed + ctx_out)
+        elif self.hidden_attention_variant == "parallel":
+            gates = torch.softmax(self.hidden_stack_parallel_gates, dim=0)
+            mixed = hidden + gates[0] * self_out + gates[1] * param_out + gates[2] * ctx_out
+            mixed = self.hidden_stack_norm(mixed)
+        else:
+            gate_in = hidden.mean(dim=1)
+            dyn = torch.softmax(self.hidden_stack_adaptive_gate(gate_in), dim=-1).unsqueeze(1)
+            mixed = hidden + dyn[..., 0:1] * self_out + dyn[..., 1:2] * param_out + dyn[..., 2:3] * ctx_out
+            mixed = self.hidden_stack_norm(mixed)
+
+        stacked = self.hidden_stack_encoder(mixed)
+        enhanced = self.hidden_stack_output_norm(mixed + stacked)
+
+        outputs = []
+        offset = 0
+        for ln in seq_lens:
+            outputs.append(enhanced[:, offset : offset + ln, :])
+            offset += ln
+        while len(outputs) < 4:
+            outputs.append(None)
+
+        self.last_hidden_stack_stats = {
+            "variant": self.hidden_attention_variant,
+            "self_attn_mean": self._attn_weight_mean(self_w),
+            "param_attn_mean": self._attn_weight_mean(param_w),
+            "context_attn_mean": self._attn_weight_mean(ctx_w),
+            "param_signature_scale": float(param_stats.abs().mean().detach().item()),
+        }
+        return outputs[0], outputs[1], outputs[2], outputs[3]
+
     def set_temperature(self, t: torch.Tensor):
         self.hg.set_temperature(t)
         self.cgmn.set_temperature(t)
         self.curved.set_temperature(t)
+        if self.spatial_ltm is not None:
+            self.spatial_ltm.set_temperature(t)
+
+    def link_hg_episodic_bridge(self, episodic_ltm: Any) -> None:
+        """Register HG episodic LTM for cross-bank attention context and ingest bridges."""
+        self.hg_episodic_bridge = episodic_ltm
+        if episodic_ltm is not None and hasattr(self.hg, "set_external_attention_context"):
+            ctx_builder = getattr(episodic_ltm, "build_episode_attention_context", None)
+            if ctx_builder is not None and hasattr(episodic_ltm, "episode_records"):
+                keys = sorted(episodic_ltm.episode_records.keys())
+                if keys:
+                    ctx = ctx_builder(episode_id=keys[-1], include_summary=True, max_tokens=32)
+                    if ctx is not None:
+                        self.set_external_attention_context(ctx)
 
     def set_external_attention_context(self, context: torch.Tensor) -> None:
         if context is None:
@@ -325,6 +592,8 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.hg.clear_external_attention_context()
             self.cgmn.clear_external_attention_context()
             self.curved.clear_external_attention_context()
+            if self.spatial_ltm is not None:
+                self.spatial_ltm.clear_external_attention_context()
             return
         ctx = torch.as_tensor(context, device=self.mix.device, dtype=self.mix.dtype)
         if ctx.dim() == 2:
@@ -337,20 +606,74 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg.set_external_attention_context(self.external_attention_context)
         self.cgmn.set_external_attention_context(self.external_attention_context)
         self.curved.set_external_attention_context(self.external_attention_context)
+        if self.spatial_ltm is not None:
+            self.spatial_ltm.set_external_attention_context(self.external_attention_context)
 
     def clear_external_attention_context(self) -> None:
         self.set_external_attention_context(None)
+
+    def register_additional_hidden_attention_source(
+        self,
+        module: nn.Module,
+        *,
+        source_name: str = "triple.extra",
+    ) -> int:
+        """Allow callers to extend global hidden-attention coverage at runtime."""
+        return self.global_hidden_orchestrator.register_source(module, source_name=source_name)
+
+    def run_full_audit(
+        self,
+        sample_batch=None,
+        *,
+        auto_probe: bool = True,
+        probe_batch_size: int = 2,
+        probe_seq_len: int = 8,
+        include_gradients: bool = False,
+        loss_fn=None,
+    ) -> Dict[str, Any]:
+        """
+        Run a full-layer visibility audit for this memory stack.
+        By default it uses a lightweight probe and does not require training.
+        """
+        return run_model_audit(
+            self,
+            sample_batch=sample_batch,
+            auto_probe=auto_probe,
+            probe_batch_size=probe_batch_size,
+            probe_seq_len=probe_seq_len,
+            include_gradients=include_gradients,
+            loss_fn=loss_fn,
+        )
+
+    def ensure_hidden_layer_utilization(
+        self,
+        sample_batch=None,
+        *,
+        include_gradients: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Convenience check that all reachable hidden layers are exercised.
+        """
+        return self.run_full_audit(
+            sample_batch=sample_batch,
+            auto_probe=True,
+            include_gradients=include_gradients,
+        )
 
     def enable_energy_efficient_mode(self, enable: bool = True):
         self.hg.enable_energy_efficient_mode(enable)
         self.cgmn.enable_energy_efficient_mode(enable)
         self.curved.enable_energy_efficient_mode(enable)
+        if self.spatial_ltm is not None:
+            self.spatial_ltm.enable_energy_efficient_mode(enable)
 
     @torch.no_grad()
     def consolidate_unused(self, threshold: float = 0.1):
         self.hg.consolidate_unused(threshold)
         self.cgmn.consolidate_unused(threshold)
         self.curved.consolidate_unused(threshold)
+        if self.spatial_ltm is not None:
+            self.spatial_ltm.consolidate_unused(threshold)
 
     @torch.no_grad()
     def evolve_topologies(self, fitness_by_subsystem):
@@ -358,18 +681,17 @@ class EnhancedTripleHybridMemory(nn.Module):
         fitness_by_subsystem keys: 'hg' | 'cgmn' | 'curved'
         """
         out = {}
-        for name in ("hg", "cgmn", "curved"):
+        for name in self.topology_manager.subsystems:
             if name in fitness_by_subsystem:
                 out[name] = self.topology_manager.evolve_topology(
                     fitness=float(fitness_by_subsystem[name]),
                     subsystem=name,
                 )
-                # Apply a small channel-prior nudge to each merger.
                 if name == "hg":
                     self.topology_manager.steer_merger(self.hg.geometry_merger, subsystem="hg")
                 elif name == "cgmn":
                     self.topology_manager.steer_merger(self.cgmn.geometry_merger, subsystem="cgmn")
-                else:
+                elif name == "curved":
                     self.topology_manager.steer_merger(self.curved.geometry_merger, subsystem="curved")
         return out
 
@@ -397,6 +719,14 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg.spd_L.copy_(self.topology_manager.mutate_tensor_like(self.hg.spd_L, subsystem="hg"))
         self.cgmn.spd_L.copy_(self.topology_manager.mutate_tensor_like(self.cgmn.spd_L, subsystem="cgmn"))
         self.curved.spd_L.copy_(self.topology_manager.mutate_tensor_like(self.curved.spd_L, subsystem="curved"))
+        if self.spatial_ltm is not None and hasattr(self.spatial_ltm, "memory_curvature"):
+            self.spatial_ltm.memory_curvature.copy_(
+                self.topology_manager.mutate_curvature(
+                    self.spatial_ltm.memory_curvature,
+                    loss_value=loss_value,
+                    subsystem="spatial",
+                )
+            )
 
     @torch.no_grad()
     def step_topology(self, loss_value: float):
@@ -409,6 +739,8 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.cgmn.step_topology(loss_value)
         if hasattr(self.curved, "step_topology"):
             self.curved.step_topology(loss_value)
+        if self.spatial_ltm is not None and hasattr(self.spatial_ltm, "step_topology"):
+            self.spatial_ltm.step_topology(loss_value)
 
     @staticmethod
     def _seq_pool(x: torch.Tensor) -> torch.Tensor:
@@ -605,25 +937,28 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.lightbulb_logger.log(source="read-output", intensity=float(cross_intensity))
         return self.hns_blend_norm(base_fused + gate * hns_seq)
 
-    def _fuse(self, rhg, rcg, rcv, routing_weights=None):
+    def _fuse(self, rhg, rcg, rcv, routing_weights=None, rspatial=None):
+        banks = [rhg, rcg, rcv]
+        if rspatial is not None:
+            banks.append(rspatial)
         if self.fusion_mode == 'cross_attn':
-            B,S,D = rhg.shape
-            tokens = torch.stack([rhg, rcg, rcv], dim=2)     # (B,S,3,D)
-            tokens = tokens.view(B*S, 3, D)                  # (B*S,3,D)
-            fused, _ = self.cross_fuser(tokens, tokens, tokens)  # (B*S,3,D)
-            fused = fused.mean(dim=1).view(B,S,D)            # (B,S,D)
+            B, S, D = rhg.shape
+            n = len(banks)
+            tokens = torch.stack(banks, dim=2)
+            tokens = tokens.view(B * S, n, D)
+            fused, _ = self.cross_fuser(tokens, tokens, tokens)
+            fused = fused.mean(dim=1).view(B, S, D)
             refined = self.refiner(fused)
             return self.refiner_norm(fused + refined)
+        if routing_weights is None:
+            w = torch.softmax(self.mix, dim=0)
+            fused = sum(w[i] * banks[i] for i in range(len(banks)))
         else:
-            if routing_weights is None:
-                w = torch.softmax(self.mix, dim=0)
-                fused = w[0] * rhg + w[1] * rcg + w[2] * rcv
-            else:
-                w = routing_weights.unsqueeze(1).unsqueeze(-1)  # (B,1,3,1)
-                stacked = torch.stack([rhg, rcg, rcv], dim=2)   # (B,S,3,D)
-                fused = (w * stacked).sum(dim=2)
-            refined = self.refiner(fused)
-            return self.refiner_norm(fused + refined)
+            w = routing_weights.unsqueeze(1).unsqueeze(-1)
+            stacked = torch.stack(banks, dim=2)
+            fused = (w * stacked).sum(dim=2)
+        refined = self.refiner(fused)
+        return self.refiner_norm(fused + refined)
 
     @staticmethod
     def _grab_router_features(mem, bsz: int, device, dtype):
@@ -644,6 +979,23 @@ class EnhancedTripleHybridMemory(nn.Module):
                 t = torch.zeros(bsz, device=device, dtype=dtype)
             vals.append(t)
         return tuple(vals)
+
+    @torch.no_grad()
+    def _record_qh_triplets_for_bank(self, bank_name: str, pooled: torch.Tensor) -> None:
+        bank = self.qh_banks.get(bank_name)
+        if bank is None or pooled.numel() == 0:
+            return
+        vec = pooled.detach()
+        n = vec.size(0)
+        slot_indices = torch.arange(n, device=vec.device, dtype=torch.long) % int(bank.cfg.num_slots)
+        bank.store_batch(
+            slot_indices=slot_indices,
+            anchor=vec,
+            direction=torch.roll(vec, shifts=1, dims=-1),
+            phase=torch.roll(vec, shifts=2, dims=-1),
+            depth_index=0,
+            bank_name=f"triple_{bank_name}",
+        )
 
     def _inter_memory_exchange(self, rhg, rcg, rcv):
         """
@@ -698,7 +1050,8 @@ class EnhancedTripleHybridMemory(nn.Module):
         spec_weights = torch.softmax(spec_logits, dim=-1)
 
         if routing_weights is not None:
-            route = routing_weights.unsqueeze(1).expand(-1, seq, -1).reshape(bsz * seq, 3)
+            route_src = routing_weights[:, :3]
+            route = route_src.unsqueeze(1).expand(-1, seq, -1).reshape(bsz * seq, 3)
             blend = 0.5 * spec_weights + 0.5 * route
             spec_weights = blend / blend.sum(dim=-1, keepdim=True).clamp_min(1e-6)
 
@@ -739,9 +1092,9 @@ class EnhancedTripleHybridMemory(nn.Module):
         rcv_o = enhanced[:, 2, :].reshape(bsz, seq, dim)
         return rhg_o, rcg_o, rcv_o
 
-    def _apply_external_attention_stack(self, rhg, rcg, rcv):
+    def _apply_external_attention_stack(self, rhg, rcg, rcv, rsp=None):
         if self.external_attention_context is None:
-            return rhg, rcg, rcv
+            return rhg, rcg, rcv, rsp
         ctx = self.external_attention_context.to(device=rhg.device, dtype=rhg.dtype)
         if ctx.size(0) == 1 and rhg.size(0) > 1:
             ctx = ctx.expand(rhg.size(0), -1, -1)
@@ -753,10 +1106,27 @@ class EnhancedTripleHybridMemory(nn.Module):
         rhg = self.cross_model_norm(rhg + hg_ext)
         rcg = self.cross_model_norm(rcg + cg_ext)
         rcv = self.cross_model_norm(rcv + cv_ext)
-        joined = torch.cat([rhg, rcg, rcv], dim=1)
+        if rsp is not None and self.qdt_to_spatial_attn is not None:
+            sp_ext, _ = self.qdt_to_spatial_attn(rsp, ctx, ctx, need_weights=False)
+            rsp = self.cross_model_norm(rsp + sp_ext)
+        parts = [rhg, rcg, rcv]
+        if rsp is not None:
+            parts.append(rsp)
+        joined = torch.cat(parts, dim=1)
         joined = self.cross_model_norm(joined + self.cross_model_stack(joined))
         s = rhg.size(1)
-        return joined[:, :s, :], joined[:, s:2 * s, :], joined[:, 2 * s:, :]
+        out = [joined[:, i * s:(i + 1) * s, :] for i in range(len(parts))]
+        while len(out) < 4:
+            out.append(None)
+        return out[0], out[1], out[2], out[3]
+
+    def _bridge_hidden_and_external(self, x_h, x_e):
+        if x_h is None:
+            return x_e
+        if x_e is None:
+            return x_h
+        g = torch.sigmoid(self.hidden_stack_bridge_gate)
+        return self.cross_model_norm((1.0 - g) * x_e + g * x_h)
 
     def _run_read_pipeline(
         self,
@@ -770,60 +1140,92 @@ class EnhancedTripleHybridMemory(nn.Module):
     ) -> Dict[str, torch.Tensor]:
         if context is None:
             context = x.mean(dim=1, keepdim=True).expand_as(x)
-        rhg = self.hg(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
-        rcg = self.cgmn(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
-        rcv = self.curved(x, operation="read")
-        rhg, rcg, rcv = self._apply_external_attention_stack(rhg, rcg, rcv)
-        bsz = x.size(0)
-        device = x.device
-        dtype = x.dtype
-        hg_om, hg_cv, hg_dm, hg_en = self._grab_router_features(self.hg, bsz, device, dtype)
-        cg_om, cg_cv, cg_dm, cg_en = self._grab_router_features(self.cgmn, bsz, device, dtype)
-        cv_om, cv_cv, cv_dm, cv_en = self._grab_router_features(self.curved, bsz, device, dtype)
-        router_feats = torch.stack(
-            [
+        if self.enable_global_hidden_attention:
+            self.global_hidden_orchestrator.begin_capture()
+        try:
+            rhg = self.hg(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
+            rcg = self.cgmn(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
+            rcv = self.curved(x, operation="read")
+            rsp = self.spatial_ltm(x, operation="read") if self.spatial_ltm is not None else None
+            if self.hidden_attention_integration == "pre_external":
+                rhg, rcg, rcv, rsp = self._apply_hidden_attention_stack(
+                    rhg, rcg, rcv, rsp, context=context
+                )
+                rhg, rcg, rcv, rsp = self._apply_external_attention_stack(rhg, rcg, rcv, rsp)
+            elif self.hidden_attention_integration == "blended":
+                ext = self._apply_external_attention_stack(rhg, rcg, rcv, rsp)
+                hid = self._apply_hidden_attention_stack(rhg, rcg, rcv, rsp, context=context)
+                rhg = self._bridge_hidden_and_external(hid[0], ext[0])
+                rcg = self._bridge_hidden_and_external(hid[1], ext[1])
+                rcv = self._bridge_hidden_and_external(hid[2], ext[2])
+                rsp = self._bridge_hidden_and_external(hid[3], ext[3])
+            else:
+                rhg, rcg, rcv, rsp = self._apply_external_attention_stack(rhg, rcg, rcv, rsp)
+                rhg, rcg, rcv, rsp = self._apply_hidden_attention_stack(
+                    rhg, rcg, rcv, rsp, context=context
+                )
+            bsz = x.size(0)
+            device = x.device
+            dtype = x.dtype
+            hg_om, hg_cv, hg_dm, hg_en = self._grab_router_features(self.hg, bsz, device, dtype)
+            cg_om, cg_cv, cg_dm, cg_en = self._grab_router_features(self.cgmn, bsz, device, dtype)
+            cv_om, cv_cv, cv_dm, cv_en = self._grab_router_features(self.curved, bsz, device, dtype)
+            router_feat_list = [
                 hg_om, hg_cv, hg_dm, hg_en,
                 cg_om, cg_cv, cg_dm, cg_en,
                 cv_om, cv_cv, cv_dm, cv_en,
-            ],
-            dim=-1,
-        )
-        router_in = torch.cat([x.mean(dim=1), router_feats], dim=-1)
-        routing_weights = self.router(router_in)
-        self.last_router_weights = routing_weights.detach()
-        self.last_router_stats = {
-            "hg": float(routing_weights[:, 0].detach().mean().item()),
-            "cgmn": float(routing_weights[:, 1].detach().mean().item()),
-            "curved": float(routing_weights[:, 2].detach().mean().item()),
-            "lightbulb_intensity": float(cross_intensity),
-            "cons_novelty": float(self.cons_novelty),
-        }
-        rhg, rcg, rcv = self._prefusion_specialization_exchange(
-            rhg, rcg, rcv, routing_weights=routing_weights
-        )
-        rhg, rcg, rcv = self._inter_memory_exchange(rhg, rcg, rcv)
-        base_fused = self._fuse(rhg, rcg, rcv, routing_weights=routing_weights)
-        fused = (
-            self._apply_hns_fusion(
-                x,
-                rhg,
-                rcg,
-                rcv,
-                base_fused,
-                cross_intensity=cross_intensity,
-                context=context,
+            ]
+            if self.spatial_ltm is not None:
+                sp_om, sp_cv, sp_dm, sp_en = self._grab_router_features(self.spatial_ltm, bsz, device, dtype)
+                router_feat_list.extend([sp_om, sp_cv, sp_dm, sp_en])
+            router_feats = torch.stack(router_feat_list, dim=-1)
+            router_in = torch.cat([x.mean(dim=1), router_feats], dim=-1)
+            routing_weights = self.router(router_in)
+            self.last_router_weights = routing_weights.detach()
+            router_stats = {
+                "hg": float(routing_weights[:, 0].detach().mean().item()),
+                "cgmn": float(routing_weights[:, 1].detach().mean().item()),
+                "curved": float(routing_weights[:, 2].detach().mean().item()),
+                "lightbulb_intensity": float(cross_intensity),
+                "cons_novelty": float(self.cons_novelty),
+            }
+            if self.spatial_ltm is not None and routing_weights.size(-1) > 3:
+                router_stats["spatial"] = float(routing_weights[:, 3].detach().mean().item())
+            self.last_router_stats = router_stats
+            rhg, rcg, rcv = self._prefusion_specialization_exchange(
+                rhg, rcg, rcv, routing_weights=routing_weights
             )
-            if apply_hns
-            else base_fused
-        )
-        result = {"hg": rhg, "cgmn": rcg, "curved": rcv, "fused": fused}
-        self._read_pipeline_cache = {
-            "x_id": id(x),
-            "fire_mask_id": None if fire_mask is None else id(fire_mask),
-            "recall_boost": float(recall_boost),
-            "reads": result,
-        }
-        return result
+            rhg, rcg, rcv = self._inter_memory_exchange(rhg, rcg, rcv)
+            base_fused = self._fuse(rhg, rcg, rcv, routing_weights=routing_weights, rspatial=rsp)
+            fused = (
+                self._apply_hns_fusion(
+                    x,
+                    rhg,
+                    rcg,
+                    rcv,
+                    base_fused,
+                    cross_intensity=cross_intensity,
+                    context=context,
+                )
+                if apply_hns
+                else base_fused
+            )
+            if self.enable_global_hidden_attention:
+                fused = self.global_hidden_orchestrator.integrate(fused, context=context)
+                self.last_global_hidden_attention_stats = dict(self.global_hidden_orchestrator.last_stats)
+            result = {"hg": rhg, "cgmn": rcg, "curved": rcv, "fused": fused}
+            if rsp is not None:
+                result["spatial"] = rsp
+            self._read_pipeline_cache = {
+                "x_id": id(x),
+                "fire_mask_id": None if fire_mask is None else id(fire_mask),
+                "recall_boost": float(recall_boost),
+                "reads": result,
+            }
+            return result
+        finally:
+            if self.enable_global_hidden_attention:
+                self.global_hidden_orchestrator.end_capture()
 
     def read_banks(
         self,
@@ -923,12 +1325,22 @@ class EnhancedTripleHybridMemory(nn.Module):
                 recall_boost=recall_boost,
             )
             _ = self.curved(x, operation="write", importance=importance)
+            if self.spatial_ltm is not None:
+                _ = self.spatial_ltm(x, operation="write", importance=importance)
             hg_out_w = self._seq_pool(hg_seq)
             cg_out_w = self._seq_pool(
                 self.cgmn(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
             )
             cv_out_w = self._seq_pool(self.curved(x, operation="read"))
-            pooled = torch.stack([hg_out_w, cg_out_w, cv_out_w], dim=1)
+            self._record_qh_triplets_for_bank("hg", hg_out_w)
+            self._record_qh_triplets_for_bank("cgmn", cg_out_w)
+            self._record_qh_triplets_for_bank("curved", cv_out_w)
+            write_banks = [hg_out_w, cg_out_w, cv_out_w]
+            if self.spatial_ltm is not None:
+                sp_out_w = self._seq_pool(self.spatial_ltm(x, operation="read"))
+                self._record_qh_triplets_for_bank("spatial", sp_out_w)
+                write_banks.append(sp_out_w)
+            pooled = torch.stack(write_banks, dim=1)
             self._adaptive_consolidation(pooled, importance)
             with torch.no_grad():
                 _ = self.topo_consolidator.consolidate(pooled, importance)
@@ -949,16 +1361,18 @@ class EnhancedTripleHybridMemory(nn.Module):
         return reads["fused"]
 
     # --------- Episodic bridge adapters ----------
-    @staticmethod
-    def _norm_bank_name(bank_name: str) -> str:
+    def _norm_bank_name(self, bank_name: str) -> str:
         name = str(bank_name).strip().lower()
+        spatial_target = "spatial" if self.spatial_ltm is not None else "curved"
         alias = {
             "hg": "hg",
             "episodic": "hg",
             "cgmn": "cgmn",
             "semantic": "cgmn",
             "curved": "curved",
-            "spatial": "curved",
+            "spatial": spatial_target,
+            "spatial_ltm": spatial_target,
+            "spatial_atlas": spatial_target,
         }
         if name not in alias:
             raise ValueError(f"unknown bank_name={bank_name}")
@@ -984,6 +1398,10 @@ class EnhancedTripleHybridMemory(nn.Module):
             _ = self.hg(x, operation="write", fire_mask=fire_mask, recall_boost=recall_boost)
         elif name == "cgmn":
             _ = self.cgmn(x, operation="write", fire_mask=fire_mask, recall_boost=recall_boost)
+        elif name == "spatial":
+            if self.spatial_ltm is None:
+                raise RuntimeError("spatial LTM bank is not enabled")
+            _ = self.spatial_ltm(x, operation="write", importance=importance)
         else:
             _ = self.curved(x, operation="write", importance=importance)
 
@@ -1026,6 +1444,10 @@ class EnhancedTripleHybridMemory(nn.Module):
             return reads["cgmn"]
         if name == "curved":
             return reads["curved"]
+        if name == "spatial":
+            if "spatial" not in reads:
+                raise RuntimeError("spatial LTM bank is not enabled")
+            return reads["spatial"]
         return reads["fused"]
 
     @torch.no_grad()
@@ -1033,7 +1455,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         self,
         vectors: torch.Tensor,
         *,
-        target_banks=("hg", "cgmn", "curved"),
+        target_banks=("hg", "cgmn", "curved", "spatial"),
         write_scale: float = 1.0,
     ) -> Dict[str, int]:
         """
@@ -1056,6 +1478,10 @@ class EnhancedTripleHybridMemory(nn.Module):
                 self.hg.ingest_external_vectors(x, write_scale=write_scale)
             elif name == "cgmn":
                 self.cgmn.ingest_external_vectors(x, write_scale=write_scale)
+            elif name == "spatial":
+                if self.spatial_ltm is None:
+                    continue
+                self.spatial_ltm.ingest_external_vectors(x, write_scale=write_scale)
             else:
                 self.curved.ingest_external_vectors(x, write_scale=write_scale)
             out[name] = int(x.size(0) * x.size(1))

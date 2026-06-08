@@ -8,6 +8,7 @@ from .geometry_utils import qexp, qmul, qnormalize
 from .holo_head import HoloHead
 from .lightbulb_controller import LightbulbController
 from .memory.conformal import ConformalMLP, warp_knn_with_stats
+from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 from geometry.blend import GeometryBlender
 from geometry.manifold_utils import product_et_distance, symplectic_leapfrog, wrap_angles
 from topology.manager_v3 import DynamicTopologyManagerV2
@@ -136,6 +137,15 @@ class EnhancedCurvedMemory(nn.Module):
             batch_first=True,
         )
         self.external_memory_attn_norm = nn.LayerNorm(self.input_dim)
+        self.qh_slot_bank = QuantumHologramSlotBank(
+            QuantumHologramConfig(
+                enabled=True,
+                hrr_dim=int(self.H),
+                num_slots=int(self.M),
+                num_depths=8,
+                bank_name="wm_curved",
+            )
+        )
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -332,6 +342,24 @@ class EnhancedCurvedMemory(nn.Module):
         flat = indices.reshape(-1)
         self.usage_counts.index_add_(0, flat, torch.ones_like(flat, dtype=self.usage_counts.dtype))
 
+    @torch.no_grad()
+    def _record_qh_triplets(self, query: torch.Tensor, indices: torch.Tensor) -> None:
+        if not hasattr(self, "qh_slot_bank"):
+            return
+        bsz, topk = indices.shape
+        flat_idx = indices.reshape(-1)
+        anchor = query.repeat_interleave(topk, dim=0)
+        direction = self.memory_slots.index_select(0, flat_idx).detach()
+        phase = torch.roll(anchor, shifts=1, dims=-1)
+        self.qh_slot_bank.store_batch(
+            slot_indices=flat_idx,
+            anchor=anchor,
+            direction=direction,
+            phase=phase,
+            depth_index=0,
+            bank_name="wm_curved",
+        )
+
     def associative_activation(self, query, slots=None):  # (B,H) -> (B,M)
         m = self.active_slots
         if slots is None:
@@ -343,7 +371,7 @@ class EnhancedCurvedMemory(nn.Module):
             act = torch.einsum("bm,mn->bn", act, assoc)
         return act
 
-    def forward(self, x, operation="read", importance=None):
+    def forward(self, x, operation="read", importance=None, fire_mask=None, recall_boost: float = 0.0, **_ignored):
         x_in = x
         if self.input_transformer is not None:
             tx = self.input_transformer(x_in)
@@ -371,6 +399,7 @@ class EnhancedCurvedMemory(nn.Module):
         if operation == "write":
             _, idx = self.content_based_addressing(query)
             self._record_usage(idx)
+            self._record_qh_triplets(query, idx)
             self.update_memory(x_in, importance, idx)
             self._update_spin_slots(q_query, idx)
             return x
@@ -403,6 +432,12 @@ class EnhancedCurvedMemory(nn.Module):
             conformal_mlp=self.conformal_mlp,
             b=self.conformal_b,
         )
+        if fire_mask is not None and float(recall_boost) > 0.0:
+            mask = torch.as_tensor(fire_mask, device=dist_top.device, dtype=dist_top.dtype).reshape(-1, 1)
+            if mask.size(0) != dist_top.size(0):
+                mask = mask.mean().expand(dist_top.size(0), 1)
+            scale = 1.0 - mask.clamp(0.0, 1.0) * float(max(0.0, min(1.0, recall_boost)))
+            dist_top = dist_top * scale
         qc = self.qc_head(query)
         q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
         self.geometry_merger.spd_L = self.spd_L

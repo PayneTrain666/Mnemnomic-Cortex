@@ -34,7 +34,21 @@ class CortexConfig:
 
     # Misc
     seed: int = 42
+    fusion: str = "weighted"
+    hgm_enabled: bool = False
 
     # Consolidated lexicon (optional)
     cms_vocab_size: int = 0
     cms_senses: int = 3
+
+    def to_cortex_kwargs(self) -> dict:
+        return {
+            "input_dim": int(self.input_dim),
+            "output_dim": int(self.output_dim),
+            "wm_slots": int(self.wm_slots),
+            "wm_slot_dim": int(self.wm_slot_dim),
+            "fusion": str(self.fusion),
+            "hgm_enabled": bool(self.hgm_enabled),
+            "cms_vocab_size": int(self.cms_vocab_size),
+            "cms_senses": int(self.cms_senses),
+        }

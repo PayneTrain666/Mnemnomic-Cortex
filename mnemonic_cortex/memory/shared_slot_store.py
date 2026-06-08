@@ -54,6 +54,14 @@ class SharedSlotStore(nn.Module):
             "allowed_write_mask",
             torch.zeros(num_slots, num_systems, device=device, dtype=torch.bool),
         )
+        self.register_buffer(
+            "slot_curvature",
+            torch.zeros(num_slots, device=device, dtype=torch.float32),
+        )
+        self.register_buffer(
+            "slot_geometry_code",
+            torch.zeros(num_slots, device=device, dtype=torch.long),
+        )
 
         self.metadata: Dict[int, Any] = {}
         self.free_slot_ids: deque[int] = deque(range(self.num_slots))
@@ -92,6 +100,40 @@ class SharedSlotStore(nn.Module):
     def get_slot_value(self, slot_ids: torch.Tensor | Sequence[int]) -> torch.Tensor:
         ids = self._normalize_slot_ids(slot_ids)
         return self.slot_values.index_select(0, ids)
+
+    def get_slot_curvature(self, slot_ids: torch.Tensor | Sequence[int]) -> torch.Tensor:
+        ids = self._normalize_slot_ids(slot_ids)
+        return self.slot_curvature.index_select(0, ids)
+
+    def set_slot_curvature(
+        self,
+        *,
+        slot_ids: torch.Tensor | Sequence[int],
+        curvature: torch.Tensor,
+    ) -> None:
+        ids = self._normalize_slot_ids(slot_ids)
+        self.slot_curvature[ids] = self._coerce_tensor(
+            curvature,
+            dtype=self.slot_curvature.dtype,
+            shape=(ids.numel(),),
+            name="curvature",
+        ).clamp(-1.0, 1.0)
+        self.version_counter += 1
+
+    def set_slot_geometry_code(
+        self,
+        *,
+        slot_ids: torch.Tensor | Sequence[int],
+        geometry_code: torch.Tensor,
+    ) -> None:
+        ids = self._normalize_slot_ids(slot_ids)
+        self.slot_geometry_code[ids] = self._coerce_tensor(
+            geometry_code,
+            dtype=self.slot_geometry_code.dtype,
+            shape=(ids.numel(),),
+            name="geometry_code",
+        )
+        self.version_counter += 1
 
     def get_slot_metadata(self, slot_ids: Sequence[int]) -> list[Any]:
         return [self.metadata.get(int(slot_id)) for slot_id in slot_ids]
@@ -302,6 +344,8 @@ class SharedSlotStore(nn.Module):
         self.primary_system_code[ids] = 0
         self.allowed_read_mask[ids] = False
         self.allowed_write_mask[ids] = False
+        self.slot_curvature[ids] = 0
+        self.slot_geometry_code[ids] = 0
 
         for slot_id in ids.tolist():
             self.metadata.pop(int(slot_id), None)
@@ -335,6 +379,7 @@ class SharedSlotStore(nn.Module):
             "mean_confidence": float(self.slot_confidence.mean().item()),
             "mean_usage": float(self.slot_usage.mean().item()),
             "mean_age": float(self.slot_age.float().mean().item()),
+            "mean_curvature": float(self.slot_curvature.mean().item()),
         }
 
     def to_dict(self) -> Dict[str, Any]:

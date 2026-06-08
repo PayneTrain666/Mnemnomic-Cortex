@@ -31,13 +31,32 @@ def build_shared_memory_subsystem(
     geometry_runtime: Any = None,
     reranker: Any = None,
     truth_runtime: Any = None,
+    overwrite_threshold: float | None = None,
+    merge_threshold: float | None = None,
+    quarantine_interference_threshold: float | None = None,
+    contradiction_split_threshold: int | None = None,
 ) -> SharedMemorySubsystem:
     allocator = SharedSlotAllocator(store=store)
-    arbitrator = SharedSlotArbitrator(store=store)
+    arbitrator_kwargs: dict[str, float] = {}
+    if overwrite_threshold is not None:
+        arbitrator_kwargs["overwrite_threshold"] = float(overwrite_threshold)
+    if merge_threshold is not None:
+        arbitrator_kwargs["merge_threshold"] = float(merge_threshold)
+    if quarantine_interference_threshold is not None:
+        arbitrator_kwargs["quarantine_interference_threshold"] = float(quarantine_interference_threshold)
+    arbitrator = SharedSlotArbitrator(store=store, **arbitrator_kwargs)
     retention = SharedSlotRetention(store=store)
     read_engine = MemoryReadEngine(store=store, geometry_runtime=geometry_runtime, reranker=reranker)
     write_engine = MemoryWriteEngine(store=store, allocator=allocator, arbitrator=arbitrator)
-    update_engine = MemoryUpdateEngine(store=store, write_engine=write_engine, arbitrator=arbitrator)
+    update_engine_kwargs: dict[str, int] = {}
+    if contradiction_split_threshold is not None:
+        update_engine_kwargs["contradiction_split_threshold"] = int(contradiction_split_threshold)
+    update_engine = MemoryUpdateEngine(
+        store=store,
+        write_engine=write_engine,
+        arbitrator=arbitrator,
+        **update_engine_kwargs,
+    )
     lifecycle_manager = MemoryLifecycleManager(
         store=store,
         retention=retention,

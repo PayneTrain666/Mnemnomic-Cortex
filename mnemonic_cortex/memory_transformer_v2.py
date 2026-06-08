@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import math
 import torch
@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from .memory_hg import EnhancedHyperGeometricMemory
 from .memory_cgmn import EnhancedCGMNMemory
 from .memory_curved import EnhancedCurvedMemory
+from .memory_spatial_ltm import EnhancedSpatialLTMMemory
 from .memory_attention import MultiScaleAttention
 
 
@@ -324,3 +325,59 @@ class EnhancedCurvedMemoryWithTransformerV2(_MemoryTransformerV2Base):
         spread = curved_activation.float().std(dim=-1)
         trig = bool((torch.sigmoid(spread * 5).mean() > 0.6).item())
         return trig, spread
+
+
+class EnhancedSpatialLTMMemoryWithTransformerV2(_MemoryTransformerV2Base):
+    def __init__(
+        self,
+        input_dim: int,
+        spatial_value_dim: int,
+        spatial_slots: int,
+        spatial_key_dim: int,
+        n_transformer_layers: int,
+        n_heads: int,
+        attention_type: str,
+        *,
+        ltm_topk: int = 8,
+        conformal_b: float = 0.08,
+        fusion_transformer_layers: int = 0,
+        decoder_transformer_layers: int = 0,
+        cross_model_attention_layers: int = 4,
+        fixed_transformer_layers: int = 3,
+        transformer_layers_cfg: int | None = None,
+        inherited_bank_layers: int | None = None,
+        inherited_fusion_layers: int | None = None,
+        wm_lattice_mirror: Any = None,
+        wm_shared_slot_store_mirror: Any = None,
+    ):
+        bank_cfg = int(n_transformer_layers) if transformer_layers_cfg is None else int(transformer_layers_cfg)
+        inherited_bank = int(inherited_bank_layers) if inherited_bank_layers is not None else int(max(1, n_transformer_layers))
+        core = EnhancedSpatialLTMMemory(
+            input_dim,
+            value_dim=int(spatial_value_dim),
+            key_dim=int(spatial_key_dim),
+            slots=int(spatial_slots),
+            ltm_topk=int(ltm_topk),
+            conformal_b=float(conformal_b),
+            transformer_layers=bank_cfg,
+            fixed_transformer_layers=int(fixed_transformer_layers),
+            transformer_heads=int(n_heads),
+            fusion_transformer_layers=int(fusion_transformer_layers),
+            decoder_transformer_layers=int(decoder_transformer_layers),
+            inherited_bank_layers=inherited_bank,
+            inherited_fusion_layers=inherited_fusion_layers,
+            cross_model_attention_layers=int(cross_model_attention_layers),
+            attention_type=str(attention_type),
+            wm_lattice_mirror=wm_lattice_mirror,
+            wm_shared_slot_store_mirror=wm_shared_slot_store_mirror,
+        )
+        super().__init__(core, input_dim, n_transformer_layers, n_heads, attention_type)
+
+    def forward(self, x, operation: str = "read", importance=None, fire_mask=None, recall_boost: float = 0.3):
+        out = self.memory_core(x, operation=operation, importance=importance, fire_mask=fire_mask, recall_boost=recall_boost)
+        if operation == "read":
+            return self._apply_v2_stack(out)
+        return out
+
+    def detect_spatial_insight(self, activation: torch.Tensor) -> Tuple[bool, torch.Tensor]:
+        return self.memory_core.detect_spatial_insight(activation)

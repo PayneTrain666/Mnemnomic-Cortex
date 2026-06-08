@@ -91,6 +91,25 @@ class TopologyManagerV2:
         qhm_lb_temp_min=None,
         adaptive=None,
     ):
+        curvature_mix_vals = tuple(float(x) for x in curvature_mix)
+        if len(curvature_mix_vals) != 4:
+            raise ValueError("curvature_mix must contain exactly 4 values")
+        if any(x < 0.0 for x in curvature_mix_vals):
+            raise ValueError("curvature_mix values must be non-negative")
+
+        adaptive_defaults = dict(
+            b_lo=0.01,
+            b_hi=0.03,
+            omega_lo=0.10,
+            omega_hi=0.25,
+            fit_up=0.80,
+            fit_down=0.55,
+            step=0.002,
+        )
+        adaptive_cfg = dict(adaptive_defaults)
+        if adaptive is not None:
+            adaptive_cfg.update(adaptive)
+
         policy = dict(
             micro_b=float(micro_b),
             micro_b_max=float(micro_b_max),
@@ -104,7 +123,7 @@ class TopologyManagerV2:
             curvature_mode=str(curvature_mode),
             curvature_rate=float(curvature_rate),
             curvature_clip=float(curvature_clip),
-            curvature_mix=tuple(float(x) for x in curvature_mix),
+            curvature_mix=curvature_mix_vals,
             qhm_enable=bool(qhm_enable),
             qhm_alpha_override=qhm_alpha_override,
             qhm_temp=float(qhm_temp),
@@ -131,17 +150,7 @@ class TopologyManagerV2:
             else float(qhm_lb_prefocus_alpha_boost),
             qhm_lb_alpha_max=None if qhm_lb_alpha_max is None else float(qhm_lb_alpha_max),
             qhm_lb_temp_min=None if qhm_lb_temp_min is None else float(qhm_lb_temp_min),
-            adaptive=dict(
-                b_lo=0.01,
-                b_hi=0.03,
-                omega_lo=0.10,
-                omega_hi=0.25,
-                fit_up=0.80,
-                fit_down=0.55,
-                step=0.002,
-            )
-            if adaptive is None
-            else adaptive,
+            adaptive=adaptive_cfg,
         )
         self.policies[name] = policy
         return self

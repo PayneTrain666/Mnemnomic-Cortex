@@ -1,14 +1,31 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import hashlib
 
 import torch
 
+from geometry.manifold_utils import (
+    chart_transform,
+    conformal_scale,
+    distance,
+    gather_curvature,
+    geometry_name_to_geom,
+    product_et_distance,
+    safe_norm,
+    symplectic_leapfrog,
+    warp_distances,
+    wrap_angles,
+)
+
 from .ltm_depth_adapter import LTMDepthAdapter
 from .mann_depth_adapter import MANNDepthAdapter
 from .shared_depth_slot_registry import SharedDepthSlotRegistry
+
+if TYPE_CHECKING:
+    from mnemonic_cortex.memory.shared_slot_store import SharedSlotStore
+    from mnemonic_cortex.topology_manager import TopologyManagerV3
 
 try:
     from mnemonic_cortex.working_memory.context_geometry_maps import build_default_context_geometry_maps
@@ -41,6 +58,15 @@ GEOMETRY_CHART_GAIN: Dict[str, float] = {
     "holographic_phase": 1.15,
 }
 
+GEOMETRY_CODE: Dict[str, int] = {
+    "euclid": 0,
+    "hyperbolic": 1,
+    "sphere": 2,
+    "torus": 3,
+    "cp": 4,
+    "grassmann": 5,
+}
+
 
 @dataclass(frozen=True)
 class SharedGeometrySlotConfig:
@@ -50,6 +76,12 @@ class SharedGeometrySlotConfig:
     default_mann_geometry_map: str = "procedural"
     default_ltm_geometry_map: str = "hierarchical"
     finite_checks: bool = True
+    use_manifold_chart: bool = True
+    use_topology_warp: bool = True
+    use_symplectic_refine: bool = False
+    conformal_b: float = 0.1
+    alpha_torus: float = 1.0
+    symplectic_step: float = 1e-2
 
     @classmethod
     def disabled(cls, key_dim: int = 256, value_dim: Optional[int] = None) -> "SharedGeometrySlotConfig":
@@ -67,6 +99,12 @@ class SharedGeometrySlotConfig:
             "default_mann_geometry_map": self.default_mann_geometry_map,
             "default_ltm_geometry_map": self.default_ltm_geometry_map,
             "finite_checks": self.finite_checks,
+            "use_manifold_chart": self.use_manifold_chart,
+            "use_topology_warp": self.use_topology_warp,
+            "use_symplectic_refine": self.use_symplectic_refine,
+            "conformal_b": self.conformal_b,
+            "alpha_torus": self.alpha_torus,
+            "symplectic_step": self.symplectic_step,
         }
 
 
@@ -82,12 +120,21 @@ class MANNLTMSharedSlotGeometry:
     mann_adapter: MANNDepthAdapter
     ltm_adapter: LTMDepthAdapter
     registry: Optional[SharedDepthSlotRegistry] = None
+    shared_slot_store: Optional["SharedSlotStore"] = None
+    topology_manager: Optional["TopologyManagerV3"] = None
+    _slot_curvature: Optional[torch.Tensor] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.config.key_dim <= 0 or self.config.value_dim <= 0:
             raise MANNLTMSharedSlotGeometryError("key_dim/value_dim must be positive")
         if self.registry is None:
             self.registry = SharedDepthSlotRegistry()
+        if self._slot_curvature is None:
+            slot_count = max(
+                int(getattr(self.mann_adapter.config, "slot_count", 512) or 512),
+                int(getattr(self.ltm_adapter.config, "slot_count", 512) or 512),
+            )
+            self._slot_curvature = torch.zeros(slot_count, dtype=torch.float32)
 
     @property
     def enabled(self) -> bool:
@@ -124,7 +171,31 @@ class MANNLTMSharedSlotGeometry:
         mann_transformed, mann_chart = self._chart_transform(mann_out, geometry_map_name=mann_map, depth_index=hop_id)
         ltm_transformed, ltm_chart = self._chart_transform(ltm_out, geometry_map_name=ltm_map, depth_index=ltm_depth_index)
 
+        mann_transformed, ltm_transformed = self._align_pair_tensors(mann_transformed, ltm_transformed)
         fused = 0.5 * (mann_transformed + ltm_transformed)
+        if self.config.use_symplectic_refine and fused.dim() == 2:
+            p = torch.zeros_like(fused)
+            dH_dq = torch.tanh(fused)
+            dH_dp = torch.tanh(p)
+            fused, _ = symplectic_leapfrog(fused, p, dH_dq, dH_dp, step=self.config.symplectic_step)
+
+        manifold_diag = self._compute_shared_manifold_diagnostics(
+            query=query,
+            mann_vec=mann_transformed,
+            ltm_vec=ltm_transformed,
+            mann_slot_index=mann_slot_index,
+            ltm_slot_index=ltm_slot_index,
+            mann_geometry=mann_chart.get("geometry", "euclidean"),
+            ltm_geometry=ltm_chart.get("geometry", "euclidean"),
+        )
+        self._sync_shared_slot_store(
+            mann_slot_index=mann_slot_index,
+            ltm_slot_index=ltm_slot_index,
+            mann_geometry=mann_chart.get("geometry", "euclidean"),
+            ltm_geometry=ltm_chart.get("geometry", "euclidean"),
+            manifold_diag=manifold_diag,
+        )
+
         if self.config.finite_checks and not torch.isfinite(fused).all():
             raise MANNLTMSharedSlotGeometryError("fused output contains NaN/Inf")
 
@@ -161,6 +232,7 @@ class MANNLTMSharedSlotGeometry:
             "ltm_chart_transform": ltm_chart,
             "mann_trace": mann_trace,
             "ltm_trace": ltm_trace,
+            "manifold_diagnostics": manifold_diag,
             "registry_record": rec.to_dict(),
             "paamax_metadata": {
                 "trace_governance": True,
@@ -219,20 +291,204 @@ class MANNLTMSharedSlotGeometry:
             },
         }
 
+    def _align_pair_tensors(self, left: torch.Tensor, right: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        if left.shape == right.shape:
+            return left, right
+        target_dim = max(left.size(-1), right.size(-1))
+        return self._resize_last_dim(left, target_dim), self._resize_last_dim(right, target_dim)
+
+    @staticmethod
+    def _resize_last_dim(tensor: torch.Tensor, target_dim: int) -> torch.Tensor:
+        cur = int(tensor.size(-1))
+        if cur == target_dim:
+            return tensor
+        if cur > target_dim:
+            return tensor[..., :target_dim]
+        pad = target_dim - cur
+        return torch.nn.functional.pad(tensor, (0, pad))
+
     def _chart_transform(self, tensor: torch.Tensor, *, geometry_map_name: str, depth_index: int):
         geometry = self._geometry_for_depth(geometry_map_name, depth_index)
         gain = GEOMETRY_CHART_GAIN.get(geometry, 1.0)
-        depth_scale = 1.0 + 0.04 * float(depth_index + 1)
-        transformed = torch.tanh(tensor * (gain * depth_scale)) + 0.1 * torch.sin(tensor * depth_scale)
+        if self.config.use_manifold_chart:
+            transformed, chart_meta = chart_transform(
+                tensor,
+                geometry=geometry,
+                depth_index=depth_index,
+                gain=gain,
+            )
+            meta = {
+                "geometry_map": geometry_map_name,
+                "depth_index": int(depth_index),
+                "geometry": geometry,
+                "gain": float(gain),
+                "depth_scale": chart_meta["depth_scale"],
+                "geom": chart_meta["geom"],
+                "manifold_chart": True,
+            }
+        else:
+            depth_scale = 1.0 + 0.04 * float(depth_index + 1)
+            transformed = torch.tanh(tensor * (gain * depth_scale)) + 0.1 * torch.sin(tensor * depth_scale)
+            meta = {
+                "geometry_map": geometry_map_name,
+                "depth_index": int(depth_index),
+                "geometry": geometry,
+                "gain": float(gain),
+                "depth_scale": float(depth_scale),
+                "manifold_chart": False,
+            }
         if self.config.finite_checks and not torch.isfinite(transformed).all():
             raise MANNLTMSharedSlotGeometryError("chart transform generated NaN/Inf")
-        return transformed, {
-            "geometry_map": geometry_map_name,
-            "depth_index": int(depth_index),
-            "geometry": geometry,
-            "gain": float(gain),
-            "depth_scale": float(depth_scale),
+        return transformed, meta
+
+    def compute_cross_memory_distance(
+        self,
+        query: torch.Tensor,
+        *,
+        mann_slot_index: int,
+        ltm_slot_index: int,
+        mann_geometry: str = "euclidean",
+        ltm_geometry: str = "euclidean",
+    ) -> Dict[str, Any]:
+        """Distance between query and shared MANN/LTM slot views with topology warps."""
+        self._validate_query(query if query.dim() >= 2 else query.unsqueeze(0))
+        q = query.mean(dim=1) if query.dim() == 3 else query
+        mann_values = self.mann_adapter.bank.values
+        ltm_bank = self.ltm_adapter.banks.get("cgmn_semantic")
+        ltm_values = ltm_bank.values if ltm_bank is not None else mann_values
+
+        mann_vec = mann_values[int(mann_slot_index), 0].unsqueeze(0)
+        ltm_vec = ltm_values[int(ltm_slot_index), 0].unsqueeze(0)
+        mann_x, _ = self._chart_transform(mann_vec, geometry_map_name="procedural", depth_index=0)
+        ltm_x, _ = self._chart_transform(ltm_vec, geometry_map_name="hierarchical", depth_index=0)
+
+        mann_geom = geometry_name_to_geom(mann_geometry)
+        ltm_geom = geometry_name_to_geom(ltm_geometry)
+        d_mann = distance(mann_geom, q, mann_x.expand_as(q)).squeeze(-1)
+        d_ltm = distance(ltm_geom, q, ltm_x.expand_as(q)).squeeze(-1)
+        d_base = 0.5 * (d_mann + d_ltm)
+
+        if q.size(-1) >= 4 and q.size(0) == mann_x.size(0):
+            half = q.size(-1) // 2
+            k_e = mann_x[:, :half].unsqueeze(1)
+            k_t = wrap_angles(mann_x[:, half:]).unsqueeze(1)
+            d_prod = product_et_distance(
+                q[:, :half],
+                wrap_angles(q[:, half:]),
+                k_e,
+                k_t,
+                alpha=self.config.alpha_torus,
+            ).squeeze(-1)
+            d_base = 0.5 * d_base + 0.5 * d_prod
+
+        indices = torch.full(
+            (q.size(0), 1),
+            int(mann_slot_index),
+            device=q.device,
+            dtype=torch.long,
+        )
+        curv = self._slot_curvature_for_indices(indices)
+        omega = conformal_scale(curv, b=self.config.conformal_b)
+        d_warped = warp_distances(d_base.unsqueeze(-1), curvature_idx=curv, conf_scale=omega).squeeze(-1)
+
+        if self.config.use_topology_warp and self.topology_manager is not None:
+            subsystem = next(
+                (s for s in ("mann_ltm", "hg", "cgmn", "curved") if s in self.topology_manager.subsystems),
+                self.topology_manager.subsystems[0],
+            )
+            d_warped = self.topology_manager.warp_and_blend(
+                d_base.unsqueeze(-1),
+                indices,
+                self._slot_curvature,
+                subsystem=subsystem,
+                query_feat=q,
+                key_feat=mann_values[:, 0, :],
+                alpha_torus=self.config.alpha_torus,
+                conformal_b=self.config.conformal_b,
+            ).squeeze(-1)
+
+        return {
+            "distance_mann": float(d_mann.mean().item()),
+            "distance_ltm": float(d_ltm.mean().item()),
+            "distance_base": float(d_base.mean().item()),
+            "distance_warped": float(d_warped.mean().item()),
+            "mann_geometry": mann_geometry,
+            "ltm_geometry": ltm_geometry,
         }
+
+    def _compute_shared_manifold_diagnostics(
+        self,
+        *,
+        query: torch.Tensor,
+        mann_vec: torch.Tensor,
+        ltm_vec: torch.Tensor,
+        mann_slot_index: int,
+        ltm_slot_index: int,
+        mann_geometry: str,
+        ltm_geometry: str,
+    ) -> Dict[str, Any]:
+        q = query.mean(dim=1) if query.dim() == 3 else query
+        mann_geom = geometry_name_to_geom(mann_geometry)
+        ltm_geom = geometry_name_to_geom(ltm_geometry)
+        d_mann = distance(mann_geom, q, mann_vec).mean()
+        d_ltm = distance(ltm_geom, q, ltm_vec).mean()
+        blend = 0.5 * (mann_vec + ltm_vec)
+        return {
+            "distance_mann_mean": float(d_mann.item()),
+            "distance_ltm_mean": float(d_ltm.item()),
+            "blend_norm_mean": float(safe_norm(blend, dim=-1).mean().item()),
+            "mann_slot_index": int(mann_slot_index),
+            "ltm_slot_index": int(ltm_slot_index),
+            "mann_geometry": mann_geometry,
+            "ltm_geometry": ltm_geometry,
+        }
+
+    def _slot_curvature_for_indices(self, indices: torch.Tensor) -> torch.Tensor:
+        curv = self._slot_curvature.to(indices.device)
+        if int(indices.max().item()) >= curv.numel():
+            raise MANNLTMSharedSlotGeometryError("slot index exceeds curvature buffer")
+        return gather_curvature(curv, indices)
+
+    def _sync_shared_slot_store(
+        self,
+        *,
+        mann_slot_index: int,
+        ltm_slot_index: int,
+        mann_geometry: str,
+        ltm_geometry: str,
+        manifold_diag: Dict[str, Any],
+    ) -> None:
+        if self.shared_slot_store is None:
+            return
+        store = self.shared_slot_store
+        for slot_id, geometry in ((mann_slot_index, mann_geometry), (ltm_slot_index, ltm_geometry)):
+            if not (0 <= int(slot_id) < store.num_slots):
+                continue
+            geom = geometry_name_to_geom(geometry)
+            code = GEOMETRY_CODE.get(geom, 0)
+            curv_val = 0.5 * (
+                float(manifold_diag.get("distance_mann_mean", 0.0))
+                + float(manifold_diag.get("distance_ltm_mean", 0.0))
+            )
+            curv = torch.tanh(torch.tensor([curv_val], dtype=store.slot_curvature.dtype, device=store.slot_curvature.device))
+            store.set_slot_curvature(slot_ids=[int(slot_id)], curvature=curv)
+            store.set_slot_geometry_code(
+                slot_ids=[int(slot_id)],
+                geometry_code=torch.tensor([code], device=store.slot_geometry_code.device, dtype=store.slot_geometry_code.dtype),
+            )
+            if int(slot_id) < self._slot_curvature.numel():
+                self._slot_curvature[int(slot_id)] = float(curv.item())
+            meta = store.metadata.get(int(slot_id), {}) or {}
+            if not isinstance(meta, dict):
+                meta = {}
+            meta.update(
+                {
+                    "mann_ltm_geometry": geometry,
+                    "manifold_diagnostics": manifold_diag,
+                    "shared_slot_geometry": True,
+                }
+            )
+            store.metadata[int(slot_id)] = meta
 
     def _geometry_for_depth(self, geometry_map_name: str, depth_index: int) -> str:
         if not (0 <= int(depth_index) < 8):
@@ -306,6 +562,9 @@ def mann_ltm_shared_slot_geometry_contract() -> Dict[str, Any]:
         "uses_shared_depth_slot_registry": True,
         "supports_simultaneous_mann_ltm_geometry_maps": True,
         "chart_transform_over_depth_layers": True,
+        "uses_geometry_manifold_utils": True,
+        "supports_shared_slot_store_curvature": True,
+        "supports_topology_manager_warp": True,
         "shared_physical_tensor": False,
         "shadow_only_by_default": True,
         "paamax_metadata": {

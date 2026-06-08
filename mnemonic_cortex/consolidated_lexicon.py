@@ -14,10 +14,13 @@ def _unit_complex_real(z: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
     q2 = z.size(-1)
     if q2 % 2 != 0:
         raise ValueError(f"Expected even last dim for packed complex, got {q2}")
-    zc = torch.view_as_complex(z.view(*z.shape[:-1], q2 // 2, 2).contiguous())
-    n = torch.linalg.norm(zc, dim=-1, keepdim=True).clamp_min(eps)
-    zc = zc / n
-    return torch.view_as_real(zc).reshape_as(z)
+    with torch.amp.autocast(device_type=z.device.type, enabled=False):
+        zf = z.float() if z.dtype in (torch.float16, torch.bfloat16) else z
+        zc = torch.view_as_complex(zf.view(*zf.shape[:-1], q2 // 2, 2).contiguous())
+        n = torch.linalg.norm(zc, dim=-1, keepdim=True).clamp_min(eps)
+        zc = zc / n
+        out = torch.view_as_real(zc).reshape_as(zf)
+    return out.to(dtype=z.dtype)
 
 
 def _fubini_study_distance(q: torch.Tensor, p: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
@@ -26,12 +29,16 @@ def _fubini_study_distance(q: torch.Tensor, p: torch.Tensor, eps: float = 1e-6) 
     p: [B, K, 2q] packed complex
     returns: [B, K]
     """
-    qc = torch.view_as_complex(q.view(q.size(0), -1, 2).contiguous())
-    pc = torch.view_as_complex(p.view(p.size(0), p.size(1), -1, 2).contiguous())
-    qc = qc / (torch.linalg.norm(qc, dim=-1, keepdim=True).clamp_min(eps))
-    pc = pc / (torch.linalg.norm(pc, dim=-1, keepdim=True).clamp_min(eps))
-    ip = (qc.unsqueeze(1).conj() * pc).sum(-1).abs().clamp(0.0, 1.0 - eps)
-    return torch.arccos(ip)
+    with torch.amp.autocast(device_type=q.device.type, enabled=False):
+        qf = q.float() if q.dtype in (torch.float16, torch.bfloat16) else q
+        pf = p.float() if p.dtype in (torch.float16, torch.bfloat16) else p
+        qc = torch.view_as_complex(qf.view(qf.size(0), -1, 2).contiguous())
+        pc = torch.view_as_complex(pf.view(pf.size(0), pf.size(1), -1, 2).contiguous())
+        qc = qc / (torch.linalg.norm(qc, dim=-1, keepdim=True).clamp_min(eps))
+        pc = pc / (torch.linalg.norm(pc, dim=-1, keepdim=True).clamp_min(eps))
+        ip = (qc.unsqueeze(1).conj() * pc).sum(-1).abs().clamp(0.0, 1.0 - eps)
+        out = torch.arccos(ip)
+    return out.to(dtype=q.dtype)
 
 
 def _poincare_distance(x: torch.Tensor, y: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:

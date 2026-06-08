@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
+import math
 
 
 @dataclass
@@ -12,6 +13,14 @@ class AHGConfig:
     agree_tau: float = 0.15
     ask_on_uncertain: bool = True
     refuse_on_high_risk: bool = True
+
+    def validate(self) -> None:
+        for name in ("proto_tau", "fisher_tau", "phase_rho", "agree_tau"):
+            value = float(getattr(self, name))
+            if not math.isfinite(value):
+                raise ValueError(f"{name} must be finite")
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"{name} must be in [0, 1]")
 
 
 @dataclass
@@ -27,14 +36,19 @@ class AntiHallucinationGuard:
     """
 
     def __init__(self, cfg: AHGConfig):
+        cfg.validate()
         self.cfg = cfg
 
     def decide(self, broker_result: Dict[str, Any], cross_diag: Optional[Dict[str, Any]] = None) -> AHGDecision:
-        proto = float(broker_result.get("signals", {}).get("proto_distance", 1e9))
-        phase = float(broker_result.get("signals", {}).get("phase_agreement", 0.0))
-        fisher = float(broker_result.get("signals", {}).get("fisher_uncertainty", 1e9))
+        def _safe(value: Any, fallback: float) -> float:
+            x = float(value)
+            return x if math.isfinite(x) else fallback
+
+        proto = _safe(broker_result.get("signals", {}).get("proto_distance", 1e9), 1e9)
+        phase = _safe(broker_result.get("signals", {}).get("phase_agreement", 0.0), 0.0)
+        fisher = _safe(broker_result.get("signals", {}).get("fisher_uncertainty", 1e9), 1e9)
         has_fisher = bool(broker_result.get("signals", {}).get("has_fisher", False))
-        agree = float((cross_diag or {}).get("agreement", 0.0))
+        agree = _safe((cross_diag or {}).get("agreement", 0.0), 0.0)
 
         proto_ok = proto <= self.cfg.proto_tau
         phase_ok = phase >= self.cfg.phase_rho

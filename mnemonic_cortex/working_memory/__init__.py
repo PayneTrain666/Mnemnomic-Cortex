@@ -334,3 +334,43 @@ from .wm_commit_cortex_guards import (
     ensure_no_fake_real_source_patch_claim, commit_cortex_trace,
     commit_cortex_contract_trace,
 )
+
+# Compatibility alias used by integration tests and older call sites.
+# Runtime banks may be synthetic or live triple-hybrid adapters.
+try:
+    from .wm_triple_hybrid_ltm_adapter import TripleHybridLTMExternalMemoryBank
+except Exception:
+    TripleHybridLTMExternalMemoryBank = None
+
+if TripleHybridLTMExternalMemoryBank is not None:
+    RuntimeExternalMemoryBank = (SyntheticExternalMemoryBank, TripleHybridLTMExternalMemoryBank)
+else:
+    RuntimeExternalMemoryBank = (SyntheticExternalMemoryBank,)
+
+if "RuntimeExternalMemoryBank" not in __all__:
+    __all__.append("RuntimeExternalMemoryBank")
+
+try:
+    from .context_compression_memory import (
+        ContextCompressionConfig,
+        ContextCompressor,
+        ContextParameterReferenceExtractor,
+        ContextEpisodicMemoryBuilder,
+        wm_context_compression_contract,
+    )
+except Exception:
+    ContextCompressionConfig = None
+    ContextCompressor = None
+    ContextParameterReferenceExtractor = None
+    ContextEpisodicMemoryBuilder = None
+    wm_context_compression_contract = None
+
+for _name in (
+    "ContextCompressionConfig",
+    "ContextCompressor",
+    "ContextParameterReferenceExtractor",
+    "ContextEpisodicMemoryBuilder",
+    "wm_context_compression_contract",
+):
+    if _name not in __all__:
+        __all__.append(_name)

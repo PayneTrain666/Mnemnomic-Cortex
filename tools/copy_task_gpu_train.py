@@ -7,7 +7,7 @@ import os
 import random
 import sys
 import time
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -22,13 +22,14 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from benchmark.models import CortexSeqModel
-from benchmark.tasks import CopyTask, TOK2IDX, VOCAB_SIZE, collate_fn
+from benchmark.tasks import CopyTask, ReverseTask, TOK2IDX, VOCAB_SIZE, collate_fn
 from data.copy_task_dataloader import (
     CopyTaskDataConfig,
     CopyTaskMasteryModel,
     align_logits_targets,
     build_copy_task_dataloader,
 )
+from mnemonic_cortex.memory import SlotWriteRequest
 from mnemonic_cortex.optimizer import OptimizerConfig, build_optimizer, build_warmup_cosine_scheduler
 
 
@@ -37,6 +38,13 @@ def seed_all(seed: int = 42):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def _clear_complex_grads(params) -> None:
+    """GradScaler cannot unscale complex parameter gradients (PyTorch 2.13+)."""
+    for p in params:
+        if p.grad is not None and p.grad.is_complex():
+            p.grad = None
 
 
 def _safe_mean_scalar(v, default: float) -> float:
@@ -127,11 +135,20 @@ def _copy_task_cfg_from_args(
         curriculum_enabled=bool(getattr(args, "copy_curriculum_enabled", False)),
         curriculum_start_len=int(getattr(args, "copy_curriculum_start_len", 0) or args.len8),
         curriculum_end_len=int(getattr(args, "copy_curriculum_end_len", 0) or args.len16),
-        curriculum_ramp_epochs=int(getattr(args, "copy_curriculum_ramp_epochs", 0) or args.len8_epochs),
+        curriculum_ramp_epochs=int(
+            getattr(args, "copy_curriculum_ramp_epochs", 0)
+            or (
+                int(args.epochs)
+                if bool(getattr(args, "copy_curriculum_enabled", False))
+                else int(args.len8_epochs)
+            )
+        ),
         noise_prob=float(getattr(args, "copy_noise_prob", 0.0)),
         replace_prob=float(getattr(args, "copy_replace_prob", 0.0)),
         repeat_factor=int(getattr(args, "copy_repeat_factor", 1)),
         delayed_copy_gap=int(getattr(args, "copy_delayed_gap", 0)),
+        task_mode=str(getattr(args, "copy_task_mode", "copy")),
+        reverse_task_prob=float(getattr(args, "copy_reverse_prob", 0.5)),
         vocab_mode=str(getattr(args, "copy_vocab_mode", "full")),
         enable_sinusoidal_encoder=bool(getattr(args, "copy_enable_sin_encoder", True)),
         enable_sinusoidal_decoder=bool(getattr(args, "copy_enable_sin_decoder", True)),
@@ -152,6 +169,42 @@ def _build_copy_task_loader(args, *, n_samples: int, max_len: int, shuffle: bool
     cfg = _copy_task_cfg_from_args(args, n_samples=n_samples, max_len=max_len, shuffle=shuffle, epoch=epoch)
     split = "all" if float(cfg.val_ratio) <= 0.0 else ("train" if shuffle else "val")
     return build_copy_task_dataloader(cfg, epoch=epoch, split=split)
+
+
+def _resolve_train_max_len(args, epoch: int) -> int:
+    """Resolve training max_len; smooth copy curriculum uses end length for all epochs."""
+    if bool(args.use_copy_task_dataloader) and bool(args.copy_curriculum_enabled):
+        end_len = int(getattr(args, "copy_curriculum_end_len", 0) or args.len16)
+        return max(int(args.len8), int(args.len16), end_len)
+    if int(epoch) <= int(args.len8_epochs):
+        return int(args.len8)
+    return int(args.len16)
+
+
+def _curriculum_length_for_epoch(args, epoch: int) -> int:
+    if not bool(args.use_copy_task_dataloader) or not bool(args.copy_curriculum_enabled):
+        return _resolve_train_max_len(args, epoch)
+    cfg = _copy_task_cfg_from_args(
+        args,
+        n_samples=1,
+        max_len=_resolve_train_max_len(args, epoch),
+        shuffle=True,
+        epoch=epoch,
+    )
+    return int(cfg.curriculum_length(epoch))
+
+
+def _configure_checkpoint_paths(args) -> None:
+    """Assign default checkpoint paths when saving is enabled."""
+    if not bool(getattr(args, "save_checkpoints", True)):
+        return
+    ckpt_dir = str(getattr(args, "checkpoint_dir", "") or "logs/checkpoints").strip()
+    tag = str(getattr(args, "checkpoint_tag", "") or "copy_task_gpu").strip()
+    os.makedirs(ckpt_dir, exist_ok=True)
+    if not str(args.checkpoint_out).strip():
+        args.checkpoint_out = os.path.join(ckpt_dir, f"{tag}_latest.pt")
+    if not str(args.checkpoint_best_out).strip():
+        args.checkpoint_best_out = os.path.join(ckpt_dir, f"{tag}_best.pt")
 
 
 def _build_fixed_copytask_dataset(n_samples: int, max_len: int, seed: int) -> CopyTask:
@@ -209,6 +262,106 @@ def _move_qh_codebooks_to_device(model, device: torch.device) -> int:
     return moved
 
 
+def _shared_slot_training_available(cortex) -> bool:
+    return cortex is not None and getattr(cortex, "shared_memory_subsystem", None) is not None
+
+
+def _shared_slot_episodic_available(cortex) -> bool:
+    return _shared_slot_training_available(cortex) and getattr(cortex, "hg_episodic_ltm", None) is not None
+
+
+@torch.no_grad()
+def _write_successful_copy_episodes(
+    model,
+    *,
+    src: torch.Tensor,
+    row_ok: torch.Tensor,
+    valid_rows: torch.Tensor,
+    global_step: int,
+    epoch: int,
+    cur_len: int,
+    max_episodes: int,
+) -> int:
+    """Persist perfectly-copied source sequences into hg episodic shared slots."""
+    cortex = getattr(model, "cortex", None)
+    if not _shared_slot_episodic_available(cortex):
+        return 0
+
+    success_idx = torch.nonzero(row_ok & valid_rows, as_tuple=False).view(-1)
+    if success_idx.numel() == 0:
+        return 0
+
+    pad_id = int(TOK2IDX["<pad>"])
+    emb = model.embedding(src.detach())
+    written = 0
+    for b in success_idx.tolist()[: max(0, int(max_episodes))]:
+        tokens = src[int(b)]
+        non_pad = tokens != pad_id
+        if not bool(non_pad.any()):
+            continue
+        seq_emb = emb[int(b), non_pad, :].detach()
+        if seq_emb.size(0) < 1:
+            continue
+        episode_id = f"copy:g{int(global_step)}:e{int(epoch)}:b{int(b)}:len{int(cur_len)}"
+        try:
+            cortex.store_episodic_trace(
+                episode_id=episode_id,
+                episode_vectors=seq_emb,
+                step_range=(int(global_step), int(global_step)),
+                anchor_time=float(time.time()),
+                trace_ids=[
+                    f"copy_task:step:{int(global_step)}",
+                    f"copy_task:epoch:{int(epoch)}",
+                ],
+                tags=["copy_task", "copy_success", f"len_{int(cur_len)}"],
+            )
+            written += 1
+        except Exception as exc:
+            print(f"[copy][shared_mem][warn] episodic write failed: {exc}", flush=True)
+    return written
+
+
+@torch.no_grad()
+def _write_consolidation_snapshot_to_shared_slots(
+    model,
+    *,
+    src: torch.Tensor,
+    global_step: int,
+    epoch: int,
+) -> int:
+    """Write a pooled batch snapshot into shared slots after consolidation ticks."""
+    cortex = getattr(model, "cortex", None)
+    if not _shared_slot_training_available(cortex):
+        return 0
+
+    emb = model.embedding(src.detach())
+    pad_id = int(TOK2IDX["<pad>"])
+    mask = src != pad_id
+    if not bool(mask.any()):
+        return 0
+
+    weights = mask.unsqueeze(-1).to(dtype=emb.dtype)
+    pooled = (emb * weights).sum(dim=1) / weights.sum(dim=1).clamp_min(1.0)
+    snapshot = pooled.mean(dim=0, keepdim=True)
+    dim = int(snapshot.size(-1))
+    request = SlotWriteRequest(
+        requester_system="hg_ep_ltm",
+        candidate_value_shape=[dim],
+        requested_state="provisional",
+        requested_memory_type="consolidation",
+        confidence=0.65,
+        semantic_tags=["copy_task", "consolidation_tick", f"epoch_{int(epoch)}"],
+        provenance_trace_ids=[f"consolidation:step:{int(global_step)}"],
+        extra={"global_step": int(global_step), "epoch": int(epoch), "kind": "consolidation_tick"},
+    )
+    try:
+        out = cortex.memory_write(request, snapshot)
+        return len(getattr(out, "written_slot_ids", []) or [])
+    except Exception as exc:
+        print(f"[copy][shared_mem][warn] consolidation write failed: {exc}", flush=True)
+        return 0
+
+
 def _disable_fusion_paths(model) -> None:
     """
     Disable fusion paths across LTM, WM<->LTM bridge, and MANN bridge.
@@ -221,9 +374,9 @@ def _disable_fusion_paths(model) -> None:
     if ltm is not None:
         # Disable inter-memory exchange and LTM fusion by selecting HG stream directly.
         if hasattr(ltm, "_inter_memory_exchange"):
-            ltm._inter_memory_exchange = lambda rhg, rcg, rcv: (rhg, rcg, rcv)
+            ltm._inter_memory_exchange = lambda rhg, rcg, rcv, rsp=None: (rhg, rcg, rcv)
         if hasattr(ltm, "_fuse"):
-            ltm._fuse = lambda rhg, rcg, rcv, routing_weights=None: rhg
+            ltm._fuse = lambda rhg, rcg, rcv, routing_weights=None, rspatial=None: rhg
         if hasattr(ltm, "inter_exchange_gate"):
             with torch.no_grad():
                 ltm.inter_exchange_gate.fill_(-20.0)
@@ -306,11 +459,14 @@ def _save_checkpoint(
     global_step: int,
     best_acc: float,
     best_record,
+    mastery_model=None,
+    label: str = "",
 ):
     if not path:
         return
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     payload = {
+        "schema_version": 1,
         "epoch": int(epoch),
         "global_step": int(global_step),
         "best_acc": float(best_acc),
@@ -320,8 +476,13 @@ def _save_checkpoint(
         "scheduler_state_dict": scheduler.state_dict(),
         "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
         "args": vars(args),
+        "saved_at": float(time.time()),
     }
+    if mastery_model is not None:
+        payload["mastery_state_dict"] = mastery_model.state_dict()
     torch.save(payload, path)
+    tag = f" ({label})" if str(label).strip() else ""
+    print(f"[copy] saved checkpoint{tag}: {path}", flush=True)
 
 
 def _append_success_memory(path: str, payload: Dict):
@@ -496,8 +657,15 @@ def main():
     p.add_argument("--success_memory_path", default="logs/success_memories.jsonl")
     p.add_argument("--success_acc_threshold", type=float, default=0.10)
     p.add_argument("--success_memory_cooldown_steps", type=int, default=25)
+    p.add_argument("--save_checkpoints", action="store_true")
+    p.add_argument("--no_save_checkpoints", dest="save_checkpoints", action="store_false")
+    p.add_argument("--checkpoint_dir", default="logs/checkpoints")
+    p.add_argument("--checkpoint_tag", default="copy_task_gpu")
     p.add_argument("--checkpoint_out", default="")
     p.add_argument("--checkpoint_best_out", default="")
+    p.add_argument("--checkpoint_every_epochs", type=int, default=1)
+    p.add_argument("--use_amp", action="store_true")
+    p.add_argument("--no_amp", dest="use_amp", action="store_false")
     p.add_argument("--enable_diagnostics", action="store_true")
     p.add_argument("--disable_diagnostics", dest="enable_diagnostics", action="store_false")
     p.add_argument("--diagnostics_log_path", default="")
@@ -520,6 +688,8 @@ def main():
     p.add_argument("--copy_replace_prob", type=float, default=0.0)
     p.add_argument("--copy_repeat_factor", type=int, default=1)
     p.add_argument("--copy_delayed_gap", type=int, default=0)
+    p.add_argument("--copy_task_mode", choices=["copy", "reverse", "mixed"], default="copy")
+    p.add_argument("--copy_reverse_prob", type=float, default=0.5)
     p.add_argument("--copy_vocab_mode", choices=["full", "alnum", "digits", "custom"], default="full")
     p.add_argument("--copy_enable_sin_encoder", action="store_true")
     p.add_argument("--copy_enable_sin_decoder", action="store_true")
@@ -532,15 +702,26 @@ def main():
     p.add_argument("--copy_decoder_dropout", type=float, default=0.1)
     p.add_argument("--copy_mastery_loss_weight", type=float, default=0.25)
     p.add_argument("--copy_return_sin_features", action="store_true")
+    p.add_argument("--enable_shared_slot_writes", action="store_true")
+    p.add_argument("--disable_shared_slot_writes", dest="enable_shared_slot_writes", action="store_false")
+    p.add_argument("--shared_slot_max_episodes_per_step", type=int, default=4)
+    p.add_argument("--shared_slot_consolidation_every", type=int, default=5)
     p.set_defaults(copy_enable_sin_encoder=True, copy_enable_sin_decoder=True)
     p.set_defaults(auto_resume_best=True, auto_resume_weights_only=True)
     p.set_defaults(enable_diagnostics=True)
+    p.set_defaults(save_checkpoints=True, use_amp=None)
+    p.set_defaults(enable_shared_slot_writes=True)
     args = p.parse_args()
 
     seed_all(args.seed)
     use_cuda = str(args.device).startswith("cuda")
     device = torch.device(args.device)
-    os.makedirs(os.path.dirname(args.metrics_jsonl), exist_ok=True)
+    if use_cuda and not torch.cuda.is_available():
+        raise RuntimeError("CUDA device requested but torch.cuda.is_available() is False")
+    if args.use_amp is None:
+        args.use_amp = bool(use_cuda)
+    _configure_checkpoint_paths(args)
+    os.makedirs(os.path.dirname(args.metrics_jsonl) or ".", exist_ok=True)
 
     mastery_model = None
     if bool(args.enable_copy_mastery):
@@ -566,6 +747,8 @@ def main():
         task_decoder_heads=int(args.task_decoder_heads),
         task_decoder_dropout=float(args.task_decoder_dropout),
         task_decoder_use_sinusoidal=bool(args.task_decoder_use_sinusoidal),
+        ltm_enable_spatial_ltm=False,
+        ltm_auto_wire_spatial=False,
     ).to(device)
     if args.disable_fusion:
         _disable_fusion_paths(model)
@@ -674,7 +857,7 @@ def main():
         min_lr_ratio=float(args.min_lr_ratio),
     )
 
-    use_amp = False
+    use_amp = bool(args.use_amp) and use_cuda
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
     steps_per_epoch = max(1, args.total_steps // args.epochs)
     global_step = 0
@@ -718,6 +901,17 @@ def main():
                 f"(loaded={int(load_stats.get('loaded', 0))} skipped={int(load_stats.get('skipped', 0))})",
                 flush=True,
             )
+        if mastery_model is not None and isinstance(ckpt.get("mastery_state_dict"), dict):
+            mstats = _load_state_dict_compatible(
+                mastery_model,
+                ckpt.get("mastery_state_dict", {}),
+                strict=strict,
+            )
+            print(
+                f"[copy] resumed mastery_model "
+                f"(loaded={int(mstats.get('loaded', 0))} skipped={int(mstats.get('skipped', 0))})",
+                flush=True,
+            )
         if not args.disable_fusion:
             restored_gates = _restore_fusion_gates(model)
             if restored_gates:
@@ -744,12 +938,30 @@ def main():
                 alpha=float(args.best_metric_alpha),
             )
 
+    task_mode = str(getattr(args, "copy_task_mode", "copy")).strip().lower()
+    if task_mode == "mixed":
+        task_desc = f"mixed(copy+reverse p={float(args.copy_reverse_prob):.2f})"
+    else:
+        task_desc = task_mode
+    if bool(args.use_copy_task_dataloader) and bool(args.copy_curriculum_enabled):
+        cur_desc = (
+            f"task={task_desc} "
+            f"copy_curriculum={int(getattr(args, 'copy_curriculum_start_len', 0) or args.len8)}"
+            f"->{int(getattr(args, 'copy_curriculum_end_len', 0) or args.len16)} "
+            f"over {int(getattr(args, 'copy_curriculum_ramp_epochs', 0) or args.epochs)} epochs"
+        )
+    else:
+        cur_desc = (
+            f"task={task_desc} "
+            f"len={args.len8} x{args.len8_epochs} epochs, "
+            f"len={args.len16} x{max(0, args.epochs - args.len8_epochs)} epochs"
+        )
     print(
         "[copy] start "
         f"device={device} batch={args.batch_size} epochs={args.epochs} total_steps={args.total_steps} "
-        f"curriculum=(len={args.len8} x{args.len8_epochs} epochs, len={args.len16} x{max(0, args.epochs - args.len8_epochs)} epochs) "
+        f"curriculum=({cur_desc}) "
         f"dynamic_lr=warmup+cosine grad_clip={args.grad_clip} target_grad_norm={args.target_grad_norm} "
-        f"disable_fusion={bool(args.disable_fusion)}",
+        f"disable_fusion={bool(args.disable_fusion)} amp={bool(use_amp)} save_checkpoints={bool(args.save_checkpoints)}",
         flush=True,
     )
     print(
@@ -783,6 +995,14 @@ def main():
         f"diagnostics_log_path={str(args.diagnostics_log_path) if str(args.diagnostics_log_path).strip() else 'none'}",
         flush=True,
     )
+    shared_writes_active = bool(args.enable_shared_slot_writes) and _shared_slot_training_available(model.cortex)
+    print(
+        f"[copy] shared_slot_writes={shared_writes_active} "
+        f"episodic={_shared_slot_episodic_available(model.cortex)} "
+        f"max_episodes_per_step={int(args.shared_slot_max_episodes_per_step)} "
+        f"consolidation_every={int(args.shared_slot_consolidation_every)}",
+        flush=True,
+    )
     print("[copy] metrics logged every 5 steps with live terminal output", flush=True)
     print(f"[copy] metrics_jsonl={args.metrics_jsonl}", flush=True)
     if args.checkpoint_out:
@@ -795,6 +1015,9 @@ def main():
     ema_loss = None
     best_running_acc = 0.0
     last_success_step = -10**9
+    shared_writes_active = bool(args.enable_shared_slot_writes) and _shared_slot_training_available(model.cortex)
+    total_episodic_writes = 0
+    total_consolidation_writes = 0
 
     with open(args.metrics_jsonl, "w", encoding="utf-8") as jf:
         jf.write(
@@ -825,8 +1048,22 @@ def main():
                 epoch=0,
             )
         else:
-            eval_ds_8 = _build_fixed_copytask_dataset(max(256, args.eval_samples // 2), args.len8, seed=int(args.seed) + 8108)
-            eval_ds_16 = _build_fixed_copytask_dataset(max(256, args.eval_samples // 2), args.len16, seed=int(args.seed) + 8116)
+            legacy_mode = str(getattr(args, "copy_task_mode", "copy")).strip().lower()
+            if legacy_mode == "mixed":
+                raise RuntimeError(
+                    "copy_task_mode=mixed requires --use_copy_task_dataloader "
+                    "(legacy CopyTask/ReverseTask loaders are single-mode only)"
+                )
+            if legacy_mode == "reverse":
+                eval_ds_8 = ReverseTask(n_samples=max(256, args.eval_samples // 2), max_len=args.len8)
+                eval_ds_16 = ReverseTask(n_samples=max(256, args.eval_samples // 2), max_len=args.len16)
+            else:
+                eval_ds_8 = _build_fixed_copytask_dataset(
+                    max(256, args.eval_samples // 2), args.len8, seed=int(args.seed) + 8108
+                )
+                eval_ds_16 = _build_fixed_copytask_dataset(
+                    max(256, args.eval_samples // 2), args.len16, seed=int(args.seed) + 8116
+                )
             eval_loader_8 = DataLoader(eval_ds_8, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
             eval_loader_16 = DataLoader(eval_ds_16, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
         for ep in range(1, args.epochs + 1):
@@ -836,19 +1073,33 @@ def main():
                     f"[copy] topology_relaxed epoch={ep} factor={float(args.topology_relax_factor):.3f}",
                     flush=True,
                 )
-            cur_len = args.len8 if ep <= args.len8_epochs else args.len16
+            cur_len = _curriculum_length_for_epoch(args, ep)
+            train_max_len = _resolve_train_max_len(args, ep)
             phase_epoch_boundary = int(args.phase_transition_epoch) if int(args.phase_transition_epoch) > 0 else int(args.len8_epochs)
             if bool(args.use_copy_task_dataloader):
                 train_loader = _build_copy_task_loader(
                     args,
                     n_samples=args.train_samples_per_epoch,
-                    max_len=cur_len,
+                    max_len=train_max_len,
                     shuffle=True,
                     epoch=ep,
                 )
-                eval_loader_cur = eval_loader_8 if int(cur_len) == int(args.len8) else eval_loader_16
+                if bool(args.copy_curriculum_enabled):
+                    eval_loader_cur = _build_copy_task_loader(
+                        args,
+                        n_samples=max(256, args.eval_samples // 2),
+                        max_len=train_max_len,
+                        shuffle=False,
+                        epoch=ep,
+                    )
+                else:
+                    eval_loader_cur = eval_loader_8 if int(cur_len) == int(args.len8) else eval_loader_16
             else:
-                train_ds = CopyTask(n_samples=args.train_samples_per_epoch, max_len=cur_len)
+                legacy_mode = str(getattr(args, "copy_task_mode", "copy")).strip().lower()
+                if legacy_mode == "reverse":
+                    train_ds = ReverseTask(n_samples=args.train_samples_per_epoch, max_len=cur_len)
+                else:
+                    train_ds = CopyTask(n_samples=args.train_samples_per_epoch, max_len=cur_len)
                 eval_ds_cur = eval_ds_8 if int(cur_len) == int(args.len8) else eval_ds_16
                 train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
                 eval_loader_cur = DataLoader(eval_ds_cur, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
@@ -915,6 +1166,9 @@ def main():
                 opt.zero_grad(set_to_none=True)
                 if use_amp:
                     scaler.scale(loss).backward()
+                    _clear_complex_grads(model.parameters())
+                    if mastery_model is not None:
+                        _clear_complex_grads(mastery_model.parameters())
                     scaler.unscale_(opt)
                 else:
                     loss.backward()
@@ -939,9 +1193,20 @@ def main():
                     scaler.update()
                 else:
                     opt.step()
+                episodic_writes_step = 0
+                consolidation_writes_step = 0
                 if hasattr(model, "cortex") and getattr(model.cortex, "advanced_broker", None) is not None:
                     with torch.no_grad():
                         model.cortex._tick_advanced_consolidation()
+                if shared_writes_active and int(args.shared_slot_consolidation_every) > 0:
+                    if global_step % int(args.shared_slot_consolidation_every) == 0:
+                        consolidation_writes_step = _write_consolidation_snapshot_to_shared_slots(
+                            model,
+                            src=src,
+                            global_step=global_step,
+                            epoch=ep,
+                        )
+                        total_consolidation_writes += int(consolidation_writes_step)
                 scheduler.step()
                 phase_lr_mult = float(args.phase1_lr_mult)
                 if int(args.phase_transition_step) > 0:
@@ -992,6 +1257,18 @@ def main():
                 valid_rows = mask.any(dim=1)
                 batch_seq_correct = int(row_ok.masked_select(valid_rows).sum().item())
                 batch_seq_total = int(valid_rows.sum().item())
+                if shared_writes_active:
+                    episodic_writes_step = _write_successful_copy_episodes(
+                        model,
+                        src=src,
+                        row_ok=row_ok,
+                        valid_rows=valid_rows,
+                        global_step=global_step,
+                        epoch=ep,
+                        cur_len=cur_len,
+                        max_episodes=int(args.shared_slot_max_episodes_per_step),
+                    )
+                    total_episodic_writes += int(episodic_writes_step)
                 probs = torch.softmax(logits_t.detach(), dim=-1)
                 tok_entropy = -(probs * probs.clamp_min(1e-9).log()).sum(dim=-1)
                 tok_entropy_mean = float(tok_entropy.masked_select(mask).mean().item()) if batch_tok > 0 else 0.0
@@ -1080,6 +1357,10 @@ def main():
                         "ema_loss": float(ema_loss if ema_loss is not None else 0.0),
                         "topology_fitness_ema": float(topo_fit),
                         "topology_frozen": float(topology_frozen),
+                        "shared_slot_episodic_writes_step": float(episodic_writes_step),
+                        "shared_slot_consolidation_writes_step": float(consolidation_writes_step),
+                        "shared_slot_episodic_writes_total": float(total_episodic_writes),
+                        "shared_slot_consolidation_writes_total": float(total_consolidation_writes),
                     }
                     event.update(extra_metrics)
                     event.update(aux_metrics)
@@ -1152,6 +1433,25 @@ def main():
             )
             if val_acc_cur > best_acc:
                 best_acc = val_acc_cur
+            if bool(args.save_checkpoints) and int(args.checkpoint_every_epochs) > 0 and (ep % int(args.checkpoint_every_epochs) == 0):
+                epoch_ckpt = os.path.join(
+                    str(args.checkpoint_dir),
+                    f"{str(args.checkpoint_tag)}_epoch{int(ep):02d}.pt",
+                )
+                _save_checkpoint(
+                    epoch_ckpt,
+                    model=model,
+                    optimizer=opt,
+                    scheduler=scheduler,
+                    scaler=scaler,
+                    args=args,
+                    epoch=ep,
+                    global_step=global_step,
+                    best_acc=best_acc,
+                    best_record=best_record,
+                    mastery_model=mastery_model,
+                    label=f"epoch {ep}",
+                )
             if float(summary["best_metric_value"]) > float(best_metric_value):
                 best_metric_value = float(summary["best_metric_value"])
                 best_record = summary
@@ -1166,6 +1466,8 @@ def main():
                     global_step=global_step,
                     best_acc=best_acc,
                     best_record=best_record,
+                    mastery_model=mastery_model,
+                    label="best",
                 )
             if global_step >= args.total_steps:
                 break
@@ -1176,18 +1478,21 @@ def main():
         flushed = model.cortex.flush_diagnostics()
         if flushed is not None:
             print(f"[copy] diagnostics_flushed={int(flushed)}", flush=True)
-    _save_checkpoint(
-        args.checkpoint_out,
-        model=model,
-        optimizer=opt,
-        scheduler=scheduler,
-        scaler=scaler,
-        args=args,
-        epoch=args.epochs,
-        global_step=global_step,
-        best_acc=best_acc,
-        best_record=best_record,
-    )
+    if bool(args.save_checkpoints):
+        _save_checkpoint(
+            args.checkpoint_out,
+            model=model,
+            optimizer=opt,
+            scheduler=scheduler,
+            scaler=scaler,
+            args=args,
+            epoch=args.epochs,
+            global_step=global_step,
+            best_acc=best_acc,
+            best_record=best_record,
+            mastery_model=mastery_model,
+            label="latest",
+        )
     print(f"[copy] complete global_steps={global_step} best_curriculum_acc={best_acc:.4f}", flush=True)
     if best_record is not None:
         print(

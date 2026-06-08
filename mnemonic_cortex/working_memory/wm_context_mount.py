@@ -40,6 +40,7 @@ class GeometryMountedContextBuffer(nn.Module):
             self.bridge.maps = maps
             self.bridge.selector.maps = maps
             self.bridge.selector.map_names = list(maps.keys())
+        self._context_memory_builder = None
 
     def select_map(self, context: torch.Tensor, requested: Optional[str] = None):
         context_h = self.context_proj(context)
@@ -66,6 +67,42 @@ class GeometryMountedContextBuffer(nn.Module):
         selected = self.bridge.maps[trace.selected_map]
         object.__setattr__(selected, "trace", trace)  # frozen dataclass compatibility attachment
         return mounted, selected
+
+    def build_context_memory_candidate(
+        self,
+        *,
+        context: torch.Tensor,
+        response: Optional[torch.Tensor] = None,
+        model: Optional[nn.Module] = None,
+        project_id: str = "unknown_project",
+        chat_id: str = "unknown_chat",
+        episode_id: str = "unknown_episode",
+        context_map: Optional[str] = None,
+        task_mode: Optional[str] = None,
+        task_hints: Optional[List[str]] = None,
+        parameter_hints: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, object]] = None,
+    ):
+        """Compatibility bridge to context-compression episodic candidate builder."""
+        from .context_compression_memory import ContextCompressionConfig, ContextEpisodicMemoryBuilder
+
+        if self._context_memory_builder is None:
+            cfg = ContextCompressionConfig(dim=self.dim)
+            self._context_memory_builder = ContextEpisodicMemoryBuilder(cfg)
+
+        return self._context_memory_builder.build_candidate(
+            context=context,
+            response=response,
+            model=model,
+            project_id=project_id,
+            chat_id=chat_id,
+            episode_id=episode_id,
+            context_map=context_map,
+            task_mode=task_mode,
+            task_hints=task_hints,
+            parameter_hints=parameter_hints,
+            metadata=metadata,
+        )
 
 
 # ---------------------------------------------------------------------------

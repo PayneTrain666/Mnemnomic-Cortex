@@ -15,7 +15,9 @@ from topology.manager_v3 import DynamicTopologyManagerV2
 
 def _complex_from_phase(phase: torch.Tensor) -> torch.Tensor:
     """phase: (..., D) real -> complex unit vector e^{i phase}."""
-    return torch.polar(torch.ones_like(phase), phase)
+    if phase.dtype in (torch.float16, torch.bfloat16):
+        phase = phase.float()
+    return torch.complex(torch.cos(phase), torch.sin(phase))
 
 class EnhancedHyperGeometricMemory(nn.Module):
     """HyperGeometric-ish memory with:
@@ -552,7 +554,8 @@ class EnhancedHyperGeometricMemory(nn.Module):
         kc = self._key_complex(x)                             # (B,S,H)
         Kf = torch.fft.fft(kc, dim=-1)                        # (B,S,H)
         Kf = self._entangle_fft(Kf, 'key')
-        Hsel = self.holograms_fft[:M][indices]                # (B,S,K,H) complex
+        # Holograms are updated via no-grad EMA writes; detach on read for AMP-safe grads.
+        Hsel = self.holograms_fft[:M][indices].detach()       # (B,S,K,H) complex
         Vhatf = torch.conj(Kf).unsqueeze(2) * Hsel            # (B,S,K,H)
         Vhatf = (weights.unsqueeze(-1) * Vhatf).sum(dim=2)    # (B,S,H)
         vhat = torch.fft.ifft(Vhatf, dim=-1)                  # (B,S,H) complex

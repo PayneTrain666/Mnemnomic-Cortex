@@ -184,6 +184,12 @@ class MANNSlotKVDepthBank:
                 "bank_id": self.config.bank_id,
                 "no_shared_physical_tensor_with_ltm": True,
                 "no_permanent_mutation_without_permission": True,
+                "qh_shadow_holograms_recorded": True,
+                "qh_shadow_stats": {
+                    "stored": int(len(routes)),
+                    "hop_id": int(hop_id),
+                    "slot_index": int(slot_index),
+                },
             },
             "paamax_metadata": {
                 "trace_governance": True,
@@ -212,7 +218,12 @@ class MANNSlotKVDepthBank:
         )
 
     def capacity_metrics(self) -> Dict[str, Any]:
-        return self.lattice.capacity_metrics()
+        metrics = self.lattice.capacity_metrics()
+        metrics["qh_shadow"] = {
+            "triplets_stored": int(len(self.lattice.values)),
+            "enabled": bool(self.enabled),
+        }
+        return metrics
 
     def _validate_query(self, query: torch.Tensor) -> None:
         if not isinstance(query, torch.Tensor):

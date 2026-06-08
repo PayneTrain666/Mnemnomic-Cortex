@@ -58,6 +58,10 @@ class CopyTaskDataConfig:
     curriculum_end_len: int = 20
     curriculum_ramp_epochs: int = 10
 
+    # Task variant: forward copy, reverse copy, or mixed per sample
+    task_mode: str = "copy"  # copy | reverse | mixed
+    reverse_task_prob: float = 0.5
+
     # Vocabulary / tokenization
     vocab_mode: str = "full"  # full | alnum | digits | custom
     custom_symbols: Tuple[str, ...] = ()
@@ -119,6 +123,10 @@ class CopyTaskDataConfig:
             raise ValueError("batch_size must be positive")
         if self.vocab_mode not in {"full", "alnum", "digits", "custom"}:
             raise ValueError("vocab_mode must be full|alnum|digits|custom")
+        if str(self.task_mode).strip().lower() not in {"copy", "reverse", "mixed"}:
+            raise ValueError("task_mode must be copy|reverse|mixed")
+        if not 0.0 <= float(self.reverse_task_prob) <= 1.0:
+            raise ValueError("reverse_task_prob must be in [0, 1]")
         if self.encoder_d_model % max(1, self.encoder_heads) != 0:
             raise ValueError("encoder_d_model must be divisible by encoder_heads")
         if self.delayed_copy_gap < 0:
@@ -151,6 +159,22 @@ def _resolve_symbol_indices(cfg: CopyTaskDataConfig) -> List[int]:
     if not symbols:
         raise ValueError("resolved symbol set is empty")
     return [TOK2IDX[s] for s in symbols]
+
+
+def resolve_copy_task_variant(cfg: CopyTaskDataConfig, rng: random.Random) -> str:
+    """Resolve per-sample task variant from config (copy, reverse, or mixed draw)."""
+    mode = str(cfg.task_mode).strip().lower()
+    if mode == "mixed":
+        return "reverse" if rng.random() < float(cfg.reverse_task_prob) else "copy"
+    if mode == "reverse":
+        return "reverse"
+    return "copy"
+
+
+def _target_content_for_task(seq: torch.Tensor, task_variant: str) -> torch.Tensor:
+    if str(task_variant).strip().lower() == "reverse":
+        return torch.flip(seq, dims=[0])
+    return seq
 
 
 def _sample_sequence(cfg: CopyTaskDataConfig, symbol_ids: Sequence[int], rng: random.Random) -> torch.Tensor:
@@ -200,6 +224,8 @@ class CopyTaskDataset(Dataset):
         gap = int(self.cfg.delayed_copy_gap)
         for _ in range(int(self.cfg.n_samples)):
             seq = _sample_sequence(local_cfg, self.symbol_ids, self._rng)
+            task_variant = resolve_copy_task_variant(self.cfg, self._rng)
+            tgt_content = _target_content_for_task(seq, task_variant)
             src_parts = [seq]
             if delim_id is not None:
                 src_parts.append(torch.tensor([delim_id], dtype=torch.long))
@@ -211,15 +237,18 @@ class CopyTaskDataset(Dataset):
             tgt_parts = []
             if self.cfg.include_sos_in_target:
                 tgt_parts.append(torch.tensor([TOK2IDX[SOS_TOKEN]], dtype=torch.long))
-            tgt_parts.append(seq)
+            tgt_parts.append(tgt_content)
             tgt_parts.append(torch.tensor([TOK2IDX[EOS_TOKEN]], dtype=torch.long))
             tgt = torch.cat(tgt_parts, dim=0)
             meta = {
                 "content_len": int(seq.numel()),
+                "tgt_content_len": int(tgt_content.numel()),
                 "src_len": int(src.numel()),
                 "tgt_len": int(tgt.numel()),
                 "epoch": int(self.epoch),
                 "curriculum_len": int(cur_max),
+                "task_mode": str(task_variant),
+                "task_variant": str(task_variant),
             }
             self.data.append((src, tgt, meta))
 
@@ -407,12 +436,12 @@ def copy_task_collate_fn(batch: Sequence[Tuple[torch.Tensor, torch.Tensor, Dict[
         "meta": list(metas),
     }
     if cfg.return_position_ids:
-        out["src_pos"] = torch.arange(max_src, dtype=torch.long).unsqueeze(0).expand(len(batch), -1)
-        out["tgt_pos"] = torch.arange(max_tgt, dtype=torch.long).unsqueeze(0).expand(len(batch), -1)
+        out["src_pos"] = torch.arange(max_src, dtype=torch.long).unsqueeze(0).repeat(len(batch), 1)
+        out["tgt_pos"] = torch.arange(max_tgt, dtype=torch.long).unsqueeze(0).repeat(len(batch), 1)
     if cfg.return_sinusoidal_features:
         d = int(cfg.encoder_d_model)
-        out["src_sin"] = sinusoidal_positional_encoding(max_src, d).unsqueeze(0).expand(len(batch), -1, -1)
-        out["tgt_sin"] = sinusoidal_positional_encoding(max_tgt, d).unsqueeze(0).expand(len(batch), -1, -1)
+        out["src_sin"] = sinusoidal_positional_encoding(max_src, d).unsqueeze(0).repeat(len(batch), 1, 1)
+        out["tgt_sin"] = sinusoidal_positional_encoding(max_tgt, d).unsqueeze(0).repeat(len(batch), 1, 1)
     return out
 
 

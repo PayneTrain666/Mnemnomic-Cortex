@@ -103,12 +103,17 @@ class FFTHRRTripletStacker:
     ) -> torch.Tensor:
         slot_index = int(slot_index) % int(self.cfg.num_slots)
         depth_index = int(depth_index) % int(self.cfg.num_depths)
-        slot_code = self.codebook.slot_codes[slot_index]
-        depth_code = self.codebook.depth_codes[depth_index]
-        bank_code = self.codebook.bank_code(str(bank_name))
-        a = self.bind(_unit_real(anchor), self.codebook.triplet_codes["anchor"])
-        d = self.bind(_unit_real(direction), self.codebook.triplet_codes["direction"])
-        p = self.bind(_unit_real(phase), self.codebook.triplet_codes["phase"])
+        dev = anchor.device
+        dt = anchor.dtype
+        slot_code = self.codebook.slot_codes[slot_index].to(device=dev, dtype=dt)
+        depth_code = self.codebook.depth_codes[depth_index].to(device=dev, dtype=dt)
+        bank_code = self.codebook.bank_code(str(bank_name)).to(device=dev, dtype=dt)
+        anchor_code = self.codebook.triplet_codes["anchor"].to(device=dev, dtype=dt)
+        direction_code = self.codebook.triplet_codes["direction"].to(device=dev, dtype=dt)
+        phase_code = self.codebook.triplet_codes["phase"].to(device=dev, dtype=dt)
+        a = self.bind(_unit_real(anchor), anchor_code)
+        d = self.bind(_unit_real(direction), direction_code)
+        p = self.bind(_unit_real(phase), phase_code)
         content = self.superpose((a, d, p))
         context = self.superpose((slot_code, depth_code, bank_code))
         return self.bind(content, context)

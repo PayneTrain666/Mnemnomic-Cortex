@@ -1,0 +1,3506 @@
+# Comprehensive Neural Model Audit
+
+## Audit Scope
+- Generated at (UTC): `2026-06-06T16:50:34Z`
+- Model target: `enhanced_mnemonic_cortex`
+- Runtime model type: `EnhancedMnemonicCortex`
+- Probe batch configuration: batch=2, seq=6, dim=32
+- Gradient connectivity audit: `False`
+
+## Executive Summary
+- Total parameter space: `5,166,559` parameters
+- Trainable parameters: `5,166,527`
+- Frozen/non-trainable parameters: `32`
+- Registered module utilization in probe: `781/1222` (63.91%)
+- Visible (activated) layers: `781`
+- Hidden/skipped registered layers: `441`
+- Dead layers (`abs_mean <= threshold`): `0`
+- Near-dead layers: `0`
+- Hidden/unregistered module objects: `4`
+- Hidden/unregistered tensors: `2168`
+
+## Parameter Space Quantification
+- Parameter tensor footprint: `21.07 MB`
+- Buffer tensor footprint: `256.54 KB`
+- Buffer element count: `64,402`
+
+### Parameter Space by Top-Level Module
+- `long_term_memory`: params=3,571,883, trainable=3,571,851, bytes=14.98 MB
+- `working_memory`: params=717,114, trainable=717,114, bytes=2.74 MB
+- `spatial_ltm_extension`: params=293,470, trainable=293,470, bytes=1.12 MB
+- `hippocampal_encoder`: params=164,608, trainable=164,608, bytes=643.00 KB
+- `retrieval`: params=164,384, trainable=164,384, bytes=642.12 KB
+- `global_hidden_orchestrator`: params=117,260, trainable=117,260, bytes=458.05 KB
+- `ctx_encoder`: params=25,408, trainable=25,408, bytes=99.25 KB
+- `secondary_hidden_encoder`: params=25,408, trainable=25,408, bytes=99.25 KB
+- `contrastive_proj`: params=20,736, trainable=20,736, bytes=81.00 KB
+- `sensory_buffer`: params=12,737, trainable=12,737, bytes=49.75 KB
+- `r_proj`: params=8,448, trainable=8,448, bytes=33.00 KB
+- `cps_fuser`: params=8,352, trainable=8,352, bytes=32.62 KB
+- `cue_to_input`: params=8,224, trainable=8,224, bytes=32.12 KB
+- `ctx_attn`: params=4,224, trainable=4,224, bytes=16.50 KB
+- `query_ctx_attn`: params=4,224, trainable=4,224, bytes=16.50 KB
+- `wm_to_ltm_attn`: params=4,224, trainable=4,224, bytes=16.50 KB
+- `ltm_to_wm_attn`: params=4,224, trainable=4,224, bytes=16.50 KB
+- `secondary_hidden_param_attn`: params=4,224, trainable=4,224, bytes=16.50 KB
+- `importance_predictor`: params=2,177, trainable=2,177, bytes=8.50 KB
+- `write_gate`: params=2,177, trainable=2,177, bytes=8.50 KB
+- `secondary_hidden_param_proj`: params=1,280, trainable=1,280, bytes=5.00 KB
+- `ctx_proj`: params=1,056, trainable=1,056, bytes=4.12 KB
+- `secondary_hidden_adaptive_gate`: params=165, trainable=165, bytes=660.00 B
+- `secondary_hidden_param_tokens`: params=128, trainable=128, bytes=512.00 B
+- `ctx_norm`: params=64, trainable=64, bytes=256.00 B
+- `query_norm`: params=64, trainable=64, bytes=256.00 B
+- `mem_bridge_norm`: params=64, trainable=64, bytes=256.00 B
+- `secondary_hidden_norm`: params=64, trainable=64, bytes=256.00 B
+- `secondary_hidden_output_norm`: params=64, trainable=64, bytes=256.00 B
+- `secondary_hidden_param_norm`: params=64, trainable=64, bytes=256.00 B
+- `lightbulb`: params=33, trainable=33, bytes=132.00 B
+- `secondary_hidden_mix_gates`: params=5, trainable=5, bytes=20.00 B
+- `mem_bridge_gate`: params=1, trainable=1, bytes=4.00 B
+- `secondary_hidden_bridge_gate`: params=1, trainable=1, bytes=4.00 B
+
+### Parameter Space by DType
+- `float32`: params=4,809,167, trainable=4,809,135, bytes=18.35 MB
+- `complex64`: params=357,392, trainable=357,392, bytes=2.73 MB
+
+## Hidden Elements (Unregistered / Non-Standard State)
+- Hidden module parameter total: `0`
+- Hidden module trainable parameter total: `0`
+- Hidden tensor total elements: `107,896`
+- Hidden tensor memory: `421.53 KB`
+
+### Hidden Unregistered Modules
+- `model.long_term_memory.qh_banks['cgmn']` (`QuantumHologramSlotBank`): params=0, trainable=0
+- `model.long_term_memory.qh_banks['curved']` (`QuantumHologramSlotBank`): params=0, trainable=0
+- `model.long_term_memory.qh_banks['hg']` (`QuantumHologramSlotBank`): params=0, trainable=0
+- `model.long_term_memory.qh_banks['spatial']` (`QuantumHologramSlotBank`): params=0, trainable=0
+
+### Hidden Unregistered Tensors
+- `model.long_term_memory.spatial_ltm.memory_core.last_read_trace['bank'].selected_keys`: shape=[2, 8, 64], dtype=float32, requires_grad=False, numel=1,024, bytes=4.00 KB, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_read_trace['bank'].selected_values`: shape=[2, 8, 32], dtype=float32, requires_grad=False, numel=512, bytes=2.00 KB, device=cpu
+- `model.long_term_memory.cgmn.memory_core.external_attention_context`: shape=[2, 6, 32], dtype=float32, requires_grad=False, numel=384, bytes=1.50 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.external_attention_context`: shape=[2, 6, 32], dtype=float32, requires_grad=False, numel=384, bytes=1.50 KB, device=cpu
+- `model.long_term_memory.external_attention_context`: shape=[2, 6, 32], dtype=float32, requires_grad=False, numel=384, bytes=1.50 KB, device=cpu
+- `model.long_term_memory.hyper_geometric.memory_core.external_attention_context`: shape=[2, 6, 32], dtype=float32, requires_grad=False, numel=384, bytes=1.50 KB, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.external_attention_context`: shape=[2, 6, 32], dtype=float32, requires_grad=False, numel=384, bytes=1.50 KB, device=cpu
+- `model.working_memory.external_attention_context`: shape=[2, 6, 32], dtype=float32, requires_grad=False, numel=384, bytes=1.50 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.bank_codes['wm_curved']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[0]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[1]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[2]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[3]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[4]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[5]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[6]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.depth_codes[7]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[0]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[100]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[101]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[102]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[103]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[104]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[105]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[106]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[107]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[108]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[109]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[10]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[110]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[111]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[112]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[113]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[114]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[115]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[116]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[117]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[118]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[119]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[11]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[120]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[121]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[122]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[123]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[124]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[125]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[126]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[127]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[12]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[13]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[14]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[15]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[16]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[17]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[18]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[19]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[1]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[20]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[21]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[22]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[23]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[24]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[25]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[26]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[27]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[28]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[29]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[2]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[30]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[31]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[32]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[33]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[34]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[35]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[36]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[37]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[38]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[39]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[3]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[40]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[41]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[42]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[43]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[44]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[45]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[46]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[47]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[48]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[49]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[4]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[50]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[51]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[52]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[53]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[54]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[55]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[56]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[57]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[58]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[59]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[5]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[60]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[61]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[62]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[63]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[64]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[65]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[66]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[67]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[68]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[69]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[6]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[70]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[71]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[72]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[73]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[74]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[75]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[76]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[77]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[78]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[79]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[7]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[80]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[81]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[82]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[83]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[84]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[85]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[86]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[87]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[88]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[89]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[8]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[90]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[91]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[92]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[93]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[94]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[95]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[96]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[97]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[98]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[99]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.slot_codes[9]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.triplet_codes['anchor']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.triplet_codes['direction']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.curved.memory_core.qh_slot_bank.codebook.triplet_codes['phase']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.bank_codes['wm_curved']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[0]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[1]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[2]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[3]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[4]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[5]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[6]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.depth_codes[7]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[0]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[1]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[2]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[3]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[4]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[5]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.slot_codes[6]`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.triplet_codes['anchor']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.triplet_codes['direction']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.working_memory.qh_slot_bank.codebook.triplet_codes['phase']`: shape=[256], dtype=float32, requires_grad=False, numel=256, bytes=1.00 KB, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_read_trace['query_key']`: shape=[2, 64], dtype=float32, requires_grad=False, numel=128, bytes=512.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.bank_codes['triple_cgmn']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.depth_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[100]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[101]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[102]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[103]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[104]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[105]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[106]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[107]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[108]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[109]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[10]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[110]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[111]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[112]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[113]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[114]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[115]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[116]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[117]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[118]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[119]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[11]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[120]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[121]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[122]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[123]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[124]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[125]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[126]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[127]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[128]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[129]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[12]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[130]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[131]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[132]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[133]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[134]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[135]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[136]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[137]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[138]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[139]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[13]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[140]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[141]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[142]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[143]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[144]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[145]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[146]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[147]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[148]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[149]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[14]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[150]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[151]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[152]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[153]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[154]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[155]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[156]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[157]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[158]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[159]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[15]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[160]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[161]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[162]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[163]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[164]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[165]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[166]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[167]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[168]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[169]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[16]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[170]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[171]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[172]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[173]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[174]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[175]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[176]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[177]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[178]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[179]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[17]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[180]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[181]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[182]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[183]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[184]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[185]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[186]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[187]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[188]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[189]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[18]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[190]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[191]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[192]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[193]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[194]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[195]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[196]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[197]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[198]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[199]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[19]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[200]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[201]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[202]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[203]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[204]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[205]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[206]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[207]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[208]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[209]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[20]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[210]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[211]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[212]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[213]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[214]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[215]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[216]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[217]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[218]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[219]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[21]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[220]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[221]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[222]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[223]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[224]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[225]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[226]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[227]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[228]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[229]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[22]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[230]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[231]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[232]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[233]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[234]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[235]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[236]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[237]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[238]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[239]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[23]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[240]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[241]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[242]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[243]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[244]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[245]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[246]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[247]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[248]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[249]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[24]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[250]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[251]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[252]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[253]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[254]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[255]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[256]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[257]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[258]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[259]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[25]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[260]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[261]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[262]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[263]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[264]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[265]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[266]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[267]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[268]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[269]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[26]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[270]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[271]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[272]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[273]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[274]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[275]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[276]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[277]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[278]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[279]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[27]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[280]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[281]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[282]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[283]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[284]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[285]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[286]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[287]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[288]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[289]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[28]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[290]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[291]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[292]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[293]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[294]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[295]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[296]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[297]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[298]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[299]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[29]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[300]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[301]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[302]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[303]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[304]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[305]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[306]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[307]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[308]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[309]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[30]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[310]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[311]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[312]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[313]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[314]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[315]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[316]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[317]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[318]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[319]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[31]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[320]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[321]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[322]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[323]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[324]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[325]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[326]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[327]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[328]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[329]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[32]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[330]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[331]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[332]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[333]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[334]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[335]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[336]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[337]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[338]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[339]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[33]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[340]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[341]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[342]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[343]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[344]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[345]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[346]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[347]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[348]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[349]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[34]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[350]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[351]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[352]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[353]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[354]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[355]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[356]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[357]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[358]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[359]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[35]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[360]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[361]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[362]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[363]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[364]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[365]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[366]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[367]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[368]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[369]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[36]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[370]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[371]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[372]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[373]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[374]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[375]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[376]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[377]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[378]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[379]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[37]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[380]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[381]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[382]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[383]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[384]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[385]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[386]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[387]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[388]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[389]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[38]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[390]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[391]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[392]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[393]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[394]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[395]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[396]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[397]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[398]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[399]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[39]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[400]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[401]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[402]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[403]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[404]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[405]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[406]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[407]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[408]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[409]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[40]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[410]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[411]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[412]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[413]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[414]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[415]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[416]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[417]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[418]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[419]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[41]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[420]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[421]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[422]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[423]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[424]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[425]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[426]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[427]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[428]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[429]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[42]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[430]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[431]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[432]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[433]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[434]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[435]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[436]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[437]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[438]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[439]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[43]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[440]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[441]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[442]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[443]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[444]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[445]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[446]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[447]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[448]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[449]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[44]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[450]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[451]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[452]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[453]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[454]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[455]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[456]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[457]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[458]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[459]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[45]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[460]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[461]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[462]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[463]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[464]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[465]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[466]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[467]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[468]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[469]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[46]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[470]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[471]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[472]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[473]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[474]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[475]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[476]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[477]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[478]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[479]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[47]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[480]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[481]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[482]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[483]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[484]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[485]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[486]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[487]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[488]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[489]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[48]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[490]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[491]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[492]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[493]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[494]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[495]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[496]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[497]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[498]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[499]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[49]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[500]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[501]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[502]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[503]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[504]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[505]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[506]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[507]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[508]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[509]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[50]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[510]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[511]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[51]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[52]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[53]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[54]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[55]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[56]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[57]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[58]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[59]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[60]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[61]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[62]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[63]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[64]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[65]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[66]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[67]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[68]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[69]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[70]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[71]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[72]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[73]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[74]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[75]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[76]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[77]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[78]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[79]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[80]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[81]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[82]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[83]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[84]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[85]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[86]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[87]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[88]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[89]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[8]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[90]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[91]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[92]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[93]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[94]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[95]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[96]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[97]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[98]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[99]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.slot_codes[9]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.triplet_codes['anchor']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.triplet_codes['direction']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['cgmn'].codebook.triplet_codes['phase']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.bank_codes['triple_curved']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.depth_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[100]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[101]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[102]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[103]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[104]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[105]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[106]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[107]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[108]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[109]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[10]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[110]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[111]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[112]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[113]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[114]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[115]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[116]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[117]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[118]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[119]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[11]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[120]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[121]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[122]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[123]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[124]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[125]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[126]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[127]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[12]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[13]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[14]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[15]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[16]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[17]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[18]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[19]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[20]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[21]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[22]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[23]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[24]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[25]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[26]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[27]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[28]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[29]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[30]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[31]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[32]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[33]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[34]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[35]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[36]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[37]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[38]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[39]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[40]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[41]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[42]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[43]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[44]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[45]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[46]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[47]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[48]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[49]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[50]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[51]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[52]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[53]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[54]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[55]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[56]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[57]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[58]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[59]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[60]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[61]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[62]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[63]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[64]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[65]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[66]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[67]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[68]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[69]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[70]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[71]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[72]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[73]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[74]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[75]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[76]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[77]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[78]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[79]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[80]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[81]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[82]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[83]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[84]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[85]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[86]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[87]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[88]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[89]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[8]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[90]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[91]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[92]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[93]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[94]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[95]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[96]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[97]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[98]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[99]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.slot_codes[9]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.triplet_codes['anchor']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.triplet_codes['direction']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['curved'].codebook.triplet_codes['phase']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.bank_codes['triple_hg']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.depth_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1000]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1001]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1002]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1003]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1004]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1005]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1006]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1007]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1008]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1009]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[100]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1010]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1011]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1012]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1013]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1014]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1015]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1016]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1017]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1018]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1019]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[101]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1020]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1021]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1022]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1023]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1024]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1025]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1026]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1027]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[102]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[103]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[104]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[105]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[106]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[107]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[108]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[109]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[10]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[110]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[111]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[112]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[113]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[114]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[115]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[116]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[117]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[118]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[119]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[11]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[120]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[121]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[122]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[123]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[124]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[125]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[126]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[127]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[128]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[129]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[12]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[130]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[131]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[132]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[133]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[134]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[135]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[136]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[137]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[138]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[139]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[13]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[140]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[141]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[142]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[143]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[144]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[145]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[146]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[147]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[148]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[149]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[14]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[150]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[151]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[152]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[153]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[154]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[155]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[156]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[157]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[158]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[159]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[15]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[160]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[161]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[162]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[163]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[164]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[165]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[166]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[167]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[168]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[169]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[16]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[170]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[171]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[172]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[173]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[174]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[175]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[176]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[177]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[178]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[179]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[17]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[180]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[181]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[182]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[183]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[184]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[185]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[186]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[187]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[188]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[189]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[18]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[190]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[191]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[192]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[193]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[194]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[195]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[196]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[197]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[198]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[199]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[19]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[200]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[201]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[202]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[203]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[204]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[205]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[206]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[207]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[208]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[209]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[20]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[210]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[211]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[212]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[213]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[214]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[215]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[216]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[217]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[218]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[219]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[21]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[220]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[221]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[222]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[223]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[224]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[225]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[226]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[227]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[228]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[229]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[22]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[230]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[231]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[232]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[233]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[234]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[235]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[236]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[237]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[238]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[239]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[23]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[240]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[241]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[242]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[243]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[244]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[245]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[246]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[247]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[248]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[249]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[24]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[250]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[251]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[252]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[253]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[254]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[255]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[256]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[257]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[258]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[259]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[25]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[260]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[261]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[262]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[263]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[264]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[265]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[266]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[267]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[268]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[269]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[26]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[270]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[271]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[272]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[273]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[274]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[275]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[276]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[277]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[278]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[279]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[27]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[280]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[281]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[282]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[283]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[284]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[285]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[286]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[287]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[288]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[289]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[28]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[290]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[291]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[292]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[293]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[294]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[295]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[296]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[297]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[298]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[299]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[29]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[300]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[301]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[302]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[303]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[304]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[305]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[306]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[307]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[308]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[309]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[30]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[310]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[311]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[312]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[313]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[314]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[315]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[316]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[317]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[318]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[319]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[31]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[320]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[321]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[322]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[323]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[324]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[325]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[326]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[327]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[328]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[329]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[32]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[330]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[331]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[332]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[333]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[334]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[335]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[336]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[337]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[338]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[339]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[33]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[340]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[341]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[342]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[343]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[344]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[345]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[346]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[347]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[348]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[349]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[34]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[350]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[351]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[352]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[353]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[354]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[355]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[356]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[357]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[358]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[359]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[35]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[360]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[361]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[362]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[363]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[364]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[365]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[366]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[367]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[368]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[369]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[36]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[370]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[371]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[372]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[373]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[374]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[375]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[376]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[377]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[378]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[379]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[37]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[380]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[381]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[382]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[383]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[384]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[385]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[386]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[387]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[388]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[389]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[38]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[390]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[391]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[392]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[393]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[394]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[395]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[396]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[397]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[398]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[399]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[39]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[400]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[401]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[402]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[403]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[404]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[405]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[406]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[407]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[408]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[409]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[40]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[410]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[411]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[412]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[413]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[414]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[415]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[416]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[417]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[418]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[419]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[41]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[420]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[421]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[422]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[423]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[424]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[425]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[426]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[427]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[428]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[429]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[42]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[430]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[431]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[432]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[433]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[434]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[435]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[436]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[437]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[438]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[439]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[43]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[440]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[441]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[442]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[443]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[444]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[445]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[446]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[447]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[448]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[449]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[44]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[450]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[451]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[452]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[453]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[454]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[455]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[456]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[457]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[458]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[459]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[45]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[460]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[461]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[462]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[463]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[464]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[465]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[466]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[467]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[468]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[469]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[46]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[470]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[471]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[472]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[473]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[474]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[475]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[476]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[477]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[478]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[479]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[47]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[480]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[481]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[482]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[483]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[484]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[485]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[486]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[487]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[488]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[489]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[48]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[490]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[491]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[492]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[493]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[494]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[495]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[496]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[497]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[498]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[499]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[49]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[500]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[501]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[502]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[503]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[504]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[505]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[506]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[507]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[508]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[509]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[50]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[510]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[511]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[512]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[513]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[514]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[515]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[516]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[517]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[518]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[519]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[51]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[520]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[521]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[522]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[523]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[524]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[525]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[526]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[527]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[528]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[529]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[52]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[530]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[531]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[532]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[533]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[534]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[535]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[536]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[537]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[538]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[539]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[53]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[540]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[541]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[542]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[543]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[544]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[545]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[546]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[547]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[548]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[549]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[54]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[550]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[551]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[552]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[553]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[554]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[555]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[556]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[557]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[558]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[559]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[55]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[560]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[561]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[562]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[563]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[564]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[565]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[566]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[567]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[568]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[569]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[56]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[570]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[571]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[572]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[573]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[574]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[575]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[576]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[577]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[578]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[579]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[57]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[580]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[581]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[582]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[583]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[584]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[585]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[586]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[587]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[588]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[589]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[58]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[590]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[591]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[592]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[593]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[594]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[595]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[596]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[597]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[598]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[599]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[59]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[600]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[601]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[602]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[603]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[604]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[605]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[606]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[607]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[608]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[609]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[60]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[610]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[611]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[612]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[613]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[614]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[615]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[616]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[617]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[618]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[619]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[61]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[620]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[621]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[622]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[623]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[624]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[625]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[626]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[627]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[628]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[629]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[62]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[630]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[631]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[632]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[633]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[634]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[635]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[636]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[637]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[638]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[639]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[63]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[640]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[641]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[642]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[643]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[644]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[645]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[646]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[647]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[648]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[649]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[64]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[650]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[651]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[652]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[653]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[654]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[655]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[656]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[657]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[658]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[659]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[65]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[660]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[661]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[662]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[663]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[664]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[665]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[666]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[667]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[668]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[669]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[66]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[670]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[671]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[672]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[673]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[674]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[675]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[676]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[677]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[678]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[679]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[67]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[680]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[681]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[682]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[683]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[684]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[685]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[686]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[687]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[688]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[689]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[68]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[690]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[691]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[692]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[693]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[694]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[695]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[696]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[697]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[698]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[699]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[69]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[700]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[701]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[702]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[703]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[704]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[705]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[706]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[707]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[708]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[709]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[70]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[710]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[711]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[712]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[713]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[714]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[715]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[716]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[717]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[718]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[719]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[71]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[720]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[721]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[722]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[723]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[724]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[725]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[726]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[727]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[728]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[729]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[72]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[730]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[731]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[732]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[733]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[734]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[735]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[736]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[737]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[738]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[739]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[73]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[740]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[741]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[742]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[743]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[744]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[745]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[746]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[747]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[748]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[749]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[74]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[750]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[751]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[752]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[753]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[754]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[755]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[756]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[757]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[758]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[759]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[75]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[760]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[761]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[762]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[763]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[764]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[765]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[766]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[767]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[768]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[769]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[76]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[770]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[771]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[772]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[773]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[774]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[775]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[776]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[777]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[778]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[779]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[77]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[780]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[781]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[782]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[783]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[784]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[785]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[786]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[787]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[788]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[789]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[78]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[790]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[791]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[792]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[793]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[794]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[795]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[796]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[797]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[798]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[799]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[79]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[800]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[801]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[802]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[803]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[804]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[805]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[806]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[807]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[808]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[809]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[80]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[810]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[811]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[812]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[813]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[814]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[815]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[816]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[817]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[818]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[819]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[81]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[820]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[821]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[822]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[823]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[824]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[825]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[826]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[827]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[828]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[829]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[82]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[830]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[831]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[832]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[833]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[834]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[835]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[836]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[837]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[838]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[839]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[83]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[840]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[841]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[842]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[843]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[844]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[845]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[846]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[847]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[848]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[849]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[84]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[850]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[851]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[852]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[853]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[854]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[855]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[856]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[857]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[858]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[859]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[85]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[860]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[861]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[862]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[863]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[864]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[865]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[866]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[867]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[868]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[869]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[86]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[870]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[871]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[872]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[873]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[874]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[875]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[876]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[877]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[878]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[879]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[87]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[880]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[881]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[882]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[883]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[884]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[885]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[886]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[887]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[888]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[889]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[88]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[890]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[891]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[892]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[893]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[894]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[895]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[896]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[897]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[898]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[899]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[89]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[8]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[900]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[901]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[902]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[903]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[904]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[905]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[906]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[907]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[908]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[909]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[90]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[910]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[911]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[912]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[913]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[914]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[915]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[916]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[917]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[918]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[919]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[91]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[920]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[921]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[922]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[923]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[924]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[925]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[926]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[927]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[928]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[929]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[92]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[930]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[931]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[932]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[933]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[934]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[935]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[936]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[937]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[938]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[939]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[93]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[940]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[941]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[942]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[943]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[944]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[945]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[946]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[947]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[948]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[949]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[94]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[950]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[951]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[952]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[953]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[954]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[955]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[956]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[957]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[958]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[959]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[95]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[960]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[961]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[962]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[963]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[964]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[965]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[966]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[967]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[968]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[969]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[96]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[970]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[971]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[972]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[973]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[974]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[975]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[976]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[977]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[978]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[979]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[97]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[980]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[981]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[982]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[983]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[984]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[985]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[986]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[987]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[988]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[989]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[98]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[990]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[991]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[992]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[993]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[994]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[995]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[996]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[997]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[998]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[999]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[99]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.slot_codes[9]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.triplet_codes['anchor']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.triplet_codes['direction']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['hg'].codebook.triplet_codes['phase']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.bank_codes['triple_spatial']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.depth_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[0]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[100]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[101]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[102]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[103]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[104]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[105]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[106]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[107]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[108]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[109]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[10]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[110]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[111]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[112]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[113]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[114]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[115]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[116]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[117]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[118]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[119]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[11]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[120]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[121]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[122]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[123]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[124]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[125]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[126]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[127]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[128]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[129]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[12]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[130]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[131]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[132]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[133]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[134]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[135]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[136]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[137]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[138]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[139]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[13]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[140]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[141]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[142]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[143]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[144]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[145]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[146]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[147]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[148]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[149]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[14]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[150]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[151]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[152]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[153]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[154]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[155]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[156]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[157]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[158]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[159]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[15]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[160]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[161]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[162]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[163]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[164]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[165]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[166]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[167]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[168]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[169]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[16]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[170]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[171]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[172]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[173]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[174]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[175]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[176]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[177]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[178]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[179]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[17]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[180]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[181]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[182]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[183]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[184]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[185]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[186]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[187]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[188]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[189]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[18]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[190]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[191]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[192]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[193]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[194]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[195]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[196]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[197]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[198]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[199]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[19]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[1]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[200]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[201]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[202]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[203]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[204]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[205]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[206]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[207]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[208]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[209]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[20]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[210]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[211]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[212]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[213]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[214]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[215]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[216]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[217]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[218]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[219]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[21]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[220]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[221]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[222]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[223]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[224]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[225]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[226]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[227]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[228]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[229]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[22]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[230]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[231]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[232]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[233]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[234]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[235]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[236]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[237]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[238]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[239]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[23]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[240]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[241]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[242]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[243]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[244]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[245]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[246]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[247]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[248]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[249]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[24]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[250]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[251]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[252]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[253]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[254]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[255]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[25]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[26]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[27]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[28]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[29]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[2]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[30]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[31]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[32]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[33]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[34]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[35]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[36]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[37]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[38]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[39]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[3]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[40]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[41]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[42]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[43]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[44]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[45]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[46]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[47]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[48]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[49]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[4]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[50]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[51]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[52]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[53]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[54]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[55]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[56]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[57]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[58]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[59]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[5]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[60]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[61]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[62]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[63]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[64]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[65]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[66]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[67]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[68]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[69]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[6]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[70]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[71]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[72]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[73]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[74]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[75]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[76]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[77]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[78]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[79]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[7]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[80]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[81]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[82]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[83]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[84]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[85]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[86]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[87]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[88]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[89]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[8]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[90]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[91]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[92]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[93]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[94]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[95]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[96]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[97]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[98]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[99]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.slot_codes[9]`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.triplet_codes['anchor']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.triplet_codes['direction']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.qh_banks['spatial'].codebook.triplet_codes['phase']`: shape=[32], dtype=float32, requires_grad=False, numel=32, bytes=128.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_read_trace['bank'].distances`: shape=[2, 8], dtype=float32, requires_grad=False, numel=16, bytes=64.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_read_trace['bank'].indices`: shape=[2, 8], dtype=int64, requires_grad=False, numel=16, bytes=128.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_read_trace['bank'].weights`: shape=[2, 8], dtype=float32, requires_grad=False, numel=16, bytes=64.00 B, device=cpu
+- `model.long_term_memory.last_router_weights`: shape=[2, 4], dtype=float32, requires_grad=False, numel=8, bytes=32.00 B, device=cpu
+- `model.long_term_memory.topology_manager.mode_bias['explore']`: shape=[6], dtype=float32, requires_grad=False, numel=6, bytes=24.00 B, device=cpu
+- `model.long_term_memory.topology_manager.mode_bias['spinquant']`: shape=[6], dtype=float32, requires_grad=False, numel=6, bytes=24.00 B, device=cpu
+- `model.long_term_memory.topology_manager.mode_bias['stabilise']`: shape=[6], dtype=float32, requires_grad=False, numel=6, bytes=24.00 B, device=cpu
+- `model.long_term_memory.topology_manager.mode_bias['structured']`: shape=[6], dtype=float32, requires_grad=False, numel=6, bytes=24.00 B, device=cpu
+- `model.long_term_memory.cgmn.memory_core.last_router_features['curv_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.cgmn.memory_core.last_router_features['dist_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.cgmn.memory_core.last_router_features['entropy']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.cgmn.memory_core.last_router_features['omega_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.curved.memory_core.last_router_features['curv_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.curved.memory_core.last_router_features['dist_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.curved.memory_core.last_router_features['entropy']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.curved.memory_core.last_router_features['omega_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.hyper_geometric.memory_core.last_router_features['curv_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.hyper_geometric.memory_core.last_router_features['dist_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.hyper_geometric.memory_core.last_router_features['entropy']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.hyper_geometric.memory_core.last_router_features['omega_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_router_features['curv_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_router_features['dist_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_router_features['entropy']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.long_term_memory.spatial_ltm.memory_core.last_router_features['omega_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.working_memory.last_router_features['curv_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.working_memory.last_router_features['dist_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.working_memory.last_router_features['entropy']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+- `model.working_memory.last_router_features['omega_mean']`: shape=[2], dtype=float32, requires_grad=False, numel=2, bytes=8.00 B, device=cpu
+
+## Largest Registered Layers by Parameter Count
+- `long_term_memory.hyper_geometric.memory_core` (`EnhancedHyperGeometricMemory`): params=558,268, trainable=558,268, status=ok, output_shape=[2, 6, 32]
+- `working_memory.holo.q_enc.2` (`Linear`): params=262,656, trainable=262,656, status=ok, output_shape=[2, 512]
+- `long_term_memory.curved.memory_core.holo.q_enc.2` (`Linear`): params=262,656, trainable=262,656, status=ok, output_shape=[2, 512]
+- `long_term_memory.cgmn.memory_core` (`EnhancedCGMNMemory`): params=240,129, trainable=240,129, status=ok, output_shape=[2, 6, 32]
+- `long_term_memory.curved.memory_core` (`EnhancedCurvedMemory`): params=183,176, trainable=183,176, status=ok, output_shape=[2, 6, 32]
+- `retrieval.0` (`Linear`): params=147,968, trainable=147,968, status=skipped, output_shape=None
+- `working_memory.holo.q_enc.0` (`Linear`): params=131,584, trainable=131,584, status=ok, output_shape=[2, 512]
+- `long_term_memory.curved.memory_core.holo.q_enc.0` (`Linear`): params=131,584, trainable=131,584, status=ok, output_shape=[2, 512]
+- `hippocampal_encoder.2` (`Linear`): params=131,328, trainable=131,328, status=skipped, output_shape=None
+- `long_term_memory.curved.memory_core.geometry_merger` (`GeometryMergerV3`): params=131,073, trainable=131,073, status=ok, output_shape=[2, 16]
+- `long_term_memory.memory_fusion.layers.0.self_attn` (`MultiheadAttention`): params=111,168, trainable=111,168, status=ok, output_shape=[2, 1, 192]
+- `long_term_memory.memory_fusion.layers.1.self_attn` (`MultiheadAttention`): params=111,168, trainable=111,168, status=ok, output_shape=[2, 1, 192]
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger` (`GeometryMergerV3`): params=98,689, trainable=98,689, status=ok, output_shape=[12, 32]
+- `working_memory.h_q` (`Linear`): params=65,792, trainable=65,792, status=skipped, output_shape=None
+- `working_memory.h_p` (`Linear`): params=65,792, trainable=65,792, status=skipped, output_shape=None
+- `long_term_memory.curved.memory_core.h_q` (`Linear`): params=65,792, trainable=65,792, status=skipped, output_shape=None
+- `long_term_memory.curved.memory_core.h_p` (`Linear`): params=65,792, trainable=65,792, status=skipped, output_shape=None
+- `working_memory.split_proj_e` (`Linear`): params=63,488, trainable=63,488, status=ok, output_shape=[2, 7, 248]
+- `long_term_memory.curved.memory_core.split_proj_e` (`Linear`): params=63,488, trainable=63,488, status=ok, output_shape=[2, 16, 248]
+- `long_term_memory.topo_consolidator.read_attn` (`MultiheadAttention`): params=49,536, trainable=49,536, status=ok, output_shape=[2, 1, 128]
+- `long_term_memory.memory_fusion.layers.0.self_attn.out_proj` (`NonDynamicallyQuantizableLinear`): params=37,056, trainable=37,056, status=skipped, output_shape=None
+- `long_term_memory.memory_fusion.layers.0.linear1` (`Linear`): params=37,056, trainable=37,056, status=ok, output_shape=[2, 1, 192]
+- `long_term_memory.memory_fusion.layers.0.linear2` (`Linear`): params=37,056, trainable=37,056, status=ok, output_shape=[2, 1, 192]
+- `long_term_memory.memory_fusion.layers.1.self_attn.out_proj` (`NonDynamicallyQuantizableLinear`): params=37,056, trainable=37,056, status=skipped, output_shape=None
+- `long_term_memory.memory_fusion.layers.1.linear1` (`Linear`): params=37,056, trainable=37,056, status=ok, output_shape=[2, 1, 192]
+
+## Registered Layer Visibility (Complete)
+- `sensory_buffer.attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.137025e-02, zero_fraction=0.000000
+- `sensory_buffer.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `sensory_buffer.gru` (GRU): params=6,336, out=[2, 6, 32], status=ok, abs_mean=2.240686e-01, zero_fraction=0.000000
+- `sensory_buffer.salience.0` (Linear): params=2,112, out=[2, 64], status=ok, abs_mean=2.029021e-01, zero_fraction=0.000000
+- `sensory_buffer.salience.1` (ReLU): params=0, out=[2, 64], status=ok, abs_mean=8.092701e-02, zero_fraction=0.609375
+- `sensory_buffer.salience.2` (Linear): params=65, out=[2, 1], status=ok, abs_mean=2.266569e-01, zero_fraction=0.000000
+- `sensory_buffer.salience.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=4.435774e-01, zero_fraction=0.000000
+- `working_memory` (EnhancedCurvedMemory): params=9,178, out=[2, 6, 32], status=ok, abs_mean=1.601466e-01, zero_fraction=0.000000
+- `working_memory.encoder.0` (Linear): params=8,448, out=[2, 6, 256], status=ok, abs_mean=4.768389e-01, zero_fraction=0.000000
+- `working_memory.encoder.1` (Tanh): params=0, out=[2, 6, 256], status=ok, abs_mean=4.018905e-01, zero_fraction=0.000000
+- `working_memory.curv_proj` (Linear): params=257, out=[2, 1], status=ok, abs_mean=1.662941e-01, zero_fraction=0.000000
+- `working_memory.decoder.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=1.640520e-01, zero_fraction=0.000000
+- `working_memory.decoder.1` (Tanh): params=0, out=[2, 32], status=ok, abs_mean=1.601466e-01, zero_fraction=0.000000
+- `working_memory.spin_conn.0` (Linear): params=16,448, out=[2, 64], status=ok, abs_mean=9.480779e-02, zero_fraction=0.000000
+- `working_memory.spin_conn.1` (SiLU): params=0, out=[2, 64], status=ok, abs_mean=4.756654e-02, zero_fraction=0.000000
+- `working_memory.spin_conn.2` (Linear): params=195, out=[2, 3], status=ok, abs_mean=5.743281e-02, zero_fraction=0.000000
+- `working_memory.geometry_merger` (GeometryMergerV3): params=7,169, out=[2, 7], status=ok, abs_mean=1.428571e-01, zero_fraction=0.000000
+- `working_memory.geometry_merger.omega_head.0` (Linear): params=16,448, out=[2, 64], status=ok, abs_mean=8.978920e-02, zero_fraction=0.000000
+- `working_memory.geometry_merger.omega_head.1` (SiLU): params=0, out=[2, 64], status=ok, abs_mean=4.462818e-02, zero_fraction=0.000000
+- `working_memory.geometry_merger.omega_head.2` (Linear): params=65, out=[2, 1], status=ok, abs_mean=2.514907e-02, zero_fraction=0.000000
+- `working_memory.geometry_merger.gate.0` (Linear): params=448, out=[2, 64], status=ok, abs_mean=1.065382e+00, zero_fraction=0.000000
+- `working_memory.geometry_merger.gate.1` (SiLU): params=0, out=[2, 64], status=ok, abs_mean=6.324921e-01, zero_fraction=0.000000
+- `working_memory.geometry_merger.gate.2` (Linear): params=390, out=[2, 6], status=ok, abs_mean=5.494714e-01, zero_fraction=0.000000
+- `working_memory.geometry_merger.gate.3` (Softmax): params=0, out=[2, 6], status=ok, abs_mean=1.666667e-01, zero_fraction=0.000000
+- `working_memory.geometry_merger.t_head.0` (Linear): params=4,112, out=[2, 16], status=ok, abs_mean=1.217881e-01, zero_fraction=0.000000
+- `working_memory.geometry_merger.t_head.1` (SiLU): params=0, out=[2, 16], status=ok, abs_mean=6.200491e-02, zero_fraction=0.000000
+- `working_memory.geometry_merger.t_head.2` (Linear): params=17, out=[2, 1], status=ok, abs_mean=2.769853e-02, zero_fraction=0.000000
+- `working_memory.geometry_merger.t_head.3` (Softplus): params=0, out=[2, 1], status=ok, abs_mean=6.794554e-01, zero_fraction=0.000000
+- `working_memory.qc_head.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=1.063022e-01, zero_fraction=0.000000
+- `working_memory.qc_head.1` (SiLU): params=0, out=[2, 32], status=ok, abs_mean=5.298338e-02, zero_fraction=0.000000
+- `working_memory.qc_head.2` (Linear): params=1,056, out=[2, 32], status=ok, abs_mean=8.970099e-02, zero_fraction=0.000000
+- `working_memory.holo` (HoloHead): params=1,792, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.holo.q_enc.0` (Linear): params=131,584, out=[2, 512], status=ok, abs_mean=1.065376e-01, zero_fraction=0.000000
+- `working_memory.holo.q_enc.1` (SiLU): params=0, out=[2, 512], status=ok, abs_mean=5.362874e-02, zero_fraction=0.000000
+- `working_memory.holo.q_enc.2` (Linear): params=262,656, out=[2, 512], status=ok, abs_mean=3.513995e-02, zero_fraction=0.000000
+- `working_memory.holo.alpha_head.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=1.002906e-01, zero_fraction=0.000000
+- `working_memory.holo.alpha_head.1` (SiLU): params=0, out=[2, 32], status=ok, abs_mean=5.048401e-02, zero_fraction=0.000000
+- `working_memory.holo.alpha_head.2` (Linear): params=33, out=[2, 1], status=ok, abs_mean=7.269109e-02, zero_fraction=0.000000
+- `working_memory.holo.alpha_head.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=4.818354e-01, zero_fraction=0.000000
+- `working_memory.qhm_alpha_head.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=9.731534e-02, zero_fraction=0.000000
+- `working_memory.qhm_alpha_head.1` (SiLU): params=0, out=[2, 32], status=ok, abs_mean=4.957864e-02, zero_fraction=0.000000
+- `working_memory.qhm_alpha_head.2` (Linear): params=33, out=[2, 1], status=ok, abs_mean=1.056491e-01, zero_fraction=0.000000
+- `working_memory.qhm_alpha_head.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=4.736139e-01, zero_fraction=0.000000
+- `working_memory.lb_ctrl.m_r` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.lb_ctrl.m_c` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.lb_ctrl.m_e` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.lb_ctrl.m_m` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.conformal_mlp.net.0` (Linear): params=4,112, out=[2, 16], status=ok, abs_mean=1.016934e-01, zero_fraction=0.000000
+- `working_memory.conformal_mlp.net.1` (Tanh): params=0, out=[2, 16], status=ok, abs_mean=1.005710e-01, zero_fraction=0.000000
+- `working_memory.conformal_mlp.net.2` (Linear): params=17, out=[2, 1], status=ok, abs_mean=3.110538e-02, zero_fraction=0.000000
+- `working_memory.geom_blender` (GeometryBlender): params=48, out=[7], status=ok, abs_mean=4.502010e-03, zero_fraction=0.000000
+- `working_memory.split_proj_e` (Linear): params=63,488, out=[2, 7, 248], status=ok, abs_mean=4.623203e-01, zero_fraction=0.000000
+- `working_memory.split_proj_t` (Linear): params=2,048, out=[2, 7, 8], status=ok, abs_mean=4.211863e-01, zero_fraction=0.000000
+- `working_memory.h_q` (Linear): params=65,792, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.h_p` (Linear): params=65,792, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.input_transformer.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.553718e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.input_transformer.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.746678e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.284831e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.623291e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.894168e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.977515e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.553718e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.623291e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.493278e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.input_transformer.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.645701e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.236154e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.576877e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.995040e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.060701e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.493278e-01, zero_fraction=0.000000
+- `working_memory.input_transformer.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.576877e-01, zero_fraction=0.000000
+- `working_memory.input_transformer_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.962424e-01, zero_fraction=0.000000
+- `working_memory.external_memory_attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.external_memory_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.external_memory_attn_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `working_memory.qh_slot_bank` (QuantumHologramSlotBank): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory` (EnhancedTripleHybridMemory): params=139, out=[2, 6, 32], status=ok, abs_mean=7.525244e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric` (EnhancedHyperGeometricMemoryWithTransformerV2): params=32,769, out=[2, 6, 32], status=ok, abs_mean=8.558307e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core` (EnhancedHyperGeometricMemory): params=558,268, out=[2, 6, 32], status=ok, abs_mean=4.485759e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.spin_conn.0` (Linear): params=4,672, out=[12, 64], status=ok, abs_mean=2.691636e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.spin_conn.1` (SiLU): params=0, out=[12, 64], status=ok, abs_mean=1.302355e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.spin_conn.2` (Linear): params=195, out=[12, 3], status=ok, abs_mean=1.489462e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger` (GeometryMergerV3): params=98,689, out=[12, 32], status=ok, abs_mean=3.125000e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.omega_head.0` (Linear): params=1,600, out=[12, 64], status=ok, abs_mean=2.504358e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.omega_head.1` (SiLU): params=0, out=[12, 64], status=ok, abs_mean=1.239825e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.omega_head.2` (Linear): params=65, out=[12, 1], status=ok, abs_mean=6.676823e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.gate.0` (Linear): params=448, out=[12, 64], status=ok, abs_mean=6.769770e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.gate.1` (SiLU): params=0, out=[12, 64], status=ok, abs_mean=3.478356e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.gate.2` (Linear): params=390, out=[12, 6], status=ok, abs_mean=1.653686e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.gate.3` (Softmax): params=0, out=[12, 6], status=ok, abs_mean=1.666667e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.t_head.0` (Linear): params=400, out=[12, 16], status=ok, abs_mean=2.325730e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.t_head.1` (SiLU): params=0, out=[12, 16], status=ok, abs_mean=1.182575e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.t_head.2` (Linear): params=17, out=[12, 1], status=ok, abs_mean=1.301352e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geometry_merger.t_head.3` (Softplus): params=0, out=[12, 1], status=ok, abs_mean=7.603301e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qc_head.0` (Linear): params=800, out=[12, 32], status=ok, abs_mean=3.136418e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qc_head.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=1.494805e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qc_head.2` (Linear): params=1,056, out=[12, 32], status=ok, abs_mean=1.218091e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo` (HoloHead): params=24,672, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.q_enc.0` (Linear): params=1,200, out=[12, 48], status=ok, abs_mean=2.638747e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.q_enc.1` (SiLU): params=0, out=[12, 48], status=ok, abs_mean=1.329539e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.q_enc.2` (Linear): params=2,352, out=[12, 48], status=ok, abs_mean=9.911989e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.alpha_head.0` (Linear): params=800, out=[12, 32], status=ok, abs_mean=2.034235e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.alpha_head.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=9.624890e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.alpha_head.2` (Linear): params=33, out=[12, 1], status=ok, abs_mean=1.635603e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.holo.alpha_head.3` (Sigmoid): params=0, out=[12, 1], status=ok, abs_mean=4.592008e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qhm_alpha_head.0` (Linear): params=800, out=[12, 32], status=ok, abs_mean=2.202669e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qhm_alpha_head.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=1.093448e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qhm_alpha_head.2` (Linear): params=33, out=[12, 1], status=ok, abs_mean=2.085446e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.qhm_alpha_head.3` (Sigmoid): params=0, out=[12, 1], status=ok, abs_mean=5.519480e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.lb_ctrl.m_r` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.lb_ctrl.m_c` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.lb_ctrl.m_e` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.lb_ctrl.m_m` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.conformal_mlp.net.0` (Linear): params=400, out=[12, 16], status=ok, abs_mean=2.796249e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.conformal_mlp.net.1` (Tanh): params=0, out=[12, 16], status=ok, abs_mean=2.610460e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.conformal_mlp.net.2` (Linear): params=17, out=[12, 1], status=ok, abs_mean=1.946071e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_blender` (GeometryBlender): params=6,174, out=[1028], status=ok, abs_mean=1.420082e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.q_e.proj` (Linear): params=1,536, out=[12, 64], status=ok, abs_mean=2.491353e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.q_s.proj` (Linear): params=1,536, out=[12, 64], status=ok, abs_mean=2.343361e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.q_h.proj` (Linear): params=1,536, out=[12, 64], status=ok, abs_mean=2.441609e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.q_f.proj` (Linear): params=1,536, out=[12, 64], status=ok, abs_mean=2.320085e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.k_e.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=8.687377e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.k_s.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=8.814555e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.k_h.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=9.217334e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.geom_metric.k_f.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=8.924081e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_projection.0` (Linear): params=2,376, out=[2, 6, 72], status=ok, abs_mean=4.865593e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_projection.1` (LayerNorm): params=144, out=[2, 6, 72], status=ok, abs_mean=8.067726e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_projection.2` (GELU): params=0, out=[2, 6, 72], status=ok, abs_mean=3.858702e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.output_projection.0` (Linear): params=2,336, out=[2, 6, 32], status=ok, abs_mean=5.912012e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.output_projection.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.869672e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.output_projection.2` (GELU): params=0, out=[2, 6, 32], status=ok, abs_mean=4.484312e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.key_phase` (Linear): params=8,448, out=[2, 6, 256], status=ok, abs_mean=4.561915e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.val_phase` (Linear): params=8,448, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.readout` (Linear): params=36,936, out=[2, 6, 72], status=ok, abs_mean=2.551814e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.hol_probe` (HolonomyProbe): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.447919e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.798653e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.374165e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.572127e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.087859e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.086755e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=6.447919e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.572127e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.750632e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.530524e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.313429e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.796154e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.518474e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.670391e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.750632e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.796154e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.850046e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.674470e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.433770e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.749765e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.981759e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.098793e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.850046e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer.layers.2.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.749765e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.input_transformer_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.958203e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.external_memory_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=7.350649e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.memory_core.external_memory_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.memory_core.external_memory_attn_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.970368e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=9.751481e-02, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.607885e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.655779e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.900647e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.808555e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.900568e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.523822e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.786368e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.019892e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.855121e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.277684e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.902316e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.081002e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.214083e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.output_transformer.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.936247e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.bank_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.001943e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.bank_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.797356e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.bank_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.bank_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.848190e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.bank_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.bank_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.263884e-03, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.bank_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hyper_geometric.bank_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.937995e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.entangle_proj` (Linear): params=2,080, out=[2, 6, 32], status=ok, abs_mean=4.056115e-01, zero_fraction=0.000000
+- `long_term_memory.hyper_geometric.entangle_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.558307e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core` (EnhancedCGMNMemory): params=240,129, out=[2, 6, 32], status=ok, abs_mean=4.217919e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.manifold_projection.0` (Linear): params=1,584, out=[2, 6, 48], status=ok, abs_mean=4.033124e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.manifold_projection.1` (LayerNorm): params=96, out=[2, 6, 48], status=ok, abs_mean=7.579522e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.manifold_projection.2` (GELU): params=0, out=[2, 6, 48], status=ok, abs_mean=3.844310e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.conformal_mlp.net.0` (Linear): params=272, out=[12, 16], status=ok, abs_mean=1.962595e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.conformal_mlp.net.1` (Tanh): params=0, out=[12, 16], status=ok, abs_mean=1.857467e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.conformal_mlp.net.2` (Linear): params=17, out=[12, 1], status=ok, abs_mean=2.702738e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_blender` (GeometryBlender): params=3,078, out=[512], status=ok, abs_mean=1.495415e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.q_e.proj` (Linear): params=1,024, out=[12, 64], status=ok, abs_mean=2.044341e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.q_s.proj` (Linear): params=1,024, out=[12, 64], status=ok, abs_mean=2.015156e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.q_h.proj` (Linear): params=1,024, out=[12, 64], status=ok, abs_mean=1.869034e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.q_f.proj` (Linear): params=1,024, out=[12, 64], status=ok, abs_mean=2.280709e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.k_e.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=9.135090e-03, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.k_s.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=9.241263e-03, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.k_h.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=9.085353e-03, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geom_metric.k_f.proj` (Linear): params=4,096, out=[12, 32, 64], status=ok, abs_mean=9.038474e-03, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.spin_conn.0` (Linear): params=3,136, out=[12, 64], status=ok, abs_mean=3.625170e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.spin_conn.1` (SiLU): params=0, out=[12, 64], status=ok, abs_mean=1.984080e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.spin_conn.2` (Linear): params=195, out=[12, 3], status=ok, abs_mean=1.295737e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger` (GeometryMergerV3): params=32,769, out=[12, 32], status=ok, abs_mean=3.125000e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.omega_head.0` (Linear): params=1,088, out=[12, 64], status=ok, abs_mean=2.790386e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.omega_head.1` (SiLU): params=0, out=[12, 64], status=ok, abs_mean=1.332975e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.omega_head.2` (Linear): params=65, out=[12, 1], status=ok, abs_mean=1.029951e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.gate.0` (Linear): params=448, out=[12, 64], status=ok, abs_mean=1.388676e+00, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.gate.1` (SiLU): params=0, out=[12, 64], status=ok, abs_mean=5.970487e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.gate.2` (Linear): params=390, out=[12, 6], status=ok, abs_mean=4.403663e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.gate.3` (Softmax): params=0, out=[12, 6], status=ok, abs_mean=1.666667e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.t_head.0` (Linear): params=272, out=[12, 16], status=ok, abs_mean=1.846477e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.t_head.1` (SiLU): params=0, out=[12, 16], status=ok, abs_mean=9.723940e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.t_head.2` (Linear): params=17, out=[12, 1], status=ok, abs_mean=1.671155e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.geometry_merger.t_head.3` (Softplus): params=0, out=[12, 1], status=ok, abs_mean=6.130764e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qc_head.0` (Linear): params=544, out=[12, 32], status=ok, abs_mean=2.297500e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qc_head.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=1.150223e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qc_head.2` (Linear): params=1,056, out=[12, 32], status=ok, abs_mean=1.071512e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo` (HoloHead): params=8,192, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.holo.q_enc.0` (Linear): params=544, out=[12, 32], status=ok, abs_mean=2.767404e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo.q_enc.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=1.325779e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo.q_enc.2` (Linear): params=1,056, out=[12, 32], status=ok, abs_mean=1.292644e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo.alpha_head.0` (Linear): params=544, out=[12, 32], status=ok, abs_mean=2.080264e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo.alpha_head.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=1.028114e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo.alpha_head.2` (Linear): params=33, out=[12, 1], status=ok, abs_mean=4.265014e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.holo.alpha_head.3` (Sigmoid): params=0, out=[12, 1], status=ok, abs_mean=5.106609e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qhm_alpha_head.0` (Linear): params=544, out=[12, 32], status=ok, abs_mean=2.116565e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qhm_alpha_head.1` (SiLU): params=0, out=[12, 32], status=ok, abs_mean=9.817777e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qhm_alpha_head.2` (Linear): params=33, out=[12, 1], status=ok, abs_mean=1.578929e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.qhm_alpha_head.3` (Sigmoid): params=0, out=[12, 1], status=ok, abs_mean=5.393915e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.lb_ctrl.m_r` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.lb_ctrl.m_c` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.lb_ctrl.m_e` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.lb_ctrl.m_m` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.ode_dynamics.0` (Linear): params=6,272, out=[2, 6, 128], status=ok, abs_mean=4.096058e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.ode_dynamics.1` (Tanh): params=0, out=[2, 6, 128], status=ok, abs_mean=3.629286e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.ode_dynamics.2` (Linear): params=6,192, out=[2, 6, 48], status=ok, abs_mean=1.542431e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.output_projection.0` (Linear): params=8,224, out=[2, 6, 32], status=ok, abs_mean=1.005548e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.output_projection.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.645127e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.output_projection.2` (GELU): params=0, out=[2, 6, 32], status=ok, abs_mean=4.217919e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.hol_probe` (HolonomyProbe): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.832117e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.345693e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=1.984094e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.255253e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.740239e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.566578e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=5.832117e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.255253e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.248923e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.440030e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.009504e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.157495e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.347425e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.211737e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.248923e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.157495e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.494700e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.671079e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.137621e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.215251e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.686813e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.665785e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.494700e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer.layers.2.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.215251e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.input_transformer_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.842073e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.external_memory_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.740745e-02, zero_fraction=0.000000
+- `long_term_memory.cgmn.memory_core.external_memory_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.memory_core.external_memory_attn_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.777113e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.396300e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.391444e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.895865e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.365016e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.033616e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.801063e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.300370e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.762309e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.618870e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.043130e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.755038e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.753422e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.065437e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.035784e-01, zero_fraction=0.000000
+- `long_term_memory.cgmn.output_transformer.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cgmn.output_transformer.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.274726e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core` (EnhancedCurvedMemory): params=183,176, out=[2, 6, 32], status=ok, abs_mean=9.782317e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.encoder.0` (Linear): params=8,448, out=[2, 6, 256], status=ok, abs_mean=4.910849e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.encoder.1` (Tanh): params=0, out=[2, 6, 256], status=ok, abs_mean=4.136091e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.curv_proj` (Linear): params=257, out=[2, 1], status=ok, abs_mean=3.300639e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.decoder.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=9.893887e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.decoder.1` (Tanh): params=0, out=[2, 32], status=ok, abs_mean=9.782318e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.spin_conn.0` (Linear): params=16,448, out=[2, 64], status=ok, abs_mean=2.083563e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.spin_conn.1` (SiLU): params=0, out=[2, 64], status=ok, abs_mean=1.091679e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.spin_conn.2` (Linear): params=195, out=[2, 3], status=ok, abs_mean=1.070799e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger` (GeometryMergerV3): params=131,073, out=[2, 16], status=ok, abs_mean=6.250001e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.omega_head.0` (Linear): params=16,448, out=[2, 64], status=ok, abs_mean=2.440078e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.omega_head.1` (SiLU): params=0, out=[2, 64], status=ok, abs_mean=1.250949e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.omega_head.2` (Linear): params=65, out=[2, 1], status=ok, abs_mean=2.802285e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.gate.0` (Linear): params=448, out=[2, 64], status=ok, abs_mean=1.346786e+00, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.gate.1` (SiLU): params=0, out=[2, 64], status=ok, abs_mean=6.290648e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.gate.2` (Linear): params=390, out=[2, 6], status=ok, abs_mean=4.723302e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.gate.3` (Softmax): params=0, out=[2, 6], status=ok, abs_mean=1.666667e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.t_head.0` (Linear): params=4,112, out=[2, 16], status=ok, abs_mean=1.995441e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.t_head.1` (SiLU): params=0, out=[2, 16], status=ok, abs_mean=9.544993e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.t_head.2` (Linear): params=17, out=[2, 1], status=ok, abs_mean=1.040109e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geometry_merger.t_head.3` (Softplus): params=0, out=[2, 1], status=ok, abs_mean=6.424934e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qc_head.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=2.184700e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qc_head.1` (SiLU): params=0, out=[2, 32], status=ok, abs_mean=9.866033e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qc_head.2` (Linear): params=1,056, out=[2, 32], status=ok, abs_mean=7.785515e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo` (HoloHead): params=32,768, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.holo.q_enc.0` (Linear): params=131,584, out=[2, 512], status=ok, abs_mean=2.143645e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo.q_enc.1` (SiLU): params=0, out=[2, 512], status=ok, abs_mean=1.092888e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo.q_enc.2` (Linear): params=262,656, out=[2, 512], status=ok, abs_mean=6.985292e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo.alpha_head.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=2.114689e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo.alpha_head.1` (SiLU): params=0, out=[2, 32], status=ok, abs_mean=1.037596e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo.alpha_head.2` (Linear): params=33, out=[2, 1], status=ok, abs_mean=6.711728e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.holo.alpha_head.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=5.167730e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qhm_alpha_head.0` (Linear): params=8,224, out=[2, 32], status=ok, abs_mean=2.110593e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qhm_alpha_head.1` (SiLU): params=0, out=[2, 32], status=ok, abs_mean=1.020719e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qhm_alpha_head.2` (Linear): params=33, out=[2, 1], status=ok, abs_mean=1.765836e-03, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qhm_alpha_head.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=4.995585e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.lb_ctrl.m_r` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.lb_ctrl.m_c` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.lb_ctrl.m_e` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.lb_ctrl.m_m` (RunningMoments): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.conformal_mlp.net.0` (Linear): params=4,112, out=[2, 16], status=ok, abs_mean=2.678834e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.conformal_mlp.net.1` (Tanh): params=0, out=[2, 16], status=ok, abs_mean=2.506061e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.conformal_mlp.net.2` (Linear): params=17, out=[2, 1], status=ok, abs_mean=1.203233e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.geom_blender` (GeometryBlender): params=774, out=[128], status=ok, abs_mean=1.414759e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.split_proj_e` (Linear): params=63,488, out=[2, 16, 248], status=ok, abs_mean=4.579701e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.split_proj_t` (Linear): params=2,048, out=[2, 16, 8], status=ok, abs_mean=4.677432e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.h_q` (Linear): params=65,792, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.h_p` (Linear): params=65,792, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=7.359489e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.129368e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.715799e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.862718e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.761775e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.707722e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=7.359489e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.862718e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.277807e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.206038e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.680172e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.672103e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.576785e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.260600e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.277807e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.672103e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.016474e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.144830e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.604493e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.623506e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.429793e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.427874e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.016474e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer.layers.2.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.623506e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.input_transformer_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.261371e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.external_memory_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.517982e-02, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.external_memory_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.memory_core.external_memory_attn_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.250076e-01, zero_fraction=0.000000
+- `long_term_memory.curved.memory_core.qh_slot_bank` (QuantumHologramSlotBank): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.701432e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.745861e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.459331e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.128916e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.724968e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.082224e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.182769e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.763202e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.294561e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.793350e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.685346e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.176837e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.536398e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.685368e-01, zero_fraction=0.000000
+- `long_term_memory.curved.output_transformer.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.curved.output_transformer.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.895649e-01, zero_fraction=0.000000
+- `long_term_memory.curved.tcn.conv` (Conv1d): params=3,104, out=[2, 32, 6], status=ok, abs_mean=6.646500e-02, zero_fraction=0.000000
+- `long_term_memory.curved.tcn.norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.067344e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core` (EnhancedSpatialLTMMemory): params=256, out=[2, 6, 32], status=ok, abs_mean=7.934965e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.encoder.0` (Linear): params=1,056, out=[2, 6, 32], status=ok, abs_mean=1.378424e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.encoder.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.386050e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.encoder.2` (GELU): params=0, out=[2, 6, 32], status=ok, abs_mean=4.425931e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder` (Linear): params=1,056, out=[2, 32], status=ok, abs_mean=8.581043e-02, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.shared` (SharedValueStore): params=8,192, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.depth_router.phase_head` (Linear): params=264, out=[2, 8], status=ok, abs_mean=4.305209e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.depth_router.scale_head` (Linear): params=132, out=[2, 4], status=ok, abs_mean=1.145191e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.depth_router.spin_head` (Linear): params=264, out=[2, 8], status=ok, abs_mean=3.914340e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.depth_router.slice_head` (Linear): params=264, out=[2, 8], status=ok, abs_mean=3.090659e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.key_encoder.0` (Linear): params=2,112, out=[2, 64], status=ok, abs_mean=3.909835e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.key_encoder.1` (LayerNorm): params=128, out=[2, 64], status=ok, abs_mean=8.439590e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.key_encoder.2` (GELU): params=0, out=[2, 64], status=ok, abs_mean=4.107159e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.key_encoder.3` (Linear): params=4,160, out=[2, 64], status=ok, abs_mean=3.503467e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.value_encoder` (Identity): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.bank` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.bank.phi.0` (Linear): params=2,080, out=[2, 32], status=ok, abs_mean=2.226337e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.bank.phi.1` (GELU): params=0, out=[2, 32], status=ok, abs_mean=9.720750e-02, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.bank.phi.2` (Linear): params=33, out=[2, 1], status=ok, abs_mean=4.409119e-03, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.spatial.bank.phi.3` (Tanh): params=0, out=[2, 1], status=ok, abs_mean=4.409091e-03, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.461141e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.924164e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.635428e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.425941e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.372512e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.446996e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.251510e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.657674e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.504357e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.371351e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.401755e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.927567e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.501119e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.211673e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_transformer.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.367459e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.sequence_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.578836e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.559364e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.935827e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.628284e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.148964e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.342560e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.542641e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.284635e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.111148e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.164827e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.905333e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.648546e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.858548e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.521284e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_transformer.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.098704e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.aux_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.183443e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.665275e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.715445e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.985459e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.868955e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.372998e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.221006e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.485972e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.630136e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.037788e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.779668e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.622822e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.270731e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.461483e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.957070e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.176693e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.461592e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.015441e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.192782e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_refiner.3.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.934965e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.fusion_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack` (TransformerStack): params=2,048, out=[2, 6, 32], status=ok, abs_mean=7.351511e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.412934e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.ln1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.365998e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.ff.0` (Linear): params=2,112, out=[2, 6, 64], status=ok, abs_mean=4.078146e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.ff.1` (GELU): params=0, out=[2, 6, 64], status=ok, abs_mean=1.766514e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.ff.2` (Dropout): params=0, out=[2, 6, 64], status=ok, abs_mean=1.766514e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.ff.3` (Linear): params=2,080, out=[2, 6, 32], status=ok, abs_mean=1.084042e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.0.ln2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.958419e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.026025e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.ln1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.891285e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.ff.0` (Linear): params=2,112, out=[2, 6, 64], status=ok, abs_mean=4.954623e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.ff.1` (GELU): params=0, out=[2, 6, 64], status=ok, abs_mean=2.340350e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.ff.2` (Dropout): params=0, out=[2, 6, 64], status=ok, abs_mean=2.340350e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.ff.3` (Linear): params=2,080, out=[2, 6, 32], status=ok, abs_mean=1.414329e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.1.ln2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.363342e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.267184e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.ln1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.382466e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.ff.0` (Linear): params=2,112, out=[2, 6, 64], status=ok, abs_mean=4.123562e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.ff.1` (GELU): params=0, out=[2, 6, 64], status=ok, abs_mean=1.838939e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.ff.2` (Dropout): params=0, out=[2, 6, 64], status=ok, abs_mean=1.838939e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.ff.3` (Linear): params=2,080, out=[2, 6, 32], status=ok, abs_mean=1.298419e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.decoder_stack.blocks.2.ln2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.222806e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=4.192171e-02, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.725205e-02, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.170386e-02, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.687551e-02, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.memory_core.cross_model_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.104360e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.832937e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.265823e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.507080e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.614351e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.0.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.921302e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.520084e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.950144e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.217205e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.653872e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.1.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.808602e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.138041e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.202006e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.231024e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.872998e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.0.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_ltm.output_transformer.2.1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.908602e-01, zero_fraction=0.000000
+- `long_term_memory.topology_manager.gates.hg.0` (Linear): params=160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.hg.1` (SiLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.hg.2` (Linear): params=165, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.hg.3` (Softmax): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.cgmn.0` (Linear): params=160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.cgmn.1` (SiLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.cgmn.2` (Linear): params=165, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.cgmn.3` (Softmax): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.curved.0` (Linear): params=160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.curved.1` (SiLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.curved.2` (Linear): params=165, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.curved.3` (Softmax): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.spatial.0` (Linear): params=160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.spatial.1` (SiLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.spatial.2` (Linear): params=165, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.gates.spatial.3` (Softmax): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topology_manager.beta_table` (ParameterDict): params=20, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.router.0` (Linear): params=6,272, out=[2, 128], status=ok, abs_mean=6.377386e-01, zero_fraction=0.000000
+- `long_term_memory.router.1` (ReLU): params=0, out=[2, 128], status=ok, abs_mean=3.671962e-01, zero_fraction=0.437500
+- `long_term_memory.router.2` (Linear): params=516, out=[2, 4], status=ok, abs_mean=3.049299e-01, zero_fraction=0.000000
+- `long_term_memory.router.3` (Softmax): params=0, out=[2, 4], status=ok, abs_mean=2.500000e-01, zero_fraction=0.000000
+- `long_term_memory.hns_router.context_proj` (Linear): params=1,056, out=[2, 32], status=ok, abs_mean=1.111614e-01, zero_fraction=0.000000
+- `long_term_memory.hns_router.token_attn` (MultiheadAttention): params=3,168, out=[2, 5, 32], status=ok, abs_mean=5.249491e-02, zero_fraction=0.000000
+- `long_term_memory.hns_router.token_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hns_router.refine_attn` (MultiheadAttention): params=3,168, out=[2, 5, 32], status=ok, abs_mean=5.185422e-02, zero_fraction=0.000000
+- `long_term_memory.hns_router.refine_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hns_router.norm` (LayerNorm): params=64, out=[2, 5, 32], status=ok, abs_mean=7.753633e-01, zero_fraction=0.000000
+- `long_term_memory.hns_router.weight_head.0` (Linear): params=2,112, out=[2, 5, 64], status=ok, abs_mean=4.531914e-01, zero_fraction=0.000000
+- `long_term_memory.hns_router.weight_head.1` (ReLU): params=0, out=[2, 5, 64], status=ok, abs_mean=2.162884e-01, zero_fraction=0.521875
+- `long_term_memory.hns_router.weight_head.2` (Linear): params=65, out=[2, 5, 1], status=ok, abs_mean=6.466538e-02, zero_fraction=0.000000
+- `long_term_memory.cross_memory_attention` (MultiheadAttention): params=3,168, out=[2, 1, 32], status=ok, abs_mean=7.304096e-02, zero_fraction=0.000000
+- `long_term_memory.cross_memory_attention.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.memory_fusion.layers.0.self_attn` (MultiheadAttention): params=111,168, out=[2, 1, 192], status=ok, abs_mean=5.316888e-02, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=37,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.memory_fusion.layers.0.linear1` (Linear): params=37,056, out=[2, 1, 192], status=ok, abs_mean=4.601115e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.dropout` (Dropout): params=0, out=[2, 1, 192], status=ok, abs_mean=2.392875e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.linear2` (Linear): params=37,056, out=[2, 1, 192], status=ok, abs_mean=1.663117e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.norm1` (LayerNorm): params=384, out=[2, 1, 192], status=ok, abs_mean=7.376071e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.norm2` (LayerNorm): params=384, out=[2, 1, 192], status=ok, abs_mean=7.388927e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.dropout1` (Dropout): params=0, out=[2, 1, 192], status=ok, abs_mean=5.316888e-02, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.0.dropout2` (Dropout): params=0, out=[2, 1, 192], status=ok, abs_mean=1.663117e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.self_attn` (MultiheadAttention): params=111,168, out=[2, 1, 192], status=ok, abs_mean=2.678563e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=37,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.memory_fusion.layers.1.linear1` (Linear): params=37,056, out=[2, 1, 192], status=ok, abs_mean=4.585535e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.dropout` (Dropout): params=0, out=[2, 1, 192], status=ok, abs_mean=2.418810e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.linear2` (Linear): params=37,056, out=[2, 1, 192], status=ok, abs_mean=1.793380e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.norm1` (LayerNorm): params=384, out=[2, 1, 192], status=ok, abs_mean=7.566004e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.norm2` (LayerNorm): params=384, out=[2, 1, 192], status=ok, abs_mean=7.680020e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.dropout1` (Dropout): params=0, out=[2, 1, 192], status=ok, abs_mean=2.678563e-01, zero_fraction=0.000000
+- `long_term_memory.memory_fusion.layers.1.dropout2` (Dropout): params=0, out=[2, 1, 192], status=ok, abs_mean=1.793380e-01, zero_fraction=0.000000
+- `long_term_memory.fusion_projection` (Linear): params=6,176, out=[2, 32], status=ok, abs_mean=5.242370e-01, zero_fraction=0.000000
+- `long_term_memory.hns_to_seq` (Identity): params=0, out=[2, 32], status=ok, abs_mean=5.242370e-01, zero_fraction=0.000000
+- `long_term_memory.hns_blend_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.868720e-01, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.self_attn` (MultiheadAttention): params=12,480, out=[2, 6, 64], status=ok, abs_mean=7.502871e-02, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=4,160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.importance_predictor.layers.0.linear1` (Linear): params=8,320, out=[2, 6, 128], status=ok, abs_mean=4.954068e-01, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.231384e-01, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.linear2` (Linear): params=8,256, out=[2, 6, 64], status=ok, abs_mean=1.805941e-01, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.norm1` (LayerNorm): params=128, out=[2, 6, 64], status=ok, abs_mean=7.884529e-01, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.norm2` (LayerNorm): params=128, out=[2, 6, 64], status=ok, abs_mean=7.697124e-01, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 64], status=ok, abs_mean=7.502871e-02, zero_fraction=0.000000
+- `long_term_memory.importance_predictor.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 64], status=ok, abs_mean=1.805941e-01, zero_fraction=0.000000
+- `long_term_memory.importance_head.0` (Linear): params=4,160, out=[2, 64], status=ok, abs_mean=4.015072e-01, zero_fraction=0.000000
+- `long_term_memory.importance_head.1` (ReLU): params=0, out=[2, 64], status=ok, abs_mean=2.576787e-01, zero_fraction=0.375000
+- `long_term_memory.importance_head.2` (Linear): params=65, out=[2, 1], status=ok, abs_mean=7.133530e-02, zero_fraction=0.000000
+- `long_term_memory.importance_head.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=5.178263e-01, zero_fraction=0.000000
+- `long_term_memory.consolidation_gates.0` (Linear): params=8,256, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidation_gates.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidation_gates.2` (Linear): params=260, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidation_gates.3` (Sigmoid): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidation_network.0` (Linear): params=33,024, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidation_network.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidation_network.2` (Linear): params=8,224, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidated_memory.write_attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidated_memory.write_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidated_memory.read_attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidated_memory.read_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.consolidated_memory.norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.nfm` (NeuralFieldMemory): params=1, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topo_consolidator` (MemoryConsolidationManagerV2): params=4,128, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topo_consolidator.encode.0` (Linear): params=25,088, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topo_consolidator.encode.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topo_consolidator.encode.2` (Linear): params=32,896, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topo_consolidator.query_proj` (Linear): params=4,224, out=[2, 128], status=ok, abs_mean=1.275606e-01, zero_fraction=0.000000
+- `long_term_memory.topo_consolidator.read_attn` (MultiheadAttention): params=49,536, out=[2, 1, 128], status=ok, abs_mean=1.273356e-03, zero_fraction=0.000000
+- `long_term_memory.topo_consolidator.read_attn.out_proj` (NonDynamicallyQuantizableLinear): params=16,512, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.topo_to_input` (Linear): params=4,128, out=[2, 32], status=ok, abs_mean=4.228150e-02, zero_fraction=0.000000
+- `long_term_memory.cross_fuser` (MultiScaleAttention): params=3, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_fuser.branches.0` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_fuser.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_fuser.branches.1` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_fuser.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_fuser.branches.2` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_fuser.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hg_to_cg_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.921036e-01, zero_fraction=0.000000
+- `long_term_memory.hg_to_cg_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.622572e-01, zero_fraction=0.000000
+- `long_term_memory.hg_to_cg_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hg_to_cg_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.949121e-01, zero_fraction=0.000000
+- `long_term_memory.hg_to_cg_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hg_to_cg_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.233475e-01, zero_fraction=0.000000
+- `long_term_memory.hg_to_cg_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cg_to_spatial_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.145117e-01, zero_fraction=0.000000
+- `long_term_memory.cg_to_spatial_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.124111e-01, zero_fraction=0.000000
+- `long_term_memory.cg_to_spatial_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cg_to_spatial_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.677201e-01, zero_fraction=0.000000
+- `long_term_memory.cg_to_spatial_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cg_to_spatial_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.859100e-01, zero_fraction=0.000000
+- `long_term_memory.cg_to_spatial_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_to_hg_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.778018e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_to_hg_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.271516e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_to_hg_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_to_hg_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.798629e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_to_hg_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.spatial_to_hg_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.923766e-01, zero_fraction=0.000000
+- `long_term_memory.spatial_to_hg_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.inter_norm_hg` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.579270e-01, zero_fraction=0.000000
+- `long_term_memory.inter_norm_cg` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.726641e-01, zero_fraction=0.000000
+- `long_term_memory.inter_norm_spatial` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.139890e-01, zero_fraction=0.000000
+- `long_term_memory.global_inter_attn` (MultiScaleAttention): params=3, out=[12, 3, 32], status=ok, abs_mean=1.436189e-01, zero_fraction=0.000000
+- `long_term_memory.global_inter_attn.branches.0` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=2.318501e-01, zero_fraction=0.000000
+- `long_term_memory.global_inter_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_inter_attn.branches.1` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=3.592487e-01, zero_fraction=0.000000
+- `long_term_memory.global_inter_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_inter_attn.branches.2` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=2.470842e-01, zero_fraction=0.000000
+- `long_term_memory.global_inter_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.refiner.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.918247e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.refiner.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.087035e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.730106e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=2.341084e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.716806e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.472809e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.918247e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.341084e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.010153e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.refiner.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.138252e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.741451e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=2.597936e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.223527e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.807199e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.010153e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.597936e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.672947e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.refiner.layers.2.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.109039e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.672291e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=2.664993e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.778842e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.463840e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.672947e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.2.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.664993e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.871499e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.refiner.layers.3.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.068792e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.596366e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=2.449170e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.509162e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.428710e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.871499e-01, zero_fraction=0.000000
+- `long_term_memory.refiner.layers.3.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.449170e-01, zero_fraction=0.000000
+- `long_term_memory.refiner_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.002297e-01, zero_fraction=0.000000
+- `long_term_memory.proj.0` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.proj.1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_hg_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=3.847280e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_hg_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.522015e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_hg_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_hg_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.637918e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_hg_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_hg_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.422220e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_hg_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_cg_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=4.048219e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cg_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=9.877906e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cg_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_cg_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.338347e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cg_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_cg_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=7.006141e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cg_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_cv_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=3.554276e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cv_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.690087e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cv_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_cv_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.535055e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cv_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_cv_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.245888e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_cv_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_spatial_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=3.337476e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_spatial_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.924707e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_spatial_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_spatial_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=7.258534e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_spatial_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.qdt_to_spatial_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.789185e-02, zero_fraction=0.000000
+- `long_term_memory.qdt_to_spatial_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_model_stack.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=1.932391e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_model_stack.layers.0.linear1` (Linear): params=4,224, out=[2, 24, 128], status=ok, abs_mean=4.726634e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.dropout` (Dropout): params=0, out=[2, 24, 128], status=ok, abs_mean=2.376310e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.linear2` (Linear): params=4,128, out=[2, 24, 32], status=ok, abs_mean=1.775496e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.norm1` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.145580e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.norm2` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.207113e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.dropout1` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.932391e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.0.dropout2` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.775496e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=2.009835e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_model_stack.layers.1.linear1` (Linear): params=4,224, out=[2, 24, 128], status=ok, abs_mean=4.762967e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.dropout` (Dropout): params=0, out=[2, 24, 128], status=ok, abs_mean=2.405724e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.linear2` (Linear): params=4,128, out=[2, 24, 32], status=ok, abs_mean=1.743077e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.norm1` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.213447e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.norm2` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.274359e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.dropout1` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=2.009835e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.1.dropout2` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.743077e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.self_attn` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=1.852363e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_model_stack.layers.2.linear1` (Linear): params=4,224, out=[2, 24, 128], status=ok, abs_mean=4.765026e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.dropout` (Dropout): params=0, out=[2, 24, 128], status=ok, abs_mean=2.402353e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.linear2` (Linear): params=4,128, out=[2, 24, 32], status=ok, abs_mean=1.729636e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.norm1` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.329820e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.norm2` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.356736e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.dropout1` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.852363e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.2.dropout2` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.729636e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.self_attn` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=1.682992e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.cross_model_stack.layers.3.linear1` (Linear): params=4,224, out=[2, 24, 128], status=ok, abs_mean=4.743228e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.dropout` (Dropout): params=0, out=[2, 24, 128], status=ok, abs_mean=2.377096e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.linear2` (Linear): params=4,128, out=[2, 24, 32], status=ok, abs_mean=1.690370e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.norm1` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.363984e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.norm2` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.432374e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.dropout1` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.682992e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_stack.layers.3.dropout2` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.690370e-01, zero_fraction=0.000000
+- `long_term_memory.cross_model_norm` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.289296e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_attn` (MultiScaleAttention): params=3, out=[12, 3, 32], status=ok, abs_mean=1.754308e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_attn.branches.0` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=2.493518e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_compare_attn.branches.1` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=3.487511e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_compare_attn.branches.2` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=2.201155e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_compare_norm` (LayerNorm): params=64, out=[12, 3, 32], status=ok, abs_mean=8.154987e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=2.198765e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.linear1` (Linear): params=4,224, out=[12, 3, 128], status=ok, abs_mean=4.330468e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.dropout` (Dropout): params=0, out=[12, 3, 128], status=ok, abs_mean=2.352378e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.linear2` (Linear): params=4,128, out=[12, 3, 32], status=ok, abs_mean=1.514509e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.norm1` (LayerNorm): params=64, out=[12, 3, 32], status=ok, abs_mean=8.202903e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.norm2` (LayerNorm): params=64, out=[12, 3, 32], status=ok, abs_mean=8.132403e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.dropout1` (Dropout): params=0, out=[12, 3, 32], status=ok, abs_mean=2.198765e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.0.dropout2` (Dropout): params=0, out=[12, 3, 32], status=ok, abs_mean=1.514509e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[12, 3, 32], status=ok, abs_mean=2.406582e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.linear1` (Linear): params=4,224, out=[12, 3, 128], status=ok, abs_mean=4.381697e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.dropout` (Dropout): params=0, out=[12, 3, 128], status=ok, abs_mean=2.390629e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.linear2` (Linear): params=4,128, out=[12, 3, 32], status=ok, abs_mean=1.550401e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.norm1` (LayerNorm): params=64, out=[12, 3, 32], status=ok, abs_mean=8.154263e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.norm2` (LayerNorm): params=64, out=[12, 3, 32], status=ok, abs_mean=7.946839e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.dropout1` (Dropout): params=0, out=[12, 3, 32], status=ok, abs_mean=2.406582e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_compare_encoder.layers.1.dropout2` (Dropout): params=0, out=[12, 3, 32], status=ok, abs_mean=1.550401e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_specialization_head` (Linear): params=33, out=[12, 3, 1], status=ok, abs_mean=5.341070e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_peer_attn` (MultiScaleAttention): params=3, out=[12, 1, 32], status=ok, abs_mean=1.574207e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_peer_attn.branches.0` (MultiheadAttention): params=3,168, out=[12, 1, 32], status=ok, abs_mean=4.444517e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_peer_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_peer_attn.branches.1` (MultiheadAttention): params=3,168, out=[12, 1, 32], status=ok, abs_mean=2.684526e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_peer_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_peer_attn.branches.2` (MultiheadAttention): params=3,168, out=[12, 1, 32], status=ok, abs_mean=3.361220e-01, zero_fraction=0.000000
+- `long_term_memory.prefusion_peer_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.prefusion_propagation_norm` (LayerNorm): params=64, out=[12, 3, 32], status=ok, abs_mean=8.227761e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_self_attn` (MultiScaleAttention): params=3, out=[2, 24, 32], status=ok, abs_mean=1.285631e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_self_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=1.674828e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_self_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_self_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=1.784930e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_self_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_self_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=1.934724e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_self_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_param_attn` (MultiScaleAttention): params=3, out=[2, 24, 32], status=ok, abs_mean=2.499239e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_param_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=3.114183e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_param_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_param_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=4.087997e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_param_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_param_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=4.069759e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_param_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_ctx_attn` (MultiScaleAttention): params=3, out=[2, 24, 32], status=ok, abs_mean=2.802904e-02, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_ctx_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=6.539301e-02, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_ctx_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_ctx_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=7.349163e-02, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_ctx_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_ctx_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=6.290229e-02, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_ctx_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=2.068335e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.linear1` (Linear): params=4,224, out=[2, 24, 128], status=ok, abs_mean=4.720597e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.dropout` (Dropout): params=0, out=[2, 24, 128], status=ok, abs_mean=2.418008e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.linear2` (Linear): params=4,128, out=[2, 24, 32], status=ok, abs_mean=1.630334e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.norm1` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.216121e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.norm2` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.128995e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.dropout1` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=2.068335e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.0.dropout2` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.630334e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 24, 32], status=ok, abs_mean=2.199538e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.linear1` (Linear): params=4,224, out=[2, 24, 128], status=ok, abs_mean=4.748341e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.dropout` (Dropout): params=0, out=[2, 24, 128], status=ok, abs_mean=2.418951e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.linear2` (Linear): params=4,128, out=[2, 24, 32], status=ok, abs_mean=1.623439e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.norm1` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.114559e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.norm2` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.051076e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.dropout1` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=2.199538e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_encoder.layers.1.dropout2` (Dropout): params=0, out=[2, 24, 32], status=ok, abs_mean=1.623439e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_norm` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.315336e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_output_norm` (LayerNorm): params=64, out=[2, 24, 32], status=ok, abs_mean=8.057072e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_stack_adaptive_gate` (Linear): params=99, out=[2, 3], status=ok, abs_mean=3.358423e-01, zero_fraction=0.000000
+- `long_term_memory.hidden_param_stat_proj.0` (Linear): params=224, out=[4, 32], status=ok, abs_mean=3.863891e+01, zero_fraction=0.000000
+- `long_term_memory.hidden_param_stat_proj.1` (GELU): params=0, out=[4, 32], status=ok, abs_mean=2.241331e+01, zero_fraction=0.343750
+- `long_term_memory.hidden_param_stat_proj.2` (Linear): params=1,056, out=[4, 32], status=ok, abs_mean=1.561205e+01, zero_fraction=0.000000
+- `long_term_memory.hidden_param_norm` (LayerNorm): params=64, out=[4, 32], status=ok, abs_mean=8.739401e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator` (HiddenAttentionOrchestrator): params=1,539, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=1.607689e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.225442e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.109077e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.939633e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.self_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=4.649297e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=9.412188e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=9.412891e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.390113e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.hidden_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.659015e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.024382e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.243742e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=6.033375e-02, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.context_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.797708e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.output_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.525244e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.318880e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.744824e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.466958e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.509250e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.758278e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.727664e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.318880e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.509250e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.634354e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.612322e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.383716e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.540907e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.767866e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.557263e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.634354e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.encoder.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.540907e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.param_stat_proj.0` (Linear): params=224, out=[48, 32], status=ok, abs_mean=1.486057e+00, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.param_stat_proj.1` (GELU): params=0, out=[48, 32], status=ok, abs_mean=8.689362e-01, zero_fraction=0.001953
+- `long_term_memory.global_hidden_orchestrator.param_stat_proj.2` (Linear): params=1,056, out=[48, 32], status=ok, abs_mean=6.113148e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator.param_token_norm` (LayerNorm): params=64, out=[48, 32], status=ok, abs_mean=7.716818e-01, zero_fraction=0.000000
+- `long_term_memory.global_hidden_orchestrator._dim_projectors` (ModuleDict): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator` (HiddenAttentionOrchestrator): params=2,051, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.self_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.564780e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.self_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.941857e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.self_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.self_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.575990e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.self_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.self_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.544198e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.self_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.hidden_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=2.139180e-02, zero_fraction=0.000000
+- `global_hidden_orchestrator.hidden_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.187389e-02, zero_fraction=0.000000
+- `global_hidden_orchestrator.hidden_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.hidden_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.333837e-02, zero_fraction=0.000000
+- `global_hidden_orchestrator.hidden_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.hidden_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.812972e-02, zero_fraction=0.000000
+- `global_hidden_orchestrator.hidden_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.context_attn` (MultiScaleAttention): params=3, out=[2, 6, 32], status=ok, abs_mean=7.507565e-02, zero_fraction=0.000000
+- `global_hidden_orchestrator.context_attn.branches.0` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.288940e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.context_attn.branches.0.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.context_attn.branches.1` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.368885e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.context_attn.branches.1.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.context_attn.branches.2` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.477096e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.context_attn.branches.2.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.508594e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.output_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.264475e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.864990e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.encoder.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.608671e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.458536e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.749639e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.922339e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.972578e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.864990e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.749639e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=3.918287e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `global_hidden_orchestrator.encoder.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.591444e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.469561e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.917507e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.719174e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.692366e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=3.918287e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.encoder.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.917507e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.param_stat_proj.0` (Linear): params=224, out=[64, 32], status=ok, abs_mean=1.414682e+00, zero_fraction=0.000000
+- `global_hidden_orchestrator.param_stat_proj.1` (GELU): params=0, out=[64, 32], status=ok, abs_mean=9.774786e-01, zero_fraction=0.002930
+- `global_hidden_orchestrator.param_stat_proj.2` (Linear): params=1,056, out=[64, 32], status=ok, abs_mean=5.960113e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator.param_token_norm` (LayerNorm): params=64, out=[64, 32], status=ok, abs_mean=7.928777e-01, zero_fraction=0.000000
+- `global_hidden_orchestrator._dim_projectors` (ModuleDict): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `ctx_proj` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `ctx_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.292283e-01, zero_fraction=0.000000
+- `ctx_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `ctx_encoder.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=8.527827e-02, zero_fraction=0.000000
+- `ctx_encoder.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `ctx_encoder.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.708611e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.432054e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.740444e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.884653e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.903159e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=8.527827e-02, zero_fraction=0.000000
+- `ctx_encoder.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.740444e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.505261e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `ctx_encoder.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=4.721326e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.432415e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=1.688757e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.872556e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.930968e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.505261e-01, zero_fraction=0.000000
+- `ctx_encoder.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=1.688757e-01, zero_fraction=0.000000
+- `ctx_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=7.928998e-01, zero_fraction=0.000000
+- `query_ctx_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=1.768365e-01, zero_fraction=0.000000
+- `query_ctx_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `query_norm` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `wm_to_ltm_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=4.148653e-01, zero_fraction=0.000000
+- `wm_to_ltm_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `ltm_to_wm_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=5.895006e-02, zero_fraction=0.000000
+- `ltm_to_wm_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `mem_bridge_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.381891e-01, zero_fraction=0.000000
+- `secondary_hidden_param_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.839738e-01, zero_fraction=0.000000
+- `secondary_hidden_param_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `secondary_hidden_encoder.layers.0.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.855884e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `secondary_hidden_encoder.layers.0.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.207607e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.879475e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=2.360262e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.029416e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.748500e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.855884e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.0.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.360262e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.self_attn` (MultiheadAttention): params=3,168, out=[2, 6, 32], status=ok, abs_mean=2.879475e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.self_attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `secondary_hidden_encoder.layers.1.linear1` (Linear): params=4,224, out=[2, 6, 128], status=ok, abs_mean=5.324103e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.dropout` (Dropout): params=0, out=[2, 6, 128], status=ok, abs_mean=2.846138e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.linear2` (Linear): params=4,128, out=[2, 6, 32], status=ok, abs_mean=2.382594e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.norm1` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.376427e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.norm2` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.723764e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.dropout1` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.879475e-01, zero_fraction=0.000000
+- `secondary_hidden_encoder.layers.1.dropout2` (Dropout): params=0, out=[2, 6, 32], status=ok, abs_mean=2.382594e-01, zero_fraction=0.000000
+- `secondary_hidden_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.295677e-01, zero_fraction=0.000000
+- `secondary_hidden_output_norm` (LayerNorm): params=64, out=[2, 6, 32], status=ok, abs_mean=8.670629e-01, zero_fraction=0.000000
+- `secondary_hidden_adaptive_gate` (Linear): params=165, out=[2, 5], status=ok, abs_mean=5.485648e-01, zero_fraction=0.000000
+- `secondary_hidden_param_proj.0` (Linear): params=224, out=[4, 32], status=ok, abs_mean=6.713036e+01, zero_fraction=0.000000
+- `secondary_hidden_param_proj.1` (GELU): params=0, out=[4, 32], status=ok, abs_mean=3.130137e+01, zero_fraction=0.296875
+- `secondary_hidden_param_proj.2` (Linear): params=1,056, out=[4, 32], status=ok, abs_mean=2.382829e+01, zero_fraction=0.000000
+- `secondary_hidden_param_norm` (LayerNorm): params=64, out=[4, 32], status=ok, abs_mean=7.912206e-01, zero_fraction=0.000000
+- `hippocampal_encoder.0` (Linear): params=33,280, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `hippocampal_encoder.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `hippocampal_encoder.2` (Linear): params=131,328, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `r_proj` (Linear): params=8,448, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cue_to_input` (Linear): params=8,224, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `retrieval.0` (Linear): params=147,968, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `retrieval.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `retrieval.2` (Linear): params=16,416, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `lightbulb.proj` (Linear): params=33, out=[2, 6, 1], status=ok, abs_mean=5.319976e-01, zero_fraction=0.000000
+- `temp_scaler` (ExplosiveRecallScaler): params=0, out=[2], status=ok, abs_mean=1.000000e+00, zero_fraction=0.000000
+- `importance_predictor.0` (Linear): params=2,112, out=[2, 64], status=ok, abs_mean=2.014233e-01, zero_fraction=0.000000
+- `importance_predictor.1` (ReLU): params=0, out=[2, 64], status=ok, abs_mean=7.154732e-02, zero_fraction=0.617188
+- `importance_predictor.2` (Linear): params=65, out=[2, 1], status=ok, abs_mean=1.132568e-01, zero_fraction=0.000000
+- `importance_predictor.3` (Sigmoid): params=0, out=[2, 1], status=ok, abs_mean=5.282840e-01, zero_fraction=0.000000
+- `contrastive_proj.0` (Linear): params=4,224, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `contrastive_proj.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `contrastive_proj.2` (Linear): params=16,512, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `write_gate.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `write_gate.1` (ReLU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `write_gate.2` (Linear): params=65, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `write_gate.3` (Sigmoid): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps._registry` (ModuleDict): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps_fuser.map_H` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps_fuser.map_S` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps_fuser.map_F` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps_fuser.map_P` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps_fuser.gate_phase.0` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `cps_fuser.gate_phase.1` (Sigmoid): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.input_encoder.0` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.input_encoder.1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.input_encoder.2` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.output_decoder` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.shared` (SharedValueStore): params=8,192, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.depth_router.phase_head` (Linear): params=264, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.depth_router.scale_head` (Linear): params=132, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.depth_router.spin_head` (Linear): params=264, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.depth_router.slice_head` (Linear): params=264, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.key_encoder.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.key_encoder.1` (LayerNorm): params=128, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.key_encoder.2` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.key_encoder.3` (Linear): params=4,160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.value_encoder` (Identity): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.bank` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.bank.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.bank.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.bank.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.hg.bank.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.key_encoder.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.key_encoder.1` (LayerNorm): params=128, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.key_encoder.2` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.key_encoder.3` (Linear): params=4,160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.value_encoder` (Identity): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.bank` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.bank.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.bank.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.bank.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.cgmn.bank.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.key_encoder.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.key_encoder.1` (LayerNorm): params=128, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.key_encoder.2` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.key_encoder.3` (Linear): params=4,160, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.value_encoder` (Identity): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.bank` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.bank.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.bank.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.bank.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.spatial.bank.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.bank_gate.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.bank_gate.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.ltm.bank_gate.2` (Linear): params=195, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.projector.euclid` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.projector.hyper` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.projector.sphere` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.projector.torus` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.projector.spatial` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.projector.complex` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.depth_router.phase_head` (Linear): params=264, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.depth_router.scale_head` (Linear): params=132, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.depth_router.spin_head` (Linear): params=264, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.depth_router.slice_head` (Linear): params=264, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.euclid` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.euclid.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.euclid.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.euclid.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.euclid.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.hyper` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.hyper.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.hyper.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.hyper.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.hyper.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.sphere` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.sphere.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.sphere.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.sphere.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.sphere.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.torus` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.torus.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.torus.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.torus.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.torus.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.spatial` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.spatial.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.spatial.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.spatial.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.spatial.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.complex` (GeometryMemoryBank): params=16,400, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.complex.phi.0` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.complex.phi.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.complex.phi.2` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.banks.complex.phi.3` (Tanh): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.bank_gate.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.bank_gate.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.bank_gate.2` (Linear): params=390, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.hop` (GRUCell): params=6,336, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.stability_proj` (Linear): params=2,048, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.conf_head.0` (Linear): params=33, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.mann.conf_head.1` (Sigmoid): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm` (WorkingMemory): params=256, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.input_proj` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.output_proj` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.read_q` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.read_k` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.state` (GRUCell): params=6,336, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack` (TransformerStack): params=2,048, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.ln1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.ff.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.ff.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.ff.2` (Dropout): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.ff.3` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.0.ln2` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.ln1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.ff.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.ff.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.ff.2` (Dropout): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.ff.3` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.1.ln2` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.ln1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.ff.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.ff.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.ff.2` (Dropout): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.ff.3` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.wm_stack.blocks.2.ln2` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.trace_proj` (Linear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.fuse_gate.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.fuse_gate.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.wm.fuse_gate.2` (Linear): params=195, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack` (TransformerStack): params=2,048, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.ln1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.ff.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.ff.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.ff.2` (Dropout): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.ff.3` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.0.ln2` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.ln1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.ff.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.ff.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.ff.2` (Dropout): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.ff.3` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.1.ln2` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.attn` (MultiheadAttention): params=3,168, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.attn.out_proj` (NonDynamicallyQuantizableLinear): params=1,056, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.ln1` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.ff.0` (Linear): params=2,112, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.ff.1` (GELU): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.ff.2` (Dropout): params=0, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.ff.3` (Linear): params=2,080, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+- `spatial_ltm_extension.reasoning_stack.stack.blocks.2.ln2` (LayerNorm): params=64, out=None, status=skipped, abs_mean=0.000000e+00, zero_fraction=1.000000
+
+## Recommendations (Auto-Generated)
+- 441 modules were skipped in the probe path; review conditionals or gating.
+
+## Notes
+- This report separates *registered layers* (from `named_modules`) from hidden/unregistered objects discovered via object-graph traversal.
+- Parameter space here refers to the full cardinality of model parameter tensors (`numel`) and related memory footprint.
+- Hidden/skipped registered layers are not necessarily bugs; some are path-dependent and may require alternate runtime branches to activate.

@@ -28,6 +28,9 @@ class MultiCPSManager(nn.Module):
             raise KeyError(f"Domain '{domain}' not registered. Available: {list(self.cps.keys())}")
         return self.cps[domain], self.fusers[domain]
 
+    def domains(self):
+        return list(self.cps.keys())
+
     def route(self, key: str, fallback: str = "core") -> str:
         if ":" in key:
             dom, _ = key.split(":", 1)

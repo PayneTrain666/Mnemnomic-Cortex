@@ -395,7 +395,7 @@
         "target_kind": "local_import"
       },
       {
-        "elapsed_ms": 0.036,
+        "elapsed_ms": 0.037,
         "evidence": {
           "exists": true,
           "read_only": true,
@@ -408,7 +408,7 @@
         "target_kind": "manifest_exists"
       },
       {
-        "elapsed_ms": 0.002,
+        "elapsed_ms": 0.001,
         "evidence": {
           "read_only": true,
           "sentinel_passed": true,
@@ -447,7 +447,7 @@
         "target_kind": "no_commit_sentinel"
       },
       {
-        "elapsed_ms": 0.002,
+        "elapsed_ms": 0.001,
         "evidence": {
           "read_only": true,
           "sentinel_passed": true,
