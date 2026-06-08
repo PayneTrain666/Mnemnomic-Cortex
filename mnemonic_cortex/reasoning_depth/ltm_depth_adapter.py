@@ -74,7 +74,24 @@ class LTMDepthAdapter:
     def enabled(self) -> bool:
         return bool(self.config.enabled)
 
+    @staticmethod
+    def normalize_bank_name(bank_name: str) -> str:
+        name = str(bank_name).strip().lower()
+        return {
+            "hg": "hg_episodic",
+            "episodic": "hg_episodic",
+            "semantic": "cgmn_semantic",
+            "cgmn": "cgmn_semantic",
+            "curved": "curved_associative",
+            "associative": "curved_associative",
+            "spatial": "spatial_topological",
+            "spatial_ltm": "spatial_topological",
+            "procedural": "procedural_spcp",
+            "spcp": "procedural_spcp",
+        }.get(name, name)
+
     def read_ltm(self, query: torch.Tensor, *, bank_name: str = "cgmn_semantic", return_trace: bool = False):
+        bank_name = self.normalize_bank_name(bank_name)
         bank = self.banks.get(bank_name)
         return bank.read(query, return_trace=return_trace)
 
@@ -96,6 +113,7 @@ class LTMDepthAdapter:
     ) -> Dict[str, Any]:
         if not canonical_slot_id:
             raise LTMDepthAdapterError("canonical_slot_id is required")
+        bank_name = self.normalize_bank_name(bank_name)
         bank = self.banks.get(bank_name)
         bank_result = bank.propose_consolidation_write(
             slot_index=slot_index,
@@ -193,7 +211,7 @@ def ltm_depth_adapter_contract() -> Dict[str, Any]:
             "Z6": "hypothesis / draft abstraction",
             "Z7": "volatile pre-consolidation trace",
         },
-        "banks": ["hg_episodic", "cgmn_semantic", "spatial_topological", "procedural_spcp"],
+        "banks": ["hg_episodic", "cgmn_semantic", "curved_associative", "spatial_topological", "procedural_spcp"],
         "shared_physical_tensor": False,
         "shadow_consolidation_only_by_default": True,
         "paamax_metadata": {

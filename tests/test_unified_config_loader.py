@@ -18,9 +18,17 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
                     "cortex:",
                     "  input_dim: 32",
                     "  output_dim: 32",
+                    "  capacity_profile: compact",
                     "  wm_slots: 9",
+                    "  wm_slot_dim: 192",
                     "  fusion: cross_attn",
                     "  hgm_enabled: false",
+                    "  ltm_hg_slots: 96",
+                    "  ltm_cgmn_slots: 80",
+                    "  ltm_curved_slots: 40",
+                    "  ltm_spatial_slots: 72",
+                    "  max_external_context_tokens: 24",
+                    "  max_parameter_tokens: 20",
                     "features:",
                     "  hgm_enabled: true",
                     "  reasoning_bridge_enabled: false",
@@ -44,6 +52,9 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
         unified = load_unified_yaml_config(str(p))
     assert unified.cortex.input_dim == 32
     assert unified.cortex.fusion == "cross_attn"
+    assert unified.cortex.capacity_profile == "compact"
+    assert unified.cortex.ltm_hg_slots == 96
+    assert unified.cortex.max_external_context_tokens == 24
     # Features section can promote constructor flag.
     assert unified.cortex.hgm_enabled is True
     assert unified.features.hgm_enabled is True
@@ -84,6 +95,9 @@ def test_build_cortex_from_yaml_constructs_model_from_typed_entrypoint():
                     "  input_dim: 16",
                     "  output_dim: 16",
                     "  wm_slots: 5",
+                    "  ltm_hg_slots: 40",
+                    "  ltm_cgmn_slots: 36",
+                    "  ltm_curved_slots: 20",
                     "  hgm_enabled: true",
                     "stores: {}",
                     "ahg: {}",
@@ -95,6 +109,9 @@ def test_build_cortex_from_yaml_constructs_model_from_typed_entrypoint():
         model, unified = build_cortex_from_yaml(str(p))
     assert model.input_dim == 16
     assert model.output_dim == 16
+    assert model.long_term_memory.hg.M == 40
+    assert model.long_term_memory.cgmn.M == 36
+    assert model.long_term_memory.curved.M == 20
     assert unified.cortex.hgm_enabled is True
     assert model.hgm_enabled is True
 

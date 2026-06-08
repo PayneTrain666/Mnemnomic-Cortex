@@ -5,6 +5,7 @@ keep working without duplicating implementation modules.
 """
 from .. import (
     DEFAULT_CGMN_DEPTH_CHART,
+    DEFAULT_CURVED_DEPTH_CHART,
     DEFAULT_HG_DEPTH_CHART,
     DEFAULT_MANN_DEPTH_CHART,
     DEFAULT_SPATIAL_DEPTH_CHART,
@@ -42,6 +43,7 @@ __all__ = [
     "DEFAULT_MANN_DEPTH_CHART",
     "DEFAULT_HG_DEPTH_CHART",
     "DEFAULT_CGMN_DEPTH_CHART",
+    "DEFAULT_CURVED_DEPTH_CHART",
     "DEFAULT_SPATIAL_DEPTH_CHART",
     "SharedValueStore",
     "SharedWriteTrace",

@@ -38,6 +38,8 @@ class MANNLTMSharedSlotGeometryError(ValueError):
 
 
 GEOMETRY_CHART_GAIN: Dict[str, float] = {
+    "curved": 1.09,
+    "curved_associative": 1.09,
     "euclidean": 1.00,
     "hyperbolic": 1.08,
     "poincare": 1.10,
@@ -65,6 +67,7 @@ GEOMETRY_CODE: Dict[str, int] = {
     "torus": 3,
     "cp": 4,
     "grassmann": 5,
+    "curved": 1,
 }
 
 
@@ -163,6 +166,7 @@ class MANNLTMSharedSlotGeometry:
             return query
 
         canonical_id = canonical_slot_id or self._canonical_slot_id(content, mann_slot_index, ltm_slot_index)
+        ltm_bank_name = self._normalize_ltm_bank_name(ltm_bank_name)
         mann_map = mann_geometry_map or self.config.default_mann_geometry_map
         ltm_map = ltm_geometry_map or self.config.default_ltm_geometry_map
 
@@ -257,6 +261,7 @@ class MANNLTMSharedSlotGeometry:
         mann_geometry_map: Optional[str] = None,
         ltm_geometry_map: Optional[str] = None,
     ) -> Dict[str, Any]:
+        ltm_bank_name = self._normalize_ltm_bank_name(ltm_bank_name)
         mann_values = self.mann_adapter.bank.values
         ltm_values = self.ltm_adapter.banks.get(ltm_bank_name).values
 
@@ -347,6 +352,7 @@ class MANNLTMSharedSlotGeometry:
         *,
         mann_slot_index: int,
         ltm_slot_index: int,
+        ltm_bank_name: str = "cgmn_semantic",
         mann_geometry: str = "euclidean",
         ltm_geometry: str = "euclidean",
     ) -> Dict[str, Any]:
@@ -354,7 +360,7 @@ class MANNLTMSharedSlotGeometry:
         self._validate_query(query if query.dim() >= 2 else query.unsqueeze(0))
         q = query.mean(dim=1) if query.dim() == 3 else query
         mann_values = self.mann_adapter.bank.values
-        ltm_bank = self.ltm_adapter.banks.get("cgmn_semantic")
+        ltm_bank = self.ltm_adapter.banks.get(self._normalize_ltm_bank_name(ltm_bank_name))
         ltm_values = ltm_bank.values if ltm_bank is not None else mann_values
 
         mann_vec = mann_values[int(mann_slot_index), 0].unsqueeze(0)
@@ -414,6 +420,7 @@ class MANNLTMSharedSlotGeometry:
             "distance_warped": float(d_warped.mean().item()),
             "mann_geometry": mann_geometry,
             "ltm_geometry": ltm_geometry,
+            "ltm_bank_name": self._normalize_ltm_bank_name(ltm_bank_name),
         }
 
     def _compute_shared_manifold_diagnostics(
@@ -499,11 +506,29 @@ class MANNLTMSharedSlotGeometry:
             if geometry_map_name in maps:
                 return maps[geometry_map_name].geometry_by_depth[depth]
         fallback = {
+            "curved_associative": ["curved", "hyperbolic", "curved", "euclidean", "curved", "torus", "spherical", "curved"],
             "procedural": ["euclidean", "hyperbolic", "spherical", "torus", "complex", "subspace", "spatial_se3", "spcp"],
             "hierarchical": ["euclidean", "hyperbolic", "poincare", "spherical", "complex_projective", "subspace", "spatial_se3", "spcp"],
             "quantum_holographic": ["euclidean", "hyperbolic", "spherical", "torus", "complex_projective", "holographic_phase", "product", "spcp"],
         }
         return fallback.get(geometry_map_name, fallback["procedural"])[depth]
+
+    def _normalize_ltm_bank_name(self, bank_name: str) -> str:
+        normalizer = getattr(self.ltm_adapter, "normalize_bank_name", None)
+        if callable(normalizer):
+            return str(normalizer(bank_name))
+        name = str(bank_name).strip().lower()
+        return {
+            "hg": "hg_episodic",
+            "episodic": "hg_episodic",
+            "semantic": "cgmn_semantic",
+            "cgmn": "cgmn_semantic",
+            "curved": "curved_associative",
+            "associative": "curved_associative",
+            "spatial": "spatial_topological",
+            "spcp": "procedural_spcp",
+            "procedural": "procedural_spcp",
+        }.get(name, name)
 
     def _validate_query(self, query: torch.Tensor) -> None:
         if not isinstance(query, torch.Tensor):
@@ -565,6 +590,7 @@ def mann_ltm_shared_slot_geometry_contract() -> Dict[str, Any]:
         "uses_geometry_manifold_utils": True,
         "supports_shared_slot_store_curvature": True,
         "supports_topology_manager_warp": True,
+        "ltm_banks": ["hg_episodic", "cgmn_semantic", "curved_associative", "spatial_topological", "procedural_spcp"],
         "shared_physical_tensor": False,
         "shadow_only_by_default": True,
         "paamax_metadata": {

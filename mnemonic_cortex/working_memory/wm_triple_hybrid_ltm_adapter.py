@@ -19,7 +19,14 @@ class TripleHybridLTMExternalMemoryBank:
     but reads HG, CGMN, Curved, and fused triple-hybrid outputs from the live LTM.
     """
 
-    _BANK_KEYS: Tuple[str, ...] = ("hg", "cgmn", "curved", "fused")
+    _BANK_KEYS: Tuple[str, ...] = (
+        "hg_episodic",
+        "cgmn_semantic",
+        "curved_associative",
+        "procedural_spcp",
+        "spatial_topological",
+        "fused",
+    )
 
     def __init__(
         self,
@@ -91,21 +98,32 @@ class TripleHybridLTMExternalMemoryBank:
             ltm.set_external_attention_context(wm_ctx)
 
         read_kwargs = self._read_kwargs_from_query(query)
-        names = ["hg", "cgmn", "curved", "fused"]
+        names = ["hg_episodic", "cgmn_semantic", "curved_associative", "procedural_spcp", "spatial_topological", "fused"]
         if hasattr(ltm, "read_banks"):
             bank_reads = ltm.read_banks(seq_tokens, **read_kwargs, include_fused=True)
-            reads = [bank_reads["hg"], bank_reads["cgmn"], bank_reads["curved"], bank_reads["fused"]]
+            reads = [
+                bank_reads["hg"],
+                bank_reads["cgmn"],
+                bank_reads["curved"],
+                bank_reads.get("spcp", bank_reads["curved"]),
+                bank_reads.get("spatial", bank_reads["curved"]),
+                bank_reads["fused"],
+            ]
         elif hasattr(ltm, "read_bank"):
             reads = [
-                ltm.read_bank("hg", seq_tokens, **read_kwargs),
-                ltm.read_bank("cgmn", seq_tokens, **read_kwargs),
-                ltm.read_bank("curved", seq_tokens, **read_kwargs),
+                ltm.read_bank("hg_episodic", seq_tokens, **read_kwargs),
+                ltm.read_bank("cgmn_semantic", seq_tokens, **read_kwargs),
+                ltm.read_bank("curved_associative", seq_tokens, **read_kwargs),
+                ltm.read_bank("procedural_spcp", seq_tokens, **read_kwargs),
+                ltm.read_bank("spatial_topological", seq_tokens, **read_kwargs),
                 ltm.read_bank("fused", seq_tokens, **read_kwargs),
             ]
         else:
             reads = [
                 ltm.hg(seq_tokens, operation="read", **read_kwargs),
                 ltm.cgmn(seq_tokens, operation="read", **read_kwargs),
+                ltm.curved(seq_tokens, operation="read"),
+                ltm.curved(seq_tokens, operation="read"),
                 ltm.curved(seq_tokens, operation="read"),
                 ltm(seq_tokens, operation="read", **read_kwargs),
             ]

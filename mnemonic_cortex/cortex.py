@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 from types import SimpleNamespace
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
@@ -39,8 +39,8 @@ class EnhancedMnemonicCortex(nn.Module):
       • forgetting-style consolidation via consolidate_memories(threshold)
     """
     def __init__(self, input_dim: int, output_dim: int,
-                 sensory_buffer_size: int = 5,
-                 wm_slots: int = 7, wm_slot_dim: int = 256,
+                 sensory_buffer_size: int = 8,
+                 wm_slots: int = 8, wm_slot_dim: int = 256, wm_transformer_layers: int = 2,
                  ltm_hg_dim: int = 24, ltm_hg_slots: int = 1028, ltm_hg_qubits: int = 8,
                  ltm_cgmn_dim: int = 16, ltm_cgmn_slots: int = 512, ltm_cgmn_slot_dim: int = 256,
                  ltm_curved_hidden: int = 256, ltm_curved_curvature: int = 8, ltm_curved_slots: int = 128,
@@ -82,8 +82,11 @@ class EnhancedMnemonicCortex(nn.Module):
                  secondary_hidden_stack_layers: int = 2,
                  enable_global_hidden_attention: bool = True,
                  global_hidden_attention_layers: int = 2,
-                 global_hidden_max_layers: int = 192,
+                 global_hidden_max_layers: int = 128,
                  global_hidden_capture_every_n: int = 1,
+                 max_external_context_tokens: int = 64,
+                 max_parameter_tokens: int = 48,
+                 ltm_depth_profile: str = "standard",
                  hgm_enabled: bool = False):
         super().__init__()
         self.input_dim = input_dim
@@ -112,13 +115,16 @@ class EnhancedMnemonicCortex(nn.Module):
         self.global_hidden_attention_layers = int(max(1, global_hidden_attention_layers))
         self.global_hidden_max_layers = int(max(16, global_hidden_max_layers))
         self.global_hidden_capture_every_n = int(max(1, global_hidden_capture_every_n))
+        self.max_external_context_tokens = int(max(8, max_external_context_tokens))
+        self.max_parameter_tokens = int(max(8, max_parameter_tokens))
+        self.ltm_depth_profile = str(ltm_depth_profile).strip().lower()
 
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
         self.working_memory = EnhancedCurvedMemory(
             input_dim,
             hidden_dim=wm_slot_dim,
             mem_slots=wm_slots,
-            transformer_layers=2,
+            transformer_layers=int(max(0, wm_transformer_layers)),
             transformer_heads=int(ltm_curved_transformer_heads) if int(ltm_curved_transformer_heads) > 0 else mem_heads,
         )
         self.long_term_memory = EnhancedTripleHybridMemory(
@@ -162,6 +168,9 @@ class EnhancedMnemonicCortex(nn.Module):
             fusion_transformer_heads=int(ltm_fusion_transformer_heads),
             cross_model_attention_heads=int(ltm_cross_model_attention_heads),
             enable_hns_fusion=bool(ltm_enable_hns_fusion),
+            depth_profile=str(self.ltm_depth_profile),
+            max_external_context_tokens=self.max_external_context_tokens,
+            max_parameter_tokens=self.max_parameter_tokens,
         )
         self.global_hidden_orchestrator = HiddenAttentionOrchestrator(
             HiddenAttentionConfig(
@@ -172,7 +181,7 @@ class EnhancedMnemonicCortex(nn.Module):
                 max_captured_layers=self.global_hidden_max_layers,
                 capture_every_n=self.global_hidden_capture_every_n,
                 include_parameter_tokens=True,
-                max_parameter_tokens=64,
+                max_parameter_tokens=self.max_parameter_tokens,
                 enable_context_cross_attention=True,
             )
         )
@@ -846,6 +855,57 @@ class EnhancedMnemonicCortex(nn.Module):
         if return_traces:
             return out, traces
         return out
+
+    def mount_memory_geometry_maps(self, mapping: Dict[str, Sequence[str]]) -> None:
+        ltm = getattr(self, "long_term_memory", None)
+        if ltm is None or not hasattr(ltm, "mount_geometry_maps"):
+            raise RuntimeError("long_term_memory does not support geometry map mounting")
+        ltm.mount_geometry_maps(mapping)
+
+    def describe_memory_system_structure(self) -> Dict[str, Any]:
+        ltm = getattr(self, "long_term_memory", None)
+        if ltm is None or not hasattr(ltm, "describe_memory_structure"):
+            return {"available": False}
+        out = dict(ltm.describe_memory_structure())
+        out["wm"] = {
+            "class": type(self.working_memory).__name__,
+            "slot_count": int(getattr(self.working_memory, "M", getattr(self.working_memory, "mem_slots", 0))),
+        }
+        out["shared_memory_enabled"] = bool(getattr(self, "shared_memory_subsystem", None) is not None)
+        return out
+
+    def structure_memory_entries(
+        self,
+        bank_name: str,
+        vectors: torch.Tensor,
+        *,
+        tags: Optional[Sequence[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        ltm = getattr(self, "long_term_memory", None)
+        if ltm is None or not hasattr(ltm, "structure_memory_entries"):
+            raise RuntimeError("long_term_memory does not support structured memory entries")
+        return ltm.structure_memory_entries(bank_name, vectors, tags=tags, metadata=metadata)
+
+    def write_structured_memory(
+        self,
+        bank_name: str,
+        vectors: torch.Tensor,
+        *,
+        write_scale: float = 1.0,
+        tags: Optional[Sequence[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        ltm = getattr(self, "long_term_memory", None)
+        if ltm is None or not hasattr(ltm, "write_structured_memory"):
+            raise RuntimeError("long_term_memory does not support structured writes")
+        return ltm.write_structured_memory(
+            bank_name,
+            vectors,
+            write_scale=write_scale,
+            tags=tags,
+            metadata=metadata,
+        )
 
     def store_episodic_trace(
         self,

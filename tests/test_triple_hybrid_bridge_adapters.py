@@ -41,6 +41,8 @@ def test_triple_hybrid_write_and_read_bank_helpers():
     rhg = model.read_bank("hg", x)
     rcg = model.read_bank("cgmn", x)
     rcv = model.read_bank("curved", x)
+    rcv_canonical = model.read_bank("curved_associative", x)
     assert tuple(rhg.shape) == tuple(x.shape)
     assert tuple(rcg.shape) == tuple(x.shape)
     assert tuple(rcv.shape) == tuple(x.shape)
+    assert torch.allclose(rcv, rcv_canonical, atol=1e-5, rtol=1e-5)

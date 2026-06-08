@@ -5,6 +5,7 @@ from mnemonic_cortex.reasoning_depth import (
     ReasoningControllerConfig,
     ReasoningControllerAPI,
     ReasoningControllerAPIConfig,
+    ReasoningPolicyRouterConfig,
     SharedGeometryRoutingPolicyConfig,
 )
 
@@ -97,3 +98,27 @@ def test_reason2d_api_shared_geometry_content_hash_policy_is_deterministic():
 
     assert first_payload["mann_ref"] == second_payload["mann_ref"]
     assert first_payload["ltm_ref"] == second_payload["ltm_ref"]
+
+
+def test_reason2c_shared_geometry_policy_routes_structural_to_curved_ltm():
+    controller = ReasoningController(
+        ReasoningControllerConfig(
+            enabled=True,
+            key_dim=16,
+            value_dim=16,
+            slot_count=8,
+            max_reasoning_hops=1,
+            use_policy_router=True,
+            policy_router_config=ReasoningPolicyRouterConfig.enabled_default(task_mode="structural_reasoning"),
+            use_shared_mann_ltm_geometry=True,
+        )
+    )
+    payload = controller.run_reasoning_pass(
+        torch.randn(1, 2, 16),
+        content="structural associative reasoning",
+    ).to_dict()
+    route_event = [event for event in payload["trace"]["events"] if event["stage"] == "reasoning_policy_router"][0]
+    shared_event = [event for event in payload["trace"]["events"] if event["stage"] == "mann_ltm_shared_slot_geometry"][0]
+
+    assert route_event["payload"]["route_plan"]["preferred_ltm_bank"] == "curved_associative"
+    assert shared_event["payload"]["ltm_ref"].startswith("ltm.curved_associative.")

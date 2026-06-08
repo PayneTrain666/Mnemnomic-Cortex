@@ -83,10 +83,28 @@ def test_enhanced_spatial_mnemonic_cortex_dual_stack_and_reasoning():
 def test_manifold_utils_metric_distance_runs():
     q = torch.randn(2, 16)
     k = torch.randn(2, 8, 16)
-    for geom in ("euclid", "hyper", "sphere", "torus", "spatial"):
+    for geom in ("euclid", "hyper", "sphere", "torus", "spatial", "curved"):
         d = metric_distance(geom, q, k)
         assert d.shape == (2, 8)
         assert torch.isfinite(d).all()
+
+
+def test_ltm_package_curved_associative_subsystem_runs():
+    cfg = default_config(
+        input_dim=32,
+        model_dim=32,
+        output_dim=32,
+        value_dim=32,
+        key_dim=16,
+        shared_slots=24,
+        ltm_topk=4,
+    )
+    model = ltm.TripleHybridLTM(cfg)
+    x = torch.randn(2, 32)
+    out = model.read(x, bank="curved_associative")
+    assert out.output.shape == (2, 32)
+    assert torch.isfinite(out.output).all()
+    assert "curved" in model.snapshot()
 
 
 def test_cortex_spatial_extension_inherits_ltm_policy():

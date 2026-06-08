@@ -123,6 +123,10 @@ def metric_distance(name: str, q: torch.Tensor, k: torch.Tensor, c: Optional[flo
         return torus_dist(q, k)
     if name == "hyper":
         return hyperbolic_dist(q, k, 1.0 if c is None else c)
+    if name == "curved":
+        hyper = hyperbolic_dist(q, k, 1.0 if c is None else c)
+        euclid = euclid_dist(q, k)
+        return 0.65 * hyper + 0.35 * euclid
     if name == "spatial":
         return spatial_dist(q, k)
     raise ValueError(f"unknown geometry: {name}")

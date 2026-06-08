@@ -344,15 +344,32 @@ class HGEpisodicLTM(nn.Module):
         rec = self.episode_records.get(str(episode_id))
         if rec is None:
             return None
-        slot_ids = list(rec.slot_ids)
-        if include_summary:
-            slot_ids += list(rec.summary_slot_ids)
+        # Memory-first context: keep compact summary anchors before raw slots.
+        slot_ids: List[int] = []
+        if include_summary and rec.summary_slot_ids:
+            slot_ids.extend(list(rec.summary_slot_ids))
+        slot_ids.extend(list(rec.slot_ids))
         if not slot_ids:
             return None
         values = self.slot_store.get_slot_value([int(s) for s in slot_ids])
         if values.numel() == 0:
             return None
-        values = values[: max(1, int(max_tokens))]
+        token_budget = max(1, int(max_tokens))
+        if values.size(0) > token_budget and include_summary and rec.summary_slot_ids:
+            # Keep summary tokens, then evenly sample the remainder from episode slots.
+            summary_n = min(len(rec.summary_slot_ids), token_budget)
+            summaries = values[:summary_n]
+            remaining = token_budget - summary_n
+            if remaining > 0:
+                payload = values[summary_n:]
+                if payload.size(0) > remaining:
+                    idx = torch.linspace(0, payload.size(0) - 1, steps=remaining, device=payload.device)
+                    payload = payload.index_select(0, idx.round().to(dtype=torch.long))
+                values = torch.cat([summaries, payload], dim=0)
+            else:
+                values = summaries
+        else:
+            values = values[:token_budget]
         values = self._transform_episode_sequence(values)
         return values.unsqueeze(0)
 

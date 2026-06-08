@@ -1,14 +1,20 @@
 from dataclasses import dataclass
 
+from .capacity_profile import CapacityProfile
+
+
 @dataclass
 class CortexConfig:
+    # Canonical sizing profile
+    capacity_profile: str = "standard"
+
     # Core dims
     input_dim: int = 160
     output_dim: int = 160
 
     # HG memory
     hg_manifold_dim: int = 24
-    hg_mem_slots: int = 1024
+    hg_mem_slots: int = 1028
     hg_qubits: int = 8
     hg_topk: int = 32
     hg_fractal_scales: int = 4
@@ -26,11 +32,18 @@ class CortexConfig:
     curved_topk: int = 16
 
     # Working memory
-    wm_slots: int = 7
+    wm_slots: int = 8
     wm_slot_dim: int = 256
+    wm_transformer_layers: int = 2
 
-    # Sensory buffer
-    sensory_buffer_size: int = 5
+    # Sensory/context budget
+    sensory_buffer_size: int = 8
+    max_external_context_tokens: int = 64
+    global_hidden_max_layers: int = 128
+    max_parameter_tokens: int = 48
+
+    # Transformer depth policy
+    depth_profile: str = "standard"
 
     # Misc
     seed: int = 42
@@ -41,14 +54,42 @@ class CortexConfig:
     cms_vocab_size: int = 0
     cms_senses: int = 3
 
+    def __post_init__(self) -> None:
+        profile = CapacityProfile.from_name(self.capacity_profile)
+        if int(self.input_dim) <= 0:
+            self.input_dim = int(profile.input_dim)
+        if int(self.output_dim) <= 0:
+            self.output_dim = int(profile.output_dim)
+        self.wm_slots = int(max(1, self.wm_slots if self.wm_slots > 0 else profile.wm_slots))
+        self.wm_slot_dim = int(max(8, self.wm_slot_dim if self.wm_slot_dim > 0 else profile.wm_slot_dim))
+        self.wm_transformer_layers = int(max(0, self.wm_transformer_layers))
+
     def to_cortex_kwargs(self) -> dict:
         return {
             "input_dim": int(self.input_dim),
             "output_dim": int(self.output_dim),
+            "sensory_buffer_size": int(self.sensory_buffer_size),
             "wm_slots": int(self.wm_slots),
             "wm_slot_dim": int(self.wm_slot_dim),
+            "wm_transformer_layers": int(self.wm_transformer_layers),
+            "ltm_hg_dim": int(self.hg_manifold_dim),
+            "ltm_hg_slots": int(self.hg_mem_slots),
+            "ltm_hg_qubits": int(self.hg_qubits),
+            "ltm_cgmn_dim": int(self.cgmn_manifold_dim),
+            "ltm_cgmn_slots": int(self.cgmn_mem_slots),
+            "ltm_cgmn_slot_dim": int(self.cgmn_slot_dim),
+            "ltm_curved_hidden": int(self.curved_hidden_dim),
+            "ltm_curved_slots": int(self.curved_mem_slots),
+            "ltm_n_transformer_layers": 3 if self.depth_profile == "standard" else (2 if self.depth_profile == "compact" else 5),
+            "ltm_fusion_transformer_layers": 2 if self.depth_profile == "compact" else 4,
+            "ltm_cross_model_attention_layers": 1 if self.depth_profile == "compact" else 4,
+            "ltm_prefusion_specialization_layers": 1 if self.depth_profile == "compact" else 2,
+            "global_hidden_max_layers": int(self.global_hidden_max_layers),
+            "max_parameter_tokens": int(self.max_parameter_tokens),
+            "max_external_context_tokens": int(self.max_external_context_tokens),
             "fusion": str(self.fusion),
             "hgm_enabled": bool(self.hgm_enabled),
             "cms_vocab_size": int(self.cms_vocab_size),
             "cms_senses": int(self.cms_senses),
+            "ltm_depth_profile": str(self.depth_profile),
         }

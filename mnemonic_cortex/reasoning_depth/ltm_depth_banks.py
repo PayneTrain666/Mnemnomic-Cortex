@@ -253,6 +253,7 @@ class LTMDepthBank:
         return {
             "hg_episodic": "hyperbolic_episodic",
             "cgmn_semantic": "curved_semantic",
+            "curved_associative": "curved_associative",
             "spatial_topological": "spatial_topological",
             "procedural_spcp": "spherical_complex_projective",
         }.get(self.config.bank_name, "ltm_depth")
@@ -264,6 +265,7 @@ class LTMDepthBanks:
 
     hg_episodic: LTMDepthBank
     cgmn_semantic: LTMDepthBank
+    curved_associative: LTMDepthBank
     spatial_topological: LTMDepthBank
     procedural_spcp: LTMDepthBank
 
@@ -272,6 +274,7 @@ class LTMDepthBanks:
         return cls(
             hg_episodic=LTMDepthBank(LTMDepthBankConfig.disabled("hg_episodic", key_dim, value_dim, slot_count)),
             cgmn_semantic=LTMDepthBank(LTMDepthBankConfig.disabled("cgmn_semantic", key_dim, value_dim, slot_count)),
+            curved_associative=LTMDepthBank(LTMDepthBankConfig.disabled("curved_associative", key_dim, value_dim, slot_count)),
             spatial_topological=LTMDepthBank(LTMDepthBankConfig.disabled("spatial_topological", key_dim, value_dim, slot_count)),
             procedural_spcp=LTMDepthBank(LTMDepthBankConfig.disabled("procedural_spcp", key_dim, value_dim, slot_count)),
         )
@@ -281,11 +284,23 @@ class LTMDepthBanks:
         return cls(
             hg_episodic=LTMDepthBank(LTMDepthBankConfig.enabled_default("hg_episodic", key_dim, value_dim, slot_count)),
             cgmn_semantic=LTMDepthBank(LTMDepthBankConfig.enabled_default("cgmn_semantic", key_dim, value_dim, slot_count)),
+            curved_associative=LTMDepthBank(LTMDepthBankConfig.enabled_default("curved_associative", key_dim, value_dim, slot_count)),
             spatial_topological=LTMDepthBank(LTMDepthBankConfig.enabled_default("spatial_topological", key_dim, value_dim, slot_count)),
             procedural_spcp=LTMDepthBank(LTMDepthBankConfig.enabled_default("procedural_spcp", key_dim, value_dim, slot_count)),
         )
 
     def get(self, bank_name: str) -> LTMDepthBank:
+        bank_name = {
+            "hg": "hg_episodic",
+            "episodic": "hg_episodic",
+            "semantic": "cgmn_semantic",
+            "cgmn": "cgmn_semantic",
+            "curved": "curved_associative",
+            "associative": "curved_associative",
+            "spatial": "spatial_topological",
+            "spcp": "procedural_spcp",
+            "procedural": "procedural_spcp",
+        }.get(str(bank_name).strip().lower(), str(bank_name).strip().lower())
         if not hasattr(self, bank_name):
             raise LTMDepthBankError(f"unknown LTM bank: {bank_name}")
         return getattr(self, bank_name)
@@ -294,6 +309,7 @@ class LTMDepthBanks:
         return {
             "hg_episodic": self.hg_episodic,
             "cgmn_semantic": self.cgmn_semantic,
+            "curved_associative": self.curved_associative,
             "spatial_topological": self.spatial_topological,
             "procedural_spcp": self.procedural_spcp,
         }
@@ -306,7 +322,7 @@ def ltm_depth_banks_contract() -> Dict[str, Any]:
     return {
         "module": "ltm_depth_banks",
         "stage": "REASON-1D",
-        "banks": ["hg_episodic", "cgmn_semantic", "spatial_topological", "procedural_spcp"],
+        "banks": ["hg_episodic", "cgmn_semantic", "curved_associative", "spatial_topological", "procedural_spcp"],
         "key_shape": "[S,8,K]",
         "value_shape": "[S,8,V]",
         "default_enabled": False,

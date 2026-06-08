@@ -21,6 +21,26 @@ class ReasoningTaskMode(str, Enum):
     SAFETY_POLICY = "safety_policy"
 
 
+def normalize_ltm_bank_name(bank_name: str) -> str:
+    name = str(bank_name).strip().lower()
+    canonical = {
+        "hg": "hg_episodic",
+        "episodic": "hg_episodic",
+        "semantic": "cgmn_semantic",
+        "cgmn": "cgmn_semantic",
+        "curved": "curved_associative",
+        "associative": "curved_associative",
+        "spatial": "spatial_topological",
+        "spatial_ltm": "spatial_topological",
+        "procedural": "procedural_spcp",
+        "spcp": "procedural_spcp",
+    }.get(name, name)
+    allowed = {"hg_episodic", "cgmn_semantic", "curved_associative", "spatial_topological", "procedural_spcp"}
+    if canonical not in allowed:
+        raise DepthRouteStrategyError(f"unknown preferred_ltm_bank: {bank_name}")
+    return canonical
+
+
 @dataclass(frozen=True)
 class DepthRouteStrategyConfig:
     """Deterministic bounded route strategy config."""
@@ -42,6 +62,7 @@ class DepthRouteStrategyConfig:
         for depth in self.default_depths:
             if depth < 0 or depth > 7:
                 raise DepthRouteStrategyError("depth IDs must be in [0,7]")
+        normalize_ltm_bank_name(self.preferred_ltm_bank)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -152,11 +173,24 @@ class DepthRouteStrategySelector:
             mann_enabled=self.config.include_mann,
             ltm_enabled=self.config.include_ltm,
             max_hops=max_hops,
-            preferred_ltm_bank=self.config.preferred_ltm_bank,
+            preferred_ltm_bank=self._preferred_ltm_bank(mode, content_l),
             route_reason=reason,
             metadata=metadata or {},
         )
 
+    def _preferred_ltm_bank(self, mode: ReasoningTaskMode, content_l: str) -> str:
+        configured = normalize_ltm_bank_name(self.config.preferred_ltm_bank)
+        if configured != "cgmn_semantic":
+            return configured
+        if any(term in content_l for term in ("spatial", "location", "map", "pose", "quaternion")):
+            return "spatial_topological"
+        if mode == ReasoningTaskMode.STRUCTURAL_REASONING:
+            return "curved_associative"
+        if mode == ReasoningTaskMode.HYPOTHESIS:
+            return "procedural_spcp"
+        if mode == ReasoningTaskMode.EPISODIC_PROJECT or any(term in content_l for term in ("project", "chat", "episode")):
+            return "hg_episodic"
+        return configured
 
 def depth_route_strategy_contract() -> Dict[str, Any]:
     return {
@@ -165,5 +199,7 @@ def depth_route_strategy_contract() -> Dict[str, Any]:
         "bounded_depth_route": True,
         "bounded_hops": True,
         "non_mutating": True,
+        "canonical_ltm_banks": ["hg_episodic", "cgmn_semantic", "curved_associative", "spatial_topological", "procedural_spcp"],
+        "task_mode_aware_ltm_bank_selection": True,
         "default_depth_count_max": 8,
     }

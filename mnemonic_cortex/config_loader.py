@@ -6,6 +6,7 @@ from typing import Any, Dict, Tuple, TYPE_CHECKING
 import torch
 
 from .ahg import AHGConfig
+from .capacity_profile import CapacityProfile
 from .consolidation_broker import StoreConfig
 
 if TYPE_CHECKING:
@@ -50,11 +51,45 @@ class DistillConfig:
 
 @dataclass
 class CortexBuildConfig:
-    input_dim: int = 256
-    output_dim: int = 256
-    wm_slots: int = 7
+    capacity_profile: str = "standard"
+    input_dim: int = 160
+    output_dim: int = 160
+    sensory_buffer_size: int = 8
+    wm_slots: int = 8
+    wm_slot_dim: int = 256
+    wm_transformer_layers: int = 2
     fusion: str = "weighted"
     hgm_enabled: bool = False
+    ltm_hg_slots: int = 1028
+    ltm_cgmn_slots: int = 512
+    ltm_curved_slots: int = 128
+    ltm_spatial_slots: int = 256
+    ltm_n_transformer_layers: int = 3
+    ltm_depth_profile: str = "standard"
+    max_external_context_tokens: int = 64
+    global_hidden_max_layers: int = 128
+    max_parameter_tokens: int = 48
+
+    def to_cortex_kwargs(self) -> Dict[str, Any]:
+        return {
+            "input_dim": int(self.input_dim),
+            "output_dim": int(self.output_dim),
+            "sensory_buffer_size": int(self.sensory_buffer_size),
+            "wm_slots": int(self.wm_slots),
+            "wm_slot_dim": int(self.wm_slot_dim),
+            "wm_transformer_layers": int(self.wm_transformer_layers),
+            "fusion": str(self.fusion),
+            "hgm_enabled": bool(self.hgm_enabled),
+            "ltm_hg_slots": int(self.ltm_hg_slots),
+            "ltm_cgmn_slots": int(self.ltm_cgmn_slots),
+            "ltm_curved_slots": int(self.ltm_curved_slots),
+            "ltm_spatial_slots": int(self.ltm_spatial_slots),
+            "ltm_n_transformer_layers": int(self.ltm_n_transformer_layers),
+            "ltm_depth_profile": str(self.ltm_depth_profile),
+            "max_external_context_tokens": int(self.max_external_context_tokens),
+            "global_hidden_max_layers": int(self.global_hidden_max_layers),
+            "max_parameter_tokens": int(self.max_parameter_tokens),
+        }
 
 
 @dataclass
@@ -134,12 +169,27 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
     features_obj = obj.get("features", {}) or {}
     global_config = _parse_global_config(obj)
 
+    profile_name = str(cortex_obj.get("capacity_profile", "standard"))
+    profile = CapacityProfile.from_name(profile_name)
     cortex_cfg = CortexBuildConfig(
-        input_dim=int(cortex_obj.get("input_dim", 256)),
-        output_dim=int(cortex_obj.get("output_dim", cortex_obj.get("input_dim", 256))),
-        wm_slots=int(cortex_obj.get("wm_slots", 7)),
+        capacity_profile=profile.name,
+        input_dim=int(cortex_obj.get("input_dim", profile.input_dim)),
+        output_dim=int(cortex_obj.get("output_dim", cortex_obj.get("input_dim", profile.output_dim))),
+        sensory_buffer_size=int(cortex_obj.get("sensory_buffer_size", profile.sensory_buffer_size)),
+        wm_slots=int(cortex_obj.get("wm_slots", profile.wm_slots)),
+        wm_slot_dim=int(cortex_obj.get("wm_slot_dim", profile.wm_slot_dim)),
+        wm_transformer_layers=int(cortex_obj.get("wm_transformer_layers", 2)),
         fusion=str(cortex_obj.get("fusion", "weighted")),
         hgm_enabled=_as_bool(cortex_obj.get("hgm_enabled", False), False),
+        ltm_hg_slots=int(cortex_obj.get("ltm_hg_slots", profile.hg_slots)),
+        ltm_cgmn_slots=int(cortex_obj.get("ltm_cgmn_slots", profile.cgmn_slots)),
+        ltm_curved_slots=int(cortex_obj.get("ltm_curved_slots", profile.curved_slots)),
+        ltm_spatial_slots=int(cortex_obj.get("ltm_spatial_slots", profile.spatial_slots)),
+        ltm_n_transformer_layers=int(cortex_obj.get("ltm_n_transformer_layers", 3)),
+        ltm_depth_profile=str(cortex_obj.get("ltm_depth_profile", "standard")),
+        max_external_context_tokens=int(cortex_obj.get("max_external_context_tokens", profile.max_external_context_tokens)),
+        global_hidden_max_layers=int(cortex_obj.get("global_hidden_max_layers", profile.global_hidden_max_layers)),
+        max_parameter_tokens=int(cortex_obj.get("max_parameter_tokens", profile.max_parameter_tokens)),
     )
     features_cfg = FeatureConfig(
         hgm_enabled=_as_bool(features_obj.get("hgm_enabled", False), False),
@@ -185,12 +235,7 @@ def build_cortex_from_yaml(path: str):
     from .cortex import EnhancedMnemonicCortex
 
     unified = load_unified_yaml_config(path)
-    model = EnhancedMnemonicCortex(
-        input_dim=int(unified.cortex.input_dim),
-        output_dim=int(unified.cortex.output_dim),
-        wm_slots=int(unified.cortex.wm_slots),
-        fusion=str(unified.cortex.fusion),
-    )
+    model = EnhancedMnemonicCortex(**unified.cortex.to_cortex_kwargs())
     _apply_unified_features(model, unified, config_path=path)
     return model, unified
 

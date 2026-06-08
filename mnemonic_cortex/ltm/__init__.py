@@ -11,8 +11,10 @@ from .hg_episodic_ltm import EpisodeRecord, HGEpisodicLTM
 from .transformer_policy import DualTransformerPolicy
 from .config import (
     DEFAULT_CGMN_DEPTH_CHART,
+    DEFAULT_CURVED_DEPTH_CHART,
     DEFAULT_HG_DEPTH_CHART,
     DEFAULT_MANN_DEPTH_CHART,
+    DEFAULT_PROCEDURAL_DEPTH_CHART,
     DEFAULT_SPATIAL_DEPTH_CHART,
     SpatialLtmMannConfig,
     default_config,
@@ -49,6 +51,8 @@ __all__ = [
     "DEFAULT_MANN_DEPTH_CHART",
     "DEFAULT_HG_DEPTH_CHART",
     "DEFAULT_CGMN_DEPTH_CHART",
+    "DEFAULT_CURVED_DEPTH_CHART",
+    "DEFAULT_PROCEDURAL_DEPTH_CHART",
     "DEFAULT_SPATIAL_DEPTH_CHART",
     "SharedValueStore",
     "SharedWriteTrace",

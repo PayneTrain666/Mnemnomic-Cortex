@@ -129,7 +129,10 @@ def _resolve_unified_shared_slot_store(cortex: Any) -> Any:
     """Prefer cortex hg-episodic shared store over QDT-local registry when both exist."""
     subsystem = getattr(cortex, "shared_memory_subsystem", None)
     if subsystem is not None and getattr(subsystem, "store", None) is not None:
-        return subsystem.store
+        store = subsystem.store
+        # TripleHybridLTMExternalMemoryBank expects WM shared-slot API with registry.
+        if hasattr(store, "registry") and hasattr(store, "write_slot"):
+            return store
     wm = getattr(cortex, "working_memory", None)
     qdt = getattr(wm, "qdt_working_memory", wm)
     return getattr(qdt, "shared_slot_store", None)

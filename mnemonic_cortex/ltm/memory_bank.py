@@ -10,7 +10,7 @@ import torch.nn as nn
 from .manifold_utils import conformal_scale, metric_distance
 
 
-GEOMETRY_CHOICES = ["euclid", "hyper", "sphere", "torus", "spatial"]
+GEOMETRY_CHOICES = ["euclid", "hyper", "sphere", "torus", "spatial", "curved"]
 
 
 @dataclass

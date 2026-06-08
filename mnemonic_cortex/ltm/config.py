@@ -8,7 +8,9 @@ from typing import Dict, List
 DEFAULT_MANN_DEPTH_CHART = ["euclid", "euclid", "euclid", "hyper", "hyper", "sphere", "torus", "spatial"]
 DEFAULT_HG_DEPTH_CHART = ["hyper", "hyper", "hyper", "sphere", "sphere", "euclid", "torus", "spatial"]
 DEFAULT_CGMN_DEPTH_CHART = ["sphere", "sphere", "hyper", "hyper", "euclid", "euclid", "torus", "torus"]
+DEFAULT_CURVED_DEPTH_CHART = ["curved", "hyper", "curved", "euclid", "curved", "torus", "sphere", "curved"]
 DEFAULT_SPATIAL_DEPTH_CHART = ["spatial", "spatial", "spatial", "spatial", "sphere", "hyper", "torus", "euclid"]
+DEFAULT_PROCEDURAL_DEPTH_CHART = ["sphere", "sphere", "euclid", "torus", "sphere", "euclid", "spatial", "torus"]
 
 
 @dataclass
@@ -57,6 +59,7 @@ class SpatialLtmMannConfig:
     wm_tf_trace_cap: int = 8
     reasoning_stack_depth: int = 0
     inherited_bank_layers: int = 3
+    depth_profile: str = "standard"
     dropout: float = 0.0
 
     sensory_capacity: int = 64
@@ -65,7 +68,9 @@ class SpatialLtmMannConfig:
     mann_depth_chart: List[str] = field(default_factory=lambda: list(DEFAULT_MANN_DEPTH_CHART))
     hg_depth_chart: List[str] = field(default_factory=lambda: list(DEFAULT_HG_DEPTH_CHART))
     cgmn_depth_chart: List[str] = field(default_factory=lambda: list(DEFAULT_CGMN_DEPTH_CHART))
+    curved_depth_chart: List[str] = field(default_factory=lambda: list(DEFAULT_CURVED_DEPTH_CHART))
     spatial_depth_chart: List[str] = field(default_factory=lambda: list(DEFAULT_SPATIAL_DEPTH_CHART))
+    procedural_depth_chart: List[str] = field(default_factory=lambda: list(DEFAULT_PROCEDURAL_DEPTH_CHART))
 
     def validate(self) -> "SpatialLtmMannConfig":
         if self.depth_slices != 8:
@@ -84,7 +89,9 @@ class SpatialLtmMannConfig:
             "mann": self.mann_depth_chart,
             "hg": self.hg_depth_chart,
             "cgmn": self.cgmn_depth_chart,
+            "curved": self.curved_depth_chart,
             "spatial": self.spatial_depth_chart,
+            "procedural": self.procedural_depth_chart,
         }
 
     def resolve_transformer_policy(
@@ -103,6 +110,7 @@ class SpatialLtmMannConfig:
             decoder_layers_cfg=int(self.decoder_transformer_layers),
             inherited_bank_layers=bank_inherit,
             inherited_fusion_layers=inherited_fusion_layers,
+            depth_profile=str(self.depth_profile),
         )
 
     def effective_wm_tf_depth(self, *, inherited_bank_layers: int | None = None) -> int:

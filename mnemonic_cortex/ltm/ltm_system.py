@@ -95,7 +95,7 @@ class LTMSubsystem(nn.Module):
 
 
 class TripleHybridLTM(nn.Module):
-    """HG episodic + CGMN semantic + Spatial atlas LTM over shared values."""
+    """HG episodic + CGMN semantic + Curved + Spatial + Procedural LTM over shared values."""
 
     def __init__(self, cfg: SpatialLtmMannConfig, shared_store: Optional[SharedValueStore] = None):
         super().__init__()
@@ -104,8 +104,17 @@ class TripleHybridLTM(nn.Module):
         self.depth_router = DepthRouter(cfg.value_dim, cfg.phase_bins, cfg.scale_bins, cfg.spin_bins, cfg.depth_slices)
         self.hg = LTMSubsystem("episodic_hg", self.shared, cfg.key_dim, "hyper", cfg, cfg.hg_depth_chart)
         self.cgmn = LTMSubsystem("semantic_cgmn", self.shared, cfg.key_dim, "sphere", cfg, cfg.cgmn_depth_chart)
+        self.curved = LTMSubsystem("curved_associative", self.shared, cfg.key_dim, "curved", cfg, cfg.curved_depth_chart)
         self.spatial = LTMSubsystem("spatial_atlas", self.shared, cfg.key_dim, "spatial", cfg, cfg.spatial_depth_chart)
-        self.bank_gate = nn.Sequential(nn.Linear(cfg.value_dim, 64), nn.GELU(), nn.Linear(64, 3))
+        self.procedural = LTMSubsystem(
+            "procedural_spcp",
+            self.shared,
+            cfg.key_dim,
+            "sphere",
+            cfg,
+            cfg.procedural_depth_chart,
+        )
+        self.bank_gate = nn.Sequential(nn.Linear(cfg.value_dim, 64), nn.GELU(), nn.Linear(64, 5))
 
     def _collapse(self, x: torch.Tensor) -> torch.Tensor:
         return x.mean(dim=1) if x.ndim == 3 else x
@@ -114,17 +123,43 @@ class TripleHybridLTM(nn.Module):
         x_in = self._collapse(x)
         if depth_slice is None:
             *_bins, depth_slice = self.depth_router(x_in)
-        subs = {"hg": self.hg, "cgmn": self.cgmn, "spatial": self.spatial}
+        subs = {
+            "hg": self.hg,
+            "cgmn": self.cgmn,
+            "curved": self.curved,
+            "spatial": self.spatial,
+            "procedural": self.procedural,
+        }
         if bank != "all":
+            if bank == "curved_associative":
+                bank = "curved"
             if bank not in subs:
                 raise ValueError(f"unknown LTM bank {bank}")
             return subs[bank].read(x_in, depth_slice=depth_slice)
         reads = {name: sub.read(x_in, depth_slice=depth_slice) for name, sub in subs.items()}
         logits = self.bank_gate(x_in)
         weights = torch.softmax(logits, dim=-1)
-        stacked = torch.stack([reads["hg"].output, reads["cgmn"].output, reads["spatial"].output], dim=1)
+        stacked = torch.stack(
+            [
+                reads["hg"].output,
+                reads["cgmn"].output,
+                reads["curved"].output,
+                reads["spatial"].output,
+                reads["procedural"].output,
+            ],
+            dim=1,
+        )
         fused = torch.sum(weights.unsqueeze(-1) * stacked, dim=1)
-        conf_stack = torch.cat([reads["hg"].confidence, reads["cgmn"].confidence, reads["spatial"].confidence], dim=-1)
+        conf_stack = torch.cat(
+            [
+                reads["hg"].confidence,
+                reads["cgmn"].confidence,
+                reads["curved"].confidence,
+                reads["spatial"].confidence,
+                reads["procedural"].confidence,
+            ],
+            dim=-1,
+        )
         confidence = torch.sum(weights * conf_stack, dim=-1, keepdim=True)
         disagreement = torch.var(stacked, dim=1).mean(dim=-1, keepdim=True)
         return LTMReadResult(output=fused, confidence=confidence, traces={"reads": reads, "bank_weights": weights, "disagreement": disagreement})
@@ -134,8 +169,16 @@ class TripleHybridLTM(nn.Module):
         x_in = self._collapse(x)
         if depth_slice is None:
             *_bins, depth_slice = self.depth_router(x_in)
-        targets = [target] if target != "all" else ["hg", "cgmn", "spatial"]
-        subs = {"hg": self.hg, "cgmn": self.cgmn, "spatial": self.spatial}
+        targets = [target] if target != "all" else ["hg", "cgmn", "curved", "spatial", "procedural"]
+        targets = ["curved" if t == "curved_associative" else t for t in targets]
+        subs = {
+            "hg": self.hg,
+            "cgmn": self.cgmn,
+            "curved": self.curved,
+            "curved_associative": self.curved,
+            "spatial": self.spatial,
+            "procedural": self.procedural,
+        }
         return {t: subs[t].write(x_in, depth_slice=depth_slice, importance=importance) for t in targets}
 
     @torch.no_grad()
@@ -143,8 +186,16 @@ class TripleHybridLTM(nn.Module):
         x_in = self._collapse(x)
         if depth_slice is None:
             *_bins, depth_slice = self.depth_router(x_in)
-        targets = [target] if target != "all" else ["hg", "cgmn", "spatial"]
-        subs = {"hg": self.hg, "cgmn": self.cgmn, "spatial": self.spatial}
+        targets = [target] if target != "all" else ["hg", "cgmn", "curved", "spatial", "procedural"]
+        targets = ["curved" if t == "curved_associative" else t for t in targets]
+        subs = {
+            "hg": self.hg,
+            "cgmn": self.cgmn,
+            "curved": self.curved,
+            "curved_associative": self.curved,
+            "spatial": self.spatial,
+            "procedural": self.procedural,
+        }
         return {t: subs[t].consolidate(x_in, depth_slice=depth_slice) for t in targets}
 
     def snapshot(self) -> Dict[str, object]:
@@ -152,5 +203,7 @@ class TripleHybridLTM(nn.Module):
             "shared": self.shared.snapshot(),
             "hg": self.hg.bank.snapshot(),
             "cgmn": self.cgmn.bank.snapshot(),
+            "curved": self.curved.bank.snapshot(),
             "spatial": self.spatial.bank.snapshot(),
+            "procedural": self.procedural.bank.snapshot(),
         }

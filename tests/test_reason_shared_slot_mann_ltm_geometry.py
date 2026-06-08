@@ -76,3 +76,41 @@ def test_reason_shared_slot_transforms_mann_and_ltm_slot_views_with_depth_geomet
     assert transformed["mann_chart_transform"]["depth_index"] == 4
     assert transformed["ltm_chart_transform"]["depth_index"] == 6
     assert transformed["paamax_metadata"]["dual_geometry_maps_active"] is True
+
+
+def test_reason_shared_slot_curved_associative_ltm_bank_is_canonical():
+    shared = _build_shared_geometry(dim=16)
+    query = torch.randn(1, 3, 16)
+    out, trace = shared.run_shared_reasoning(
+        query,
+        content="curved associative structure",
+        mann_slot_index=2,
+        ltm_slot_index=4,
+        hop_id=2,
+        ltm_bank_name="curved",
+        ltm_depth_index=3,
+        ltm_geometry_map="curved_associative",
+        return_trace=True,
+    )
+    transformed = shared.transform_slot_views(
+        mann_slot_index=1,
+        mann_depth_index=0,
+        ltm_bank_name="curved",
+        ltm_slot_index=4,
+        ltm_depth_index=3,
+        ltm_geometry_map="curved_associative",
+    )
+    distance = shared.compute_cross_memory_distance(
+        query,
+        mann_slot_index=1,
+        ltm_slot_index=4,
+        ltm_bank_name="curved",
+        ltm_geometry="curved",
+    )
+
+    assert out.shape == (1, 16)
+    assert torch.isfinite(out).all()
+    assert trace["ltm_ref"] == "ltm.curved_associative.slot4.z3"
+    assert trace["ltm_trace"]["bank_name"] == "curved_associative"
+    assert transformed["ltm_chart_transform"]["geometry_map"] == "curved_associative"
+    assert distance["ltm_bank_name"] == "curved_associative"

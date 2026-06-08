@@ -23,6 +23,59 @@ from .topology_manager import TopologyManagerV3
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_MEMORY_GEOMETRY_MAPS = {
+    "hg_episodic": [
+        "hyperbolic",
+        "hyperbolic",
+        "euclidean",
+        "hyperbolic",
+        "spherical",
+        "euclidean",
+        "spatial_se3",
+        "holographic_phase",
+    ],
+    "cgmn_semantic": [
+        "euclidean",
+        "hyperbolic",
+        "spherical",
+        "complex_projective",
+        "subspace",
+        "euclidean",
+        "spatial_se3",
+        "holographic_phase",
+    ],
+    "curved_associative": [
+        "curved",
+        "hyperbolic",
+        "curved",
+        "euclidean",
+        "curved",
+        "torus",
+        "spherical",
+        "curved",
+    ],
+    "spatial_topological": [
+        "euclidean",
+        "hyperbolic",
+        "spatial_se3",
+        "quaternion",
+        "dual_quaternion",
+        "grassmannian",
+        "spatial_se3",
+        "holographic_phase",
+    ],
+    "procedural_spcp": [
+        "euclidean",
+        "spherical",
+        "complex_projective",
+        "spherical",
+        "procedural",
+        "complex_projective",
+        "spatial_se3",
+        "holographic_phase",
+    ],
+}
+
 
 class EnhancedTripleHybridMemory(nn.Module):
     """Wrapper combining HG, CGMN, and Curved memories with selectable fusion:
@@ -43,6 +96,10 @@ class EnhancedTripleHybridMemory(nn.Module):
         curved_hidden: int = 256,
         curved_curvature: int = 8,
         curved_slots: int = 128,
+        procedural_hidden: int = 256,
+        procedural_curvature: int = 8,
+        procedural_slots: int = 128,
+        enable_procedural_spcp: bool = True,
         n_transformer_layers: int = 3,
         n_heads: int = 8,
         attention_type: str = "multiscale",
@@ -87,8 +144,11 @@ class EnhancedTripleHybridMemory(nn.Module):
         hidden_attention_layers: int = 2,
         enable_global_hidden_attention: bool = True,
         global_hidden_attention_layers: int = 2,
-        global_hidden_max_layers: int = 192,
+        global_hidden_max_layers: int = 128,
         global_hidden_capture_every_n: int = 1,
+        max_external_context_tokens: int = 64,
+        max_parameter_tokens: int = 48,
+        depth_profile: str = "standard",
     ):
         super().__init__()
         self.input_dim = int(input_dim)
@@ -106,6 +166,10 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.curved_hidden_dim = int(curved_hidden)
         self.curved_curvature_dim = int(curved_curvature)
         self.curved_slots = int(curved_slots)
+        self.procedural_hidden_dim = int(procedural_hidden)
+        self.procedural_curvature_dim = int(procedural_curvature)
+        self.procedural_slots = int(procedural_slots)
+        self.enable_procedural_spcp = bool(enable_procedural_spcp)
         self.enable_spatial_ltm = bool(enable_spatial_ltm)
         self.spatial_value_dim = int(spatial_value_dim) if int(spatial_value_dim) > 0 else min(256, self.input_dim)
         self.spatial_slots = int(spatial_slots)
@@ -129,17 +193,55 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.global_hidden_attention_layers = int(max(1, global_hidden_attention_layers))
         self.global_hidden_max_layers = int(max(16, global_hidden_max_layers))
         self.global_hidden_capture_every_n = int(max(1, global_hidden_capture_every_n))
+        self.max_external_context_tokens = int(max(8, max_external_context_tokens))
+        self.max_parameter_tokens = int(max(8, max_parameter_tokens))
+        self.depth_profile = str(depth_profile).strip().lower()
+        if self.depth_profile not in {"compact", "standard", "deep"}:
+            self.depth_profile = "standard"
 
-        bank_layers = self.n_transformer_layers
+        profile_defaults = {
+            "compact": {
+                "bank": 2,
+                "fusion": 2,
+                "cross": 1,
+                "prefusion": 1,
+                "hidden_layers": 1,
+                "global_layers": 1,
+                "enable_hidden_stack": False,
+            },
+            "standard": {
+                "bank": 3,
+                "fusion": 4,
+                "cross": 4,
+                "prefusion": 2,
+                "hidden_layers": 2,
+                "global_layers": self.global_hidden_attention_layers,
+                "enable_hidden_stack": self.enable_hidden_attention_stack,
+            },
+            "deep": {
+                "bank": 5,
+                "fusion": 6,
+                "cross": 6,
+                "prefusion": 3,
+                "hidden_layers": max(2, self.hidden_attention_layers),
+                "global_layers": max(2, self.global_hidden_attention_layers),
+                "enable_hidden_stack": self.enable_hidden_attention_stack,
+            },
+        }[self.depth_profile]
+
+        bank_layers = int(max(1, self.n_transformer_layers if int(n_transformer_layers) > 0 else profile_defaults["bank"]))
         hg_layers = int(hg_transformer_layers) if int(hg_transformer_layers) > 0 else bank_layers
         cg_layers = int(cgmn_transformer_layers) if int(cgmn_transformer_layers) > 0 else bank_layers
         cv_layers = int(curved_transformer_layers) if int(curved_transformer_layers) > 0 else bank_layers
         sp_layers_cfg = int(spatial_transformer_layers)
         sp_layers = bank_layers if sp_layers_cfg <= 0 else sp_layers_cfg
         sp_fixed_layers = int(max(0, spatial_fixed_transformer_layers))
-        fusion_layers = int(fusion_transformer_layers) if int(fusion_transformer_layers) > 0 else max(4, bank_layers + 1)
-        cross_layers = int(cross_model_attention_layers) if int(cross_model_attention_layers) > 0 else max(4, bank_layers + 1)
-        prefusion_layers = int(prefusion_specialization_layers) if int(prefusion_specialization_layers) > 0 else max(2, bank_layers - 1)
+        fusion_layers = int(fusion_transformer_layers) if int(fusion_transformer_layers) > 0 else int(profile_defaults["fusion"])
+        cross_layers = int(cross_model_attention_layers) if int(cross_model_attention_layers) > 0 else int(profile_defaults["cross"])
+        prefusion_layers = int(prefusion_specialization_layers) if int(prefusion_specialization_layers) > 0 else int(profile_defaults["prefusion"])
+        self.hidden_attention_layers = int(max(1, self.hidden_attention_layers if int(hidden_attention_layers) > 0 else profile_defaults["hidden_layers"]))
+        self.global_hidden_attention_layers = int(max(1, self.global_hidden_attention_layers if int(global_hidden_attention_layers) > 0 else profile_defaults["global_layers"]))
+        self.enable_hidden_attention_stack = bool(profile_defaults["enable_hidden_stack"])
 
         fusion_heads = self._resolve_heads(self.input_dim, self.n_heads, fusion_transformer_heads)
         cross_model_heads = self._resolve_heads(self.input_dim, self.n_heads, cross_model_attention_heads)
@@ -181,6 +283,18 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.attention_type,
             use_tcn=bool(curved_use_tcn),
         )
+        self.procedural_spcp = None
+        if self.enable_procedural_spcp:
+            self.procedural_spcp = EnhancedCurvedMemoryWithTransformerV2(
+                input_dim,
+                self.procedural_hidden_dim,
+                self.procedural_curvature_dim,
+                self.procedural_slots,
+                cv_layers,
+                cv_heads,
+                self.attention_type,
+                use_tcn=True,
+            )
         self.hg = self.hyper_geometric
         self.hg_episodic_bridge = None
         self.spatial_ltm = None
@@ -205,9 +319,13 @@ class EnhancedTripleHybridMemory(nn.Module):
                 decoder_transformer_layers=0,
                 cross_model_attention_layers=int(cross_layers),
             )
-        topo_subsystems = ("hg", "cgmn", "curved", "spatial") if self.enable_spatial_ltm else ("hg", "cgmn", "curved")
+        topo_subsystems = ["hg", "cgmn", "curved"]
+        if self.procedural_spcp is not None:
+            topo_subsystems.append("spcp")
+        if self.enable_spatial_ltm:
+            topo_subsystems.append("spatial")
         self.topology_manager = TopologyManagerV3(subsystems=topo_subsystems)
-        n_banks = 4 if self.enable_spatial_ltm else 3
+        n_banks = len(topo_subsystems)
         mix_init = torch.ones(n_banks) / float(n_banks)
         self.mix = nn.Parameter(mix_init)
         self.enable_hns_fusion = bool(enable_hns_fusion)
@@ -223,7 +341,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.lightbulb_decay = 0.9
         self.lightbulb_logger = LightbulbEventLogger()
         self.register_buffer("consolidated_usage", torch.zeros(int(consolidated_slots)))
-        router_feat_dim = 12 + (4 if self.enable_spatial_ltm else 0)
+        router_feat_dim = 12 + (4 if self.procedural_spcp is not None else 0) + (4 if self.enable_spatial_ltm else 0)
         self.router = nn.Sequential(
             nn.Linear(input_dim + router_feat_dim, 128),
             nn.ReLU(),
@@ -324,6 +442,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.qdt_to_hg_attn = self._make_attention(cross_model_heads)
         self.qdt_to_cg_attn = self._make_attention(cross_model_heads)
         self.qdt_to_cv_attn = self._make_attention(cross_model_heads)
+        self.qdt_to_spcp_attn = self._make_attention(cross_model_heads) if self.procedural_spcp is not None else None
         self.qdt_to_spatial_attn = self._make_attention(cross_model_heads) if self.enable_spatial_ltm else None
         self.cross_model_stack = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(
@@ -374,7 +493,8 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hidden_stack_parallel_gates = nn.Parameter(torch.tensor([0.45, 0.35, 0.20]))
         self.hidden_stack_adaptive_gate = nn.Linear(input_dim, 3)
         self.hidden_stack_bridge_gate = nn.Parameter(torch.tensor(0.5))
-        self.hidden_param_tokens = nn.Parameter(torch.randn(4, input_dim) * 0.02)
+        # Reserve enough learned tokens for HG/CGMN/Curved/SPCP/Spatial (+1 spare).
+        self.hidden_param_tokens = nn.Parameter(torch.randn(6, input_dim) * 0.02)
         self.hidden_param_stat_proj = nn.Sequential(
             nn.Linear(6, input_dim),
             nn.GELU(),
@@ -391,13 +511,15 @@ class EnhancedTripleHybridMemory(nn.Module):
                 max_captured_layers=self.global_hidden_max_layers,
                 capture_every_n=self.global_hidden_capture_every_n,
                 include_parameter_tokens=True,
-                max_parameter_tokens=48,
+                max_parameter_tokens=self.max_parameter_tokens,
                 enable_context_cross_attention=True,
             )
         )
         self.global_hidden_orchestrator.register_source(self.hg, source_name="triple.hg")
         self.global_hidden_orchestrator.register_source(self.cgmn, source_name="triple.cgmn")
         self.global_hidden_orchestrator.register_source(self.curved, source_name="triple.curved")
+        if self.procedural_spcp is not None:
+            self.global_hidden_orchestrator.register_source(self.procedural_spcp, source_name="triple.spcp")
         if self.spatial_ltm is not None:
             self.global_hidden_orchestrator.register_source(self.spatial_ltm, source_name="triple.spatial")
         self.last_global_hidden_attention_stats = {}
@@ -412,10 +534,25 @@ class EnhancedTripleHybridMemory(nn.Module):
                 QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.curved_slots), bank_name="triple_curved")
             ),
         }
+        if self.procedural_spcp is not None:
+            self.qh_banks["spcp"] = QuantumHologramSlotBank(
+                QuantumHologramConfig(
+                    hrr_dim=self.input_dim,
+                    num_slots=max(64, self.procedural_slots),
+                    bank_name="triple_spcp",
+                )
+            )
         if self.enable_spatial_ltm:
             self.qh_banks["spatial"] = QuantumHologramSlotBank(
                 QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.spatial_slots), bank_name="triple_spatial")
             )
+        self.bank_geometry_maps: Dict[str, list[str]] = {
+            "hg": list(DEFAULT_MEMORY_GEOMETRY_MAPS["hg_episodic"]),
+            "cgmn": list(DEFAULT_MEMORY_GEOMETRY_MAPS["cgmn_semantic"]),
+            "spcp": list(DEFAULT_MEMORY_GEOMETRY_MAPS["procedural_spcp"]),
+            "spatial": list(DEFAULT_MEMORY_GEOMETRY_MAPS["spatial_topological"]),
+            "curved": list(DEFAULT_MEMORY_GEOMETRY_MAPS["curved_associative"]),
+        }
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -487,6 +624,8 @@ class EnhancedTripleHybridMemory(nn.Module):
 
     def _build_hidden_parameter_tokens(self, bsz: int, device, dtype):
         modules = [self.hg, self.cgmn, self.curved]
+        if self.procedural_spcp is not None:
+            modules.append(self.procedural_spcp)
         if self.spatial_ltm is not None:
             modules.append(self.spatial_ltm)
         stats = [self._module_parameter_signature(m, device=device, dtype=dtype) for m in modules]
@@ -571,6 +710,8 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg.set_temperature(t)
         self.cgmn.set_temperature(t)
         self.curved.set_temperature(t)
+        if self.procedural_spcp is not None:
+            self.procedural_spcp.set_temperature(t)
         if self.spatial_ltm is not None:
             self.spatial_ltm.set_temperature(t)
 
@@ -592,6 +733,8 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.hg.clear_external_attention_context()
             self.cgmn.clear_external_attention_context()
             self.curved.clear_external_attention_context()
+            if self.procedural_spcp is not None:
+                self.procedural_spcp.clear_external_attention_context()
             if self.spatial_ltm is not None:
                 self.spatial_ltm.clear_external_attention_context()
             return
@@ -602,10 +745,14 @@ class EnhancedTripleHybridMemory(nn.Module):
             raise ValueError("external attention context must be [T,D], [B,D], or [B,S,D]")
         if ctx.size(-1) != self.hg.input_dim:
             raise ValueError(f"external attention context dim must be {self.hg.input_dim}")
+        if ctx.size(1) > self.max_external_context_tokens:
+            ctx = ctx[:, : self.max_external_context_tokens, :]
         self.external_attention_context = ctx.detach()
         self.hg.set_external_attention_context(self.external_attention_context)
         self.cgmn.set_external_attention_context(self.external_attention_context)
         self.curved.set_external_attention_context(self.external_attention_context)
+        if self.procedural_spcp is not None:
+            self.procedural_spcp.set_external_attention_context(self.external_attention_context)
         if self.spatial_ltm is not None:
             self.spatial_ltm.set_external_attention_context(self.external_attention_context)
 
@@ -664,6 +811,8 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg.enable_energy_efficient_mode(enable)
         self.cgmn.enable_energy_efficient_mode(enable)
         self.curved.enable_energy_efficient_mode(enable)
+        if self.procedural_spcp is not None:
+            self.procedural_spcp.enable_energy_efficient_mode(enable)
         if self.spatial_ltm is not None:
             self.spatial_ltm.enable_energy_efficient_mode(enable)
 
@@ -672,6 +821,8 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.hg.consolidate_unused(threshold)
         self.cgmn.consolidate_unused(threshold)
         self.curved.consolidate_unused(threshold)
+        if self.procedural_spcp is not None:
+            self.procedural_spcp.consolidate_unused(threshold)
         if self.spatial_ltm is not None:
             self.spatial_ltm.consolidate_unused(threshold)
 
@@ -715,10 +866,22 @@ class EnhancedTripleHybridMemory(nn.Module):
                 subsystem="curved",
             )
         )
+        if self.procedural_spcp is not None:
+            self.procedural_spcp.memory_curvature.copy_(
+                self.topology_manager.mutate_curvature(
+                    self.procedural_spcp.memory_curvature,
+                    loss_value=loss_value,
+                    subsystem="spcp",
+                )
+            )
         # Mutate SPD factors with the same topology mode, gently.
         self.hg.spd_L.copy_(self.topology_manager.mutate_tensor_like(self.hg.spd_L, subsystem="hg"))
         self.cgmn.spd_L.copy_(self.topology_manager.mutate_tensor_like(self.cgmn.spd_L, subsystem="cgmn"))
         self.curved.spd_L.copy_(self.topology_manager.mutate_tensor_like(self.curved.spd_L, subsystem="curved"))
+        if self.procedural_spcp is not None:
+            self.procedural_spcp.spd_L.copy_(
+                self.topology_manager.mutate_tensor_like(self.procedural_spcp.spd_L, subsystem="spcp")
+            )
         if self.spatial_ltm is not None and hasattr(self.spatial_ltm, "memory_curvature"):
             self.spatial_ltm.memory_curvature.copy_(
                 self.topology_manager.mutate_curvature(
@@ -739,6 +902,8 @@ class EnhancedTripleHybridMemory(nn.Module):
             self.cgmn.step_topology(loss_value)
         if hasattr(self.curved, "step_topology"):
             self.curved.step_topology(loss_value)
+        if self.procedural_spcp is not None and hasattr(self.procedural_spcp, "step_topology"):
+            self.procedural_spcp.step_topology(loss_value)
         if self.spatial_ltm is not None and hasattr(self.spatial_ltm, "step_topology"):
             self.spatial_ltm.step_topology(loss_value)
 
@@ -937,8 +1102,10 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.lightbulb_logger.log(source="read-output", intensity=float(cross_intensity))
         return self.hns_blend_norm(base_fused + gate * hns_seq)
 
-    def _fuse(self, rhg, rcg, rcv, routing_weights=None, rspatial=None):
+    def _fuse(self, rhg, rcg, rcv, routing_weights=None, rspcp=None, rspatial=None):
         banks = [rhg, rcg, rcv]
+        if rspcp is not None:
+            banks.append(rspcp)
         if rspatial is not None:
             banks.append(rspatial)
         if self.fusion_mode == 'cross_attn':
@@ -1112,10 +1279,14 @@ class EnhancedTripleHybridMemory(nn.Module):
         parts = [rhg, rcg, rcv]
         if rsp is not None:
             parts.append(rsp)
-        joined = torch.cat(parts, dim=1)
-        joined = self.cross_model_norm(joined + self.cross_model_stack(joined))
-        s = rhg.size(1)
-        out = [joined[:, i * s:(i + 1) * s, :] for i in range(len(parts))]
+        # Compact profile avoids quadratic self-attention over concatenated banks.
+        if self.depth_profile == "compact":
+            out = parts
+        else:
+            joined = torch.cat(parts, dim=1)
+            joined = self.cross_model_norm(joined + self.cross_model_stack(joined))
+            s = rhg.size(1)
+            out = [joined[:, i * s:(i + 1) * s, :] for i in range(len(parts))]
         while len(out) < 4:
             out.append(None)
         return out[0], out[1], out[2], out[3]
@@ -1146,6 +1317,7 @@ class EnhancedTripleHybridMemory(nn.Module):
             rhg = self.hg(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
             rcg = self.cgmn(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
             rcv = self.curved(x, operation="read")
+            rspcp = self.procedural_spcp(x, operation="read") if self.procedural_spcp is not None else None
             rsp = self.spatial_ltm(x, operation="read") if self.spatial_ltm is not None else None
             if self.hidden_attention_integration == "pre_external":
                 rhg, rcg, rcv, rsp = self._apply_hidden_attention_stack(
@@ -1164,6 +1336,14 @@ class EnhancedTripleHybridMemory(nn.Module):
                 rhg, rcg, rcv, rsp = self._apply_hidden_attention_stack(
                     rhg, rcg, rcv, rsp, context=context
                 )
+            if rspcp is not None and self.external_attention_context is not None and self.qdt_to_spcp_attn is not None:
+                ctx = self.external_attention_context.to(device=rhg.device, dtype=rhg.dtype)
+                if ctx.size(0) == 1 and rhg.size(0) > 1:
+                    ctx = ctx.expand(rhg.size(0), -1, -1)
+                elif ctx.size(0) != rhg.size(0):
+                    ctx = ctx.mean(dim=0, keepdim=True).expand(rhg.size(0), -1, -1)
+                spcp_ext, _ = self.qdt_to_spcp_attn(rspcp, ctx, ctx, need_weights=False)
+                rspcp = self.cross_model_norm(rspcp + spcp_ext)
             bsz = x.size(0)
             device = x.device
             dtype = x.dtype
@@ -1175,6 +1355,11 @@ class EnhancedTripleHybridMemory(nn.Module):
                 cg_om, cg_cv, cg_dm, cg_en,
                 cv_om, cv_cv, cv_dm, cv_en,
             ]
+            if self.procedural_spcp is not None:
+                spcp_om, spcp_cv, spcp_dm, spcp_en = self._grab_router_features(
+                    self.procedural_spcp, bsz, device, dtype
+                )
+                router_feat_list.extend([spcp_om, spcp_cv, spcp_dm, spcp_en])
             if self.spatial_ltm is not None:
                 sp_om, sp_cv, sp_dm, sp_en = self._grab_router_features(self.spatial_ltm, bsz, device, dtype)
                 router_feat_list.extend([sp_om, sp_cv, sp_dm, sp_en])
@@ -1189,14 +1374,25 @@ class EnhancedTripleHybridMemory(nn.Module):
                 "lightbulb_intensity": float(cross_intensity),
                 "cons_novelty": float(self.cons_novelty),
             }
-            if self.spatial_ltm is not None and routing_weights.size(-1) > 3:
-                router_stats["spatial"] = float(routing_weights[:, 3].detach().mean().item())
+            idx = 3
+            if self.procedural_spcp is not None and routing_weights.size(-1) > idx:
+                router_stats["spcp"] = float(routing_weights[:, idx].detach().mean().item())
+                idx += 1
+            if self.spatial_ltm is not None and routing_weights.size(-1) > idx:
+                router_stats["spatial"] = float(routing_weights[:, idx].detach().mean().item())
             self.last_router_stats = router_stats
             rhg, rcg, rcv = self._prefusion_specialization_exchange(
                 rhg, rcg, rcv, routing_weights=routing_weights
             )
             rhg, rcg, rcv = self._inter_memory_exchange(rhg, rcg, rcv)
-            base_fused = self._fuse(rhg, rcg, rcv, routing_weights=routing_weights, rspatial=rsp)
+            base_fused = self._fuse(
+                rhg,
+                rcg,
+                rcv,
+                routing_weights=routing_weights,
+                rspcp=rspcp,
+                rspatial=rsp,
+            )
             fused = (
                 self._apply_hns_fusion(
                     x,
@@ -1214,6 +1410,8 @@ class EnhancedTripleHybridMemory(nn.Module):
                 fused = self.global_hidden_orchestrator.integrate(fused, context=context)
                 self.last_global_hidden_attention_stats = dict(self.global_hidden_orchestrator.last_stats)
             result = {"hg": rhg, "cgmn": rcg, "curved": rcv, "fused": fused}
+            if rspcp is not None:
+                result["spcp"] = rspcp
             if rsp is not None:
                 result["spatial"] = rsp
             self._read_pipeline_cache = {
@@ -1325,6 +1523,8 @@ class EnhancedTripleHybridMemory(nn.Module):
                 recall_boost=recall_boost,
             )
             _ = self.curved(x, operation="write", importance=importance)
+            if self.procedural_spcp is not None:
+                _ = self.procedural_spcp(x, operation="write", importance=importance)
             if self.spatial_ltm is not None:
                 _ = self.spatial_ltm(x, operation="write", importance=importance)
             hg_out_w = self._seq_pool(hg_seq)
@@ -1332,10 +1532,15 @@ class EnhancedTripleHybridMemory(nn.Module):
                 self.cgmn(x, operation="read", fire_mask=fire_mask, recall_boost=recall_boost)
             )
             cv_out_w = self._seq_pool(self.curved(x, operation="read"))
+            spcp_out_w = self._seq_pool(self.procedural_spcp(x, operation="read")) if self.procedural_spcp is not None else None
             self._record_qh_triplets_for_bank("hg", hg_out_w)
             self._record_qh_triplets_for_bank("cgmn", cg_out_w)
             self._record_qh_triplets_for_bank("curved", cv_out_w)
+            if spcp_out_w is not None:
+                self._record_qh_triplets_for_bank("spcp", spcp_out_w)
             write_banks = [hg_out_w, cg_out_w, cv_out_w]
+            if spcp_out_w is not None:
+                write_banks.append(spcp_out_w)
             if self.spatial_ltm is not None:
                 sp_out_w = self._seq_pool(self.spatial_ltm(x, operation="read"))
                 self._record_qh_triplets_for_bank("spatial", sp_out_w)
@@ -1364,19 +1569,151 @@ class EnhancedTripleHybridMemory(nn.Module):
     def _norm_bank_name(self, bank_name: str) -> str:
         name = str(bank_name).strip().lower()
         spatial_target = "spatial" if self.spatial_ltm is not None else "curved"
+        procedural_target = "spcp" if self.procedural_spcp is not None else "curved"
         alias = {
             "hg": "hg",
             "episodic": "hg",
+            "hg_episodic": "hg",
             "cgmn": "cgmn",
             "semantic": "cgmn",
+            "cgmn_semantic": "cgmn",
             "curved": "curved",
+            "curved_associative": "curved",
+            "associative": "curved",
+            "procedural": procedural_target,
+            "spcp": procedural_target,
+            "procedural_spcp": procedural_target,
             "spatial": spatial_target,
             "spatial_ltm": spatial_target,
             "spatial_atlas": spatial_target,
+            "spatial_topological": spatial_target,
         }
         if name not in alias:
             raise ValueError(f"unknown bank_name={bank_name}")
         return alias[name]
+
+    def _canonical_bank_name(self, normalized_bank_name: str) -> str:
+        name = str(normalized_bank_name).strip().lower()
+        if name == "hg":
+            return "hg_episodic"
+        if name == "cgmn":
+            return "cgmn_semantic"
+        if name == "spatial":
+            return "spatial_topological"
+        if name == "spcp":
+            return "procedural_spcp"
+        if name == "curved":
+            return "curved_associative"
+        return name
+
+    def mount_geometry_map(
+        self,
+        bank_name: str,
+        geometry_by_depth: Sequence[str],
+    ) -> None:
+        n = self._norm_bank_name(bank_name)
+        chart = [str(x).strip() for x in list(geometry_by_depth)]
+        if len(chart) != 8:
+            raise ValueError("geometry_by_depth must contain exactly 8 depth entries")
+        self.bank_geometry_maps[n] = chart
+
+    def mount_geometry_maps(self, mapping: Dict[str, Sequence[str]]) -> None:
+        for bank_name, chart in dict(mapping).items():
+            self.mount_geometry_map(bank_name, chart)
+
+    def describe_memory_structure(self) -> Dict[str, object]:
+        banks = {
+            "hg_episodic": {"enabled": True, "slots": int(self.hg_slots), "geometry_map": list(self.bank_geometry_maps.get("hg", []))},
+            "cgmn_semantic": {"enabled": True, "slots": int(self.cgmn_slots), "geometry_map": list(self.bank_geometry_maps.get("cgmn", []))},
+            "curved_associative": {
+                "enabled": True,
+                "slots": int(self.curved_slots),
+                "geometry_map": list(self.bank_geometry_maps.get("curved", [])),
+            },
+            "spatial_topological": {
+                "enabled": bool(self.spatial_ltm is not None),
+                "slots": int(self.spatial_slots),
+                "geometry_map": list(self.bank_geometry_maps.get("spatial", [])),
+            },
+            "procedural_spcp": {
+                "enabled": bool(self.procedural_spcp is not None),
+                "slots": int(self.procedural_slots),
+                "geometry_map": list(self.bank_geometry_maps.get("spcp", [])),
+            },
+        }
+        return {
+            "banks": banks,
+            "topology_subsystems": list(getattr(self.topology_manager, "subsystems", [])),
+            "shared_lattice_doctrine": {
+                "depth_slices": 8,
+                "quaternion_depth_enabled": True,
+            },
+        }
+
+    @torch.no_grad()
+    def structure_memory_entries(
+        self,
+        bank_name: str,
+        vectors: torch.Tensor,
+        *,
+        tags: Optional[Sequence[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, object]:
+        n = self._norm_bank_name(bank_name)
+        x = torch.as_tensor(vectors, device=self.mix.device, dtype=self.mix.dtype)
+        if x.dim() == 2:
+            x = x.unsqueeze(0)
+        if x.dim() != 3 or x.size(-1) != self.input_dim:
+            raise ValueError(f"vectors must be [B,S,D={self.input_dim}] or [S,D]")
+        chart = list(self.bank_geometry_maps.get(n, DEFAULT_MEMORY_GEOMETRY_MAPS["cgmn_semantic"]))
+        q = x[..., :4]
+        if q.size(-1) < 4:
+            q = F.pad(q, (0, 4 - q.size(-1)))
+        q_mag = torch.linalg.vector_norm(q, ord=2, dim=-1)
+        q_norm = (q_mag / q_mag.amax(dim=-1, keepdim=True).clamp_min(1e-6)).clamp(0.0, 1.0)
+        depth = torch.round(q_norm * 7.0).to(dtype=torch.long)
+        entries = []
+        for b in range(x.size(0)):
+            for s in range(x.size(1)):
+                z = int(depth[b, s].item())
+                entries.append(
+                    {
+                        "batch": int(b),
+                        "token": int(s),
+                        "depth_index": z,
+                        "geometry": chart[z],
+                        "canonical_bank": self._canonical_bank_name(n),
+                        "tags": list(tags or []),
+                        "metadata": dict(metadata or {}),
+                    }
+                )
+        return {
+            "canonical_bank": self._canonical_bank_name(n),
+            "normalized_bank": n,
+            "entries": entries,
+            "geometry_map": chart,
+            "quaternion_depth": True,
+        }
+
+    @torch.no_grad()
+    def write_structured_memory(
+        self,
+        bank_name: str,
+        vectors: torch.Tensor,
+        *,
+        write_scale: float = 1.0,
+        tags: Optional[Sequence[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, object]:
+        struct = self.structure_memory_entries(bank_name, vectors, tags=tags, metadata=metadata)
+        n = self._norm_bank_name(bank_name)
+        x = torch.as_tensor(vectors, device=self.mix.device, dtype=self.mix.dtype)
+        if x.dim() == 2:
+            x = x.unsqueeze(0)
+        self.ingest_episodic_vectors(x, target_banks=(n,), write_scale=float(write_scale))
+        struct["written"] = True
+        struct["write_scale"] = float(write_scale)
+        return struct
 
     def write_bank(
         self,
@@ -1398,6 +1735,10 @@ class EnhancedTripleHybridMemory(nn.Module):
             _ = self.hg(x, operation="write", fire_mask=fire_mask, recall_boost=recall_boost)
         elif name == "cgmn":
             _ = self.cgmn(x, operation="write", fire_mask=fire_mask, recall_boost=recall_boost)
+        elif name == "spcp":
+            if self.procedural_spcp is None:
+                raise RuntimeError("procedural SPCP bank is not enabled")
+            _ = self.procedural_spcp(x, operation="write", importance=importance)
         elif name == "spatial":
             if self.spatial_ltm is None:
                 raise RuntimeError("spatial LTM bank is not enabled")
@@ -1444,6 +1785,10 @@ class EnhancedTripleHybridMemory(nn.Module):
             return reads["cgmn"]
         if name == "curved":
             return reads["curved"]
+        if name == "spcp":
+            if "spcp" not in reads:
+                raise RuntimeError("procedural SPCP bank is not enabled")
+            return reads["spcp"]
         if name == "spatial":
             if "spatial" not in reads:
                 raise RuntimeError("spatial LTM bank is not enabled")
@@ -1455,7 +1800,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         self,
         vectors: torch.Tensor,
         *,
-        target_banks=("hg", "cgmn", "curved", "spatial"),
+        target_banks=("hg", "cgmn", "curved", "spcp", "spatial"),
         write_scale: float = 1.0,
     ) -> Dict[str, int]:
         """
@@ -1478,6 +1823,10 @@ class EnhancedTripleHybridMemory(nn.Module):
                 self.hg.ingest_external_vectors(x, write_scale=write_scale)
             elif name == "cgmn":
                 self.cgmn.ingest_external_vectors(x, write_scale=write_scale)
+            elif name == "spcp":
+                if self.procedural_spcp is None:
+                    continue
+                self.procedural_spcp.ingest_external_vectors(x, write_scale=write_scale)
             elif name == "spatial":
                 if self.spatial_ltm is None:
                     continue

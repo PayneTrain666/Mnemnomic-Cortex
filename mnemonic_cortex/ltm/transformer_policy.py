@@ -25,9 +25,22 @@ class DualTransformerPolicy:
         decoder_layers_cfg: int = 0,
         inherited_bank_layers: int = 3,
         inherited_fusion_layers: int | None = None,
+        depth_profile: str = "standard",
     ) -> "DualTransformerPolicy":
-        bank = int(inherited_bank_layers) if int(bank_layers_cfg) <= 0 else int(bank_layers_cfg)
-        fusion_default = int(inherited_fusion_layers) if inherited_fusion_layers is not None else max(4, bank + 1)
+        profile = str(depth_profile).strip().lower()
+        profile_defaults = {
+            "compact": (2, 2),
+            "standard": (3, 4),
+            "deep": (5, 6),
+        }
+        default_bank, default_fusion = profile_defaults.get(profile, profile_defaults["standard"])
+        inherited_bank = int(inherited_bank_layers) if int(inherited_bank_layers) > 0 else int(default_bank)
+        bank = inherited_bank if int(bank_layers_cfg) <= 0 else int(bank_layers_cfg)
+        fusion_default = (
+            int(inherited_fusion_layers)
+            if inherited_fusion_layers is not None
+            else int(default_fusion if int(fusion_layers_cfg) <= 0 else max(default_fusion, bank + 1))
+        )
         fusion = fusion_default if int(fusion_layers_cfg) <= 0 else int(fusion_layers_cfg)
         decoder = bank if int(decoder_layers_cfg) <= 0 else int(decoder_layers_cfg)
         fixed = max(0, int(fixed_layers_cfg))
@@ -36,7 +49,7 @@ class DualTransformerPolicy:
             fixed_layers=fixed,
             fusion_layers=fusion,
             decoder_layers=decoder,
-            inherited_bank_layers=int(inherited_bank_layers),
+            inherited_bank_layers=int(inherited_bank),
             inherited_fusion_layers=fusion_default,
         )
 

@@ -235,6 +235,8 @@ def grassmann_distance(u: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
 Geom = Literal["euclid", "hyperbolic", "sphere", "torus", "cp", "grassmann"]
 
 GEOMETRY_NAME_TO_GEOM: dict[str, Geom] = {
+    "curved": "hyperbolic",
+    "curved_associative": "hyperbolic",
     "euclidean": "euclid",
     "euclid": "euclid",
     "hyperbolic": "hyperbolic",

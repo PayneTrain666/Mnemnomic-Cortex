@@ -56,6 +56,7 @@ class GeometryKeyProjector(nn.Module):
         self.torus = nn.Linear(in_dim, key_dim)
         self.spatial = nn.Linear(in_dim, key_dim)
         self.complex = nn.Linear(in_dim, key_dim)
+        self.curved = nn.Linear(in_dim, key_dim)
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         if x.ndim != 2:
@@ -67,4 +68,5 @@ class GeometryKeyProjector(nn.Module):
             "torus": self.torus(x),
             "spatial": self.spatial(x),
             "complex": self.complex(x),
+            "curved": torch.tanh(self.curved(x)),
         }

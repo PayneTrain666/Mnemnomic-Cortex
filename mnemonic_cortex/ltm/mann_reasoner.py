@@ -42,6 +42,7 @@ class MANNReasoner(nn.Module):
             "torus": GeometryMemoryBank(cfg.shared_slots, cfg.key_dim, "torus", cfg.depth_slices, cfg.conformal_b, cfg.min_c, cfg.max_c),
             "spatial": GeometryMemoryBank(cfg.shared_slots, cfg.key_dim, "spatial", cfg.depth_slices, cfg.conformal_b, cfg.min_c, cfg.max_c),
             "complex": GeometryMemoryBank(cfg.shared_slots, cfg.key_dim, "euclid", cfg.depth_slices, cfg.conformal_b, cfg.min_c, cfg.max_c),
+            "curved": GeometryMemoryBank(cfg.shared_slots, cfg.key_dim, "curved", cfg.depth_slices, cfg.conformal_b, cfg.min_c, cfg.max_c),
         })
         for bank in self.banks.values():
             bank.set_slice_geometries(cfg.mann_depth_chart)

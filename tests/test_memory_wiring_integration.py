@@ -170,6 +170,26 @@ def test_triple_hybrid_unified_constructor_wires_bank_dims():
     assert isinstance(model.prefusion_compare_attn, MultiScaleAttention)
 
 
+def test_triple_hybrid_slot_capacity_propagates_to_bank_buffers():
+    model = EnhancedTripleHybridMemory(
+        input_dim=32,
+        output_dim=32,
+        hg_slots=48,
+        cgmn_slots=40,
+        curved_slots=24,
+        spatial_slots=20,
+        depth_profile="compact",
+    )
+    assert model.hg.M == 48
+    assert model.hg.q_memory_slots.size(0) == 48
+    assert model.cgmn.M == 40
+    assert model.cgmn.memory_slots.size(0) == 40
+    assert model.curved.M == 24
+    assert model.curved.memory_slots.size(0) == 24
+    assert model.spatial_ltm is not None
+    assert model.spatial_ltm.slots == 20
+
+
 def test_hns_fusion_stack_wires_router_and_lightbulb():
     model = EnhancedTripleHybridMemory(input_dim=32, output_dim=32, hg_slots=32, cgmn_slots=32, curved_slots=16)
     x = torch.randn(2, 4, 32)
@@ -234,6 +254,42 @@ def test_triple_hybrid_read_bank_helpers_match_forward_banks():
     rhg = model.read_bank("hg", x)
     rcg = model.read_bank("cgmn", x)
     rcv = model.read_bank("curved", x)
+    rcv_canonical = model.read_bank("curved_associative", x)
+    rspcp = model.read_bank("procedural_spcp", x)
+    rhg_canonical = model.read_bank("hg_episodic", x)
+    rcg_canonical = model.read_bank("cgmn_semantic", x)
+    rspatial = model.read_bank("spatial_topological", x)
     assert tuple(rhg.shape) == tuple(x.shape)
     assert tuple(rcg.shape) == tuple(x.shape)
     assert tuple(rcv.shape) == tuple(x.shape)
+    assert torch.allclose(rcv, rcv_canonical, atol=1e-5, rtol=1e-5)
+    assert tuple(rspcp.shape) == tuple(x.shape)
+    assert torch.allclose(rhg, rhg_canonical, atol=1e-5, rtol=1e-5)
+    assert torch.allclose(rcg, rcg_canonical, atol=1e-5, rtol=1e-5)
+    assert tuple(rspatial.shape) == tuple(x.shape)
+
+
+def test_memory_geometry_map_mount_and_structured_write_api():
+    cortex = EnhancedMnemonicCortex(input_dim=32, output_dim=32)
+    cortex.mount_memory_geometry_maps(
+        {
+            "hg_episodic": ["hyperbolic"] * 8,
+            "cgmn_semantic": ["euclidean"] * 8,
+            "curved_associative": ["curved"] * 8,
+            "spatial_topological": ["spatial_se3"] * 8,
+            "procedural_spcp": ["complex_projective"] * 8,
+        }
+    )
+    desc = cortex.describe_memory_system_structure()
+    assert desc["banks"]["hg_episodic"]["geometry_map"][0] == "hyperbolic"
+    assert desc["banks"]["curved_associative"]["geometry_map"][0] == "curved"
+    assert desc["banks"]["procedural_spcp"]["enabled"] is True
+
+    vec = torch.randn(2, 3, 32)
+    curved_structured = cortex.structure_memory_entries("curved_associative", vec, tags=["assoc"])
+    assert curved_structured["canonical_bank"] == "curved_associative"
+    structured = cortex.structure_memory_entries("procedural_spcp", vec, tags=["proc"])
+    assert structured["canonical_bank"] == "procedural_spcp"
+    assert len(structured["entries"]) == 6
+    written = cortex.write_structured_memory("procedural_spcp", vec, write_scale=0.7)
+    assert written["written"] is True
