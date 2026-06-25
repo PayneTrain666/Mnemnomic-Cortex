@@ -42,6 +42,14 @@ class CortexConfig:
     global_hidden_max_layers: int = 128
     max_parameter_tokens: int = 48
 
+    # Optional consolidated parameter storage loop stack
+    enable_parameter_storage_loop_stack: bool = False
+    parameter_loop_slots_per_layer: int = 64
+    parameter_loop_free_hidden_layers: int = 4
+    enable_parameter_loop_ltm_context: bool = True
+    enable_parameter_loop_training_writes: bool = False
+    parameter_loop_training_write_scale: float = 1.0
+
     # Transformer depth policy
     depth_profile: str = "standard"
 
@@ -63,6 +71,9 @@ class CortexConfig:
         self.wm_slots = int(max(1, self.wm_slots if self.wm_slots > 0 else profile.wm_slots))
         self.wm_slot_dim = int(max(8, self.wm_slot_dim if self.wm_slot_dim > 0 else profile.wm_slot_dim))
         self.wm_transformer_layers = int(max(0, self.wm_transformer_layers))
+        self.parameter_loop_slots_per_layer = int(max(1, self.parameter_loop_slots_per_layer))
+        self.parameter_loop_free_hidden_layers = int(max(0, self.parameter_loop_free_hidden_layers))
+        self.parameter_loop_training_write_scale = float(max(0.0, self.parameter_loop_training_write_scale))
 
     def to_cortex_kwargs(self) -> dict:
         return {
@@ -87,6 +98,12 @@ class CortexConfig:
             "global_hidden_max_layers": int(self.global_hidden_max_layers),
             "max_parameter_tokens": int(self.max_parameter_tokens),
             "max_external_context_tokens": int(self.max_external_context_tokens),
+            "enable_parameter_storage_loop_stack": bool(self.enable_parameter_storage_loop_stack),
+            "parameter_loop_slots_per_layer": int(self.parameter_loop_slots_per_layer),
+            "parameter_loop_free_hidden_layers": int(self.parameter_loop_free_hidden_layers),
+            "enable_parameter_loop_ltm_context": bool(self.enable_parameter_loop_ltm_context),
+            "enable_parameter_loop_training_writes": bool(self.enable_parameter_loop_training_writes),
+            "parameter_loop_training_write_scale": float(self.parameter_loop_training_write_scale),
             "fusion": str(self.fusion),
             "hgm_enabled": bool(self.hgm_enabled),
             "cms_vocab_size": int(self.cms_vocab_size),

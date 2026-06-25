@@ -69,6 +69,12 @@ class CortexBuildConfig:
     max_external_context_tokens: int = 64
     global_hidden_max_layers: int = 128
     max_parameter_tokens: int = 48
+    enable_parameter_storage_loop_stack: bool = False
+    parameter_loop_slots_per_layer: int = 64
+    parameter_loop_free_hidden_layers: int = 4
+    enable_parameter_loop_ltm_context: bool = True
+    enable_parameter_loop_training_writes: bool = False
+    parameter_loop_training_write_scale: float = 1.0
 
     def to_cortex_kwargs(self) -> Dict[str, Any]:
         return {
@@ -89,6 +95,12 @@ class CortexBuildConfig:
             "max_external_context_tokens": int(self.max_external_context_tokens),
             "global_hidden_max_layers": int(self.global_hidden_max_layers),
             "max_parameter_tokens": int(self.max_parameter_tokens),
+            "enable_parameter_storage_loop_stack": bool(self.enable_parameter_storage_loop_stack),
+            "parameter_loop_slots_per_layer": int(self.parameter_loop_slots_per_layer),
+            "parameter_loop_free_hidden_layers": int(self.parameter_loop_free_hidden_layers),
+            "enable_parameter_loop_ltm_context": bool(self.enable_parameter_loop_ltm_context),
+            "enable_parameter_loop_training_writes": bool(self.enable_parameter_loop_training_writes),
+            "parameter_loop_training_write_scale": float(self.parameter_loop_training_write_scale),
         }
 
 
@@ -190,6 +202,12 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
         max_external_context_tokens=int(cortex_obj.get("max_external_context_tokens", profile.max_external_context_tokens)),
         global_hidden_max_layers=int(cortex_obj.get("global_hidden_max_layers", profile.global_hidden_max_layers)),
         max_parameter_tokens=int(cortex_obj.get("max_parameter_tokens", profile.max_parameter_tokens)),
+        enable_parameter_storage_loop_stack=_as_bool(cortex_obj.get("enable_parameter_storage_loop_stack", False), False),
+        parameter_loop_slots_per_layer=int(cortex_obj.get("parameter_loop_slots_per_layer", 64)),
+        parameter_loop_free_hidden_layers=int(cortex_obj.get("parameter_loop_free_hidden_layers", 4)),
+        enable_parameter_loop_ltm_context=_as_bool(cortex_obj.get("enable_parameter_loop_ltm_context", True), True),
+        enable_parameter_loop_training_writes=_as_bool(cortex_obj.get("enable_parameter_loop_training_writes", False), False),
+        parameter_loop_training_write_scale=float(cortex_obj.get("parameter_loop_training_write_scale", 1.0)),
     )
     features_cfg = FeatureConfig(
         hgm_enabled=_as_bool(features_obj.get("hgm_enabled", False), False),

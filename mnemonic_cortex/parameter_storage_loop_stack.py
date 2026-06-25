@@ -57,6 +57,10 @@ class ParameterStorageLoopConfig:
     manifold_stack: Tuple[str, ...] = field(default_factory=lambda: DEFAULT_PARAMETER_LOOP_MANIFOLDS)
     storage_dtype_bits: int = 16
     include_loop_product_token: bool = True
+    enable_training_slot_updates: bool = False
+    training_update_lr: float = 0.01
+    lightbulb_threshold: float = 0.35
+    explosive_recall_gain: float = 0.65
 
     def validate(self) -> "ParameterStorageLoopConfig":
         if self.model_dim <= 0:
@@ -71,6 +75,12 @@ class ParameterStorageLoopConfig:
             raise ValueError("parameter_slots_per_layer must be positive")
         if self.storage_dtype_bits <= 0:
             raise ValueError("storage_dtype_bits must be positive")
+        if self.training_update_lr < 0.0:
+            raise ValueError("training_update_lr must be non-negative")
+        if self.lightbulb_threshold < 0.0:
+            raise ValueError("lightbulb_threshold must be non-negative")
+        if self.explosive_recall_gain < 0.0:
+            raise ValueError("explosive_recall_gain must be non-negative")
         if len(self.manifold_stack) != self.visible_layers:
             raise ValueError("manifold_stack must contain exactly 10 entries")
         missing = [m for m in self.manifold_stack if m not in MANIFOLD_STORAGE_FACTORS]
@@ -134,6 +144,9 @@ class ParameterStorageLoopStack(nn.Module):
         self.loop_gate = nn.Sequential(nn.Linear(dim * 2, dim), nn.GELU(), nn.Linear(dim, 1), nn.Sigmoid())
         self.output_norm = nn.LayerNorm(dim)
         self.output_proj = nn.Linear(dim, dim)
+        self.register_buffer("last_lightbulb_intensity", torch.tensor(0.0))
+        self.last_context_tokens: Optional[torch.Tensor] = None
+        self.last_slot_update_trace: Dict[str, object] = {}
 
     @staticmethod
     def _resolve_heads(dim: int, requested: int) -> int:
@@ -149,7 +162,16 @@ class ParameterStorageLoopStack(nn.Module):
     def manifold_stack(self) -> Tuple[str, ...]:
         return tuple(self.config.manifold_stack)
 
-    def forward(self, x: torch.Tensor, *, return_trace: bool = False):
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        fire_mask: Optional[torch.Tensor] = None,
+        recall_boost: float = 0.0,
+        allow_slot_update: bool = False,
+        slot_update_scale: float = 1.0,
+        return_trace: bool = False,
+    ):
         self._validate_input(x)
         bsz = x.size(0)
         visible_contexts: List[torch.Tensor] = []
@@ -201,15 +223,24 @@ class ParameterStorageLoopStack(nn.Module):
         link_tokens = self.loop_link_tokens.to(device=x.device, dtype=x.dtype).unsqueeze(0).expand(bsz, -1, -1)
         product_token = self._build_product_token(memory_tokens)
         attention_tokens = torch.cat([memory_tokens, link_tokens, product_token], dim=1)
+        self.last_context_tokens = attention_tokens.detach()
 
         loop_out, _ = self.loop_attention(hidden_state, attention_tokens, attention_tokens, need_weights=False)
         observed, _ = self.parameter_observer_attention(loop_out, attention_tokens, attention_tokens, need_weights=False)
+        auto_fire, intensity = self.detect_lightbulb_moment(hidden_state, product_token)
+        effective_fire = self._resolve_fire_mask(fire_mask, auto_fire)
+        boost = self._recall_multiplier(effective_fire, recall_boost)
         gate = self.loop_gate(torch.cat([hidden_state, observed], dim=-1))
-        processed = hidden_state + gate * observed
+        processed = hidden_state + gate * boost * observed
 
         if self.free_processor is not None:
             processed, _ = self.free_processor(processed, need_weights=False)
         out = self.output_proj(self.output_norm(processed))
+        slot_update_trace = self.update_parameter_slots(
+            x,
+            allow_update=bool(allow_slot_update),
+            write_scale=float(slot_update_scale),
+        )
 
         if not return_trace:
             return out
@@ -221,14 +252,112 @@ class ParameterStorageLoopStack(nn.Module):
             "loop_attention_tokens": int(attention_tokens.size(1)),
             "parameter_observer_attention": True,
             "product_manifold_token": bool(self.config.include_loop_product_token),
+            "lightbulb": {
+                "triggered": bool(effective_fire.any().item()),
+                "auto_triggered": bool(auto_fire.any().item()),
+                "intensity_mean": float(intensity.mean().detach().item()),
+                "recall_boost": float(recall_boost),
+                "explosive_recall_gain": float(self.config.explosive_recall_gain),
+            },
+            "slot_update": slot_update_trace,
             "capacity_estimate": self.estimate_storage_capacity(),
             "safety": {
                 "prototype": True,
                 "external_memory_write": False,
                 "shared_slot_write": False,
                 "qspin_runtime_activation": False,
+                "training_slot_update_requires_opt_in": True,
             },
         }
+
+    @torch.no_grad()
+    def build_ltm_context_tokens(
+        self,
+        query: Optional[torch.Tensor] = None,
+        *,
+        max_tokens: int = 32,
+    ) -> torch.Tensor:
+        """Build bounded read-only context tokens for LTM attention."""
+        ref = query if query is not None else self.visible_parameter_slots
+        device = ref.device
+        dtype = ref.dtype if torch.is_floating_point(ref) else self.visible_parameter_slots.dtype
+        bsz = int(query.size(0)) if query is not None and query.dim() >= 2 else 1
+        visible = self.visible_parameter_slots.to(device=device, dtype=dtype).mean(dim=1)
+        hidden = self.hidden_parameter_slots.to(device=device, dtype=dtype).mean(dim=1)
+        links = self.loop_link_tokens.to(device=device, dtype=dtype)
+        seed = self.product_manifold_token.to(device=device, dtype=dtype)
+        product = F.normalize(seed + (visible.mean(dim=0, keepdim=True) * hidden.mean(dim=0, keepdim=True)), dim=-1, eps=1e-8)
+        tokens = torch.cat([visible, hidden, links, product], dim=0)
+        tokens = tokens[: max(1, int(max_tokens))]
+        return tokens.unsqueeze(0).expand(bsz, -1, -1).detach()
+
+    @torch.no_grad()
+    def read_parameter_summary(self, query: torch.Tensor, *, top_k: int = 8, return_trace: bool = False):
+        self._validate_input(query)
+        ctx = self.build_ltm_context_tokens(query, max_tokens=max(1, int(top_k)))
+        q = F.normalize(query.mean(dim=1), dim=-1, eps=1e-8)
+        k = F.normalize(ctx, dim=-1, eps=1e-8)
+        scores = torch.einsum("bd,btd->bt", q, k)
+        weights = torch.softmax(scores, dim=-1)
+        out = torch.sum(weights.unsqueeze(-1) * ctx, dim=1)
+        trace = {
+            "trace_type": "parameter_loop_read_only",
+            "top_k": int(ctx.size(1)),
+            "scores_mean": float(scores.mean().detach().item()),
+            "read_only": True,
+            "no_memory_store_mutation": True,
+        }
+        if return_trace:
+            return out, trace
+        return out
+
+    def detect_lightbulb_moment(self, hidden_state: torch.Tensor, product_token: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        pooled = F.normalize(hidden_state.mean(dim=1), dim=-1, eps=1e-8)
+        product = F.normalize(product_token.squeeze(1), dim=-1, eps=1e-8)
+        novelty = (1.0 - (pooled * product).sum(dim=-1)).clamp(0.0, 2.0) * 0.5
+        energy = torch.tanh(hidden_state.std(dim=1).mean(dim=-1)).clamp_min(0.0)
+        intensity = (0.65 * novelty + 0.35 * energy).clamp(0.0, 1.0)
+        fire = intensity > float(self.config.lightbulb_threshold)
+        self.last_lightbulb_intensity.copy_(intensity.mean().detach())
+        return fire, intensity
+
+    @torch.no_grad()
+    def update_parameter_slots(
+        self,
+        observations: torch.Tensor,
+        *,
+        allow_update: bool = False,
+        write_scale: float = 1.0,
+    ) -> Dict[str, object]:
+        if not (self.training and bool(self.config.enable_training_slot_updates) and bool(allow_update)):
+            self.last_slot_update_trace = {
+                "updated": False,
+                "reason": "disabled_or_not_training",
+                "requires_training": True,
+                "requires_enable_training_slot_updates": True,
+                "requires_allow_update": True,
+            }
+            return dict(self.last_slot_update_trace)
+        self._validate_input(observations)
+        obs = observations.mean(dim=(0, 1)).to(device=self.visible_parameter_slots.device, dtype=self.visible_parameter_slots.dtype)
+        lr = float(self.config.training_update_lr) * float(max(0.0, write_scale))
+        lr = max(0.0, min(0.25, lr))
+        if lr <= 0.0:
+            self.last_slot_update_trace = {"updated": False, "reason": "zero_lr"}
+            return dict(self.last_slot_update_trace)
+        target_visible = obs.view(1, 1, -1).expand_as(self.visible_parameter_slots)
+        target_hidden = torch.tanh(obs).view(1, 1, -1).expand_as(self.hidden_parameter_slots)
+        self.visible_parameter_slots.mul_(1.0 - lr).add_(target_visible, alpha=lr)
+        self.hidden_parameter_slots.mul_(1.0 - lr).add_(target_hidden, alpha=lr)
+        self.last_slot_update_trace = {
+            "updated": True,
+            "write_scale": float(write_scale),
+            "lr": float(lr),
+            "updated_tensors": ["visible_parameter_slots", "hidden_parameter_slots"],
+            "external_memory_write": False,
+            "shared_slot_write": False,
+        }
+        return dict(self.last_slot_update_trace)
 
     def estimate_storage_capacity(self) -> Dict[str, object]:
         """Estimate storage using loop-stack/product-manifold accounting.
@@ -287,6 +416,20 @@ class ParameterStorageLoopStack(nn.Module):
         visible = memory_tokens[:, : self.config.visible_layers, :].mean(dim=1, keepdim=True)
         hidden = memory_tokens[:, self.config.visible_layers :, :].mean(dim=1, keepdim=True)
         return F.normalize(seed + visible * hidden, dim=-1, eps=1e-8)
+
+    def _resolve_fire_mask(self, fire_mask: Optional[torch.Tensor], auto_fire: torch.Tensor) -> torch.Tensor:
+        if fire_mask is None:
+            return auto_fire
+        mask = torch.as_tensor(fire_mask, device=auto_fire.device)
+        if mask.dim() > 1:
+            mask = mask.reshape(mask.size(0), -1).any(dim=-1)
+        return mask.to(dtype=torch.bool) | auto_fire
+
+    def _recall_multiplier(self, fire_mask: torch.Tensor, recall_boost: float) -> torch.Tensor:
+        boost = float(max(0.0, recall_boost)) * float(self.config.explosive_recall_gain)
+        if boost <= 0.0:
+            return torch.ones(fire_mask.size(0), 1, 1, device=fire_mask.device)
+        return 1.0 + fire_mask.to(dtype=self.visible_parameter_slots.dtype).view(-1, 1, 1) * boost
 
     @staticmethod
     def _expand_slots(slots: torch.Tensor, batch_size: int, ref: torch.Tensor) -> torch.Tensor:

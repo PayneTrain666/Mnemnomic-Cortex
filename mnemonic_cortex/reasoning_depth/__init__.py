@@ -88,12 +88,22 @@ from .mann_ltm_shared_slot_geometry import (
     MANNLTMSharedSlotGeometryError,
     mann_ltm_shared_slot_geometry_contract,
 )
+from .parameter_loop_adapter import (
+    ParameterLoopAdapterConfig,
+    ParameterLoopAdapter,
+    ParameterLoopAdapterError,
+    parameter_loop_adapter_contract,
+)
 
 __all__ = list(__all__) + [
     "SharedGeometrySlotConfig",
     "MANNLTMSharedSlotGeometry",
     "MANNLTMSharedSlotGeometryError",
     "mann_ltm_shared_slot_geometry_contract",
+    "ParameterLoopAdapterConfig",
+    "ParameterLoopAdapter",
+    "ParameterLoopAdapterError",
+    "parameter_loop_adapter_contract",
 ]
 
 from .reasoning_policy_router import ReasoningPolicyRouterConfig

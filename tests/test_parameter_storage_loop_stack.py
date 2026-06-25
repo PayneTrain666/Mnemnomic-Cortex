@@ -6,6 +6,7 @@ from mnemonic_cortex import (
     ParameterStorageLoopStack,
     estimate_parameter_storage_loop_capacity,
 )
+from mnemonic_cortex.cortex import EnhancedMnemonicCortex
 
 
 def test_parameter_storage_loop_stack_forward_trace_and_shape():
@@ -54,3 +55,74 @@ def test_parameter_storage_loop_rejects_non_ten_layer_maps():
         assert "exactly 10" in str(exc)
     else:
         raise AssertionError("expected non-10 manifold map to be rejected")
+
+
+def test_cortex_optional_parameter_storage_loop_wires_hidden_attention_source():
+    model = EnhancedMnemonicCortex(
+        input_dim=16,
+        output_dim=16,
+        ltm_hg_slots=16,
+        ltm_cgmn_slots=16,
+        ltm_curved_slots=8,
+        ltm_spatial_slots=8,
+        enable_parameter_storage_loop_stack=True,
+        parameter_loop_slots_per_layer=2,
+        parameter_loop_free_hidden_layers=1,
+    )
+    model.eval()
+
+    assert model.parameter_storage_loop_stack is not None
+    desc = model.describe_parameter_storage_loop()
+    assert desc["enabled"] is True
+    assert desc["hidden_attention_source"] == "cortex.parameter_loop"
+    assert desc["capacity_estimate"]["effective_parameter_storage_units"] > desc["capacity_estimate"]["normal_physical_slot_scalars"]
+    assert any(name.startswith("cortex.parameter_loop") for name, _module in model.global_hidden_orchestrator._tracked_modules)
+
+    x = torch.randn(1, 2, 16)
+    ctx = torch.randn(1, 16)
+    with torch.no_grad():
+        out = model(x, ctx, operation="process")
+    assert out.shape == x.shape
+    assert torch.isfinite(out).all()
+    assert model.last_parameter_storage_loop_stats["effective_to_physical_ratio"] > 1.0
+    assert model.last_parameter_storage_loop_stats["ltm_context_tokens"] > 0
+    assert model.long_term_memory.external_attention_context is not None
+
+
+def test_parameter_storage_loop_lightbulb_and_guarded_training_updates():
+    cfg = ParameterStorageLoopConfig(
+        model_dim=16,
+        parameter_slots_per_layer=2,
+        free_hidden_layers=0,
+        enable_training_slot_updates=True,
+        training_update_lr=0.05,
+        lightbulb_threshold=0.0,
+    )
+    model = ParameterStorageLoopStack(cfg)
+    model.train()
+    before = model.visible_parameter_slots.detach().clone()
+    x = torch.randn(2, 3, 16)
+    out, trace = model(
+        x,
+        fire_mask=torch.tensor([True, False]),
+        recall_boost=0.5,
+        allow_slot_update=True,
+        slot_update_scale=1.0,
+        return_trace=True,
+    )
+
+    assert out.shape == x.shape
+    assert trace["lightbulb"]["triggered"] is True
+    assert trace["slot_update"]["updated"] is True
+    assert not torch.equal(before, model.visible_parameter_slots.detach())
+
+
+def test_parameter_storage_loop_training_updates_default_to_disabled():
+    cfg = ParameterStorageLoopConfig(model_dim=16, parameter_slots_per_layer=2)
+    model = ParameterStorageLoopStack(cfg)
+    model.train()
+    before = model.visible_parameter_slots.detach().clone()
+    _out, trace = model(torch.randn(1, 2, 16), allow_slot_update=True, return_trace=True)
+
+    assert trace["slot_update"]["updated"] is False
+    assert torch.equal(before, model.visible_parameter_slots.detach())

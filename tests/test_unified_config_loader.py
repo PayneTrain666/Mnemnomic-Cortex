@@ -29,6 +29,12 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
                     "  ltm_spatial_slots: 72",
                     "  max_external_context_tokens: 24",
                     "  max_parameter_tokens: 20",
+                    "  enable_parameter_storage_loop_stack: true",
+                    "  parameter_loop_slots_per_layer: 3",
+                    "  parameter_loop_free_hidden_layers: 1",
+                    "  enable_parameter_loop_ltm_context: true",
+                    "  enable_parameter_loop_training_writes: false",
+                    "  parameter_loop_training_write_scale: 0.5",
                     "features:",
                     "  hgm_enabled: true",
                     "  reasoning_bridge_enabled: false",
@@ -55,6 +61,12 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
     assert unified.cortex.capacity_profile == "compact"
     assert unified.cortex.ltm_hg_slots == 96
     assert unified.cortex.max_external_context_tokens == 24
+    assert unified.cortex.enable_parameter_storage_loop_stack is True
+    assert unified.cortex.parameter_loop_slots_per_layer == 3
+    assert unified.cortex.parameter_loop_free_hidden_layers == 1
+    assert unified.cortex.enable_parameter_loop_ltm_context is True
+    assert unified.cortex.enable_parameter_loop_training_writes is False
+    assert unified.cortex.parameter_loop_training_write_scale == 0.5
     # Features section can promote constructor flag.
     assert unified.cortex.hgm_enabled is True
     assert unified.features.hgm_enabled is True
@@ -98,6 +110,10 @@ def test_build_cortex_from_yaml_constructs_model_from_typed_entrypoint():
                     "  ltm_hg_slots: 40",
                     "  ltm_cgmn_slots: 36",
                     "  ltm_curved_slots: 20",
+                    "  enable_parameter_storage_loop_stack: true",
+                    "  parameter_loop_slots_per_layer: 2",
+                    "  parameter_loop_free_hidden_layers: 1",
+                    "  enable_parameter_loop_ltm_context: true",
                     "  hgm_enabled: true",
                     "stores: {}",
                     "ahg: {}",
@@ -112,6 +128,8 @@ def test_build_cortex_from_yaml_constructs_model_from_typed_entrypoint():
     assert model.long_term_memory.hg.M == 40
     assert model.long_term_memory.cgmn.M == 36
     assert model.long_term_memory.curved.M == 20
+    assert model.parameter_storage_loop_stack is not None
+    assert model.describe_parameter_storage_loop()["enabled"] is True
     assert unified.cortex.hgm_enabled is True
     assert model.hgm_enabled is True
 

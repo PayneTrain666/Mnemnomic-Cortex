@@ -30,6 +30,7 @@ from .quant_fuser import QuantAwareCPSFuser
 from .router_losses import router_regularizer
 from .candidate_view_builder import MemoryToViewAdapter
 from .hidden_attention_orchestrator import HiddenAttentionConfig, HiddenAttentionOrchestrator
+from .parameter_storage_loop_stack import ParameterStorageLoopConfig, ParameterStorageLoopStack
 
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
@@ -87,6 +88,12 @@ class EnhancedMnemonicCortex(nn.Module):
                  max_external_context_tokens: int = 64,
                  max_parameter_tokens: int = 48,
                  ltm_depth_profile: str = "standard",
+                 enable_parameter_storage_loop_stack: bool = False,
+                 parameter_loop_slots_per_layer: int = 64,
+                 parameter_loop_free_hidden_layers: int = 4,
+                 enable_parameter_loop_ltm_context: bool = True,
+                 enable_parameter_loop_training_writes: bool = False,
+                 parameter_loop_training_write_scale: float = 1.0,
                  hgm_enabled: bool = False):
         super().__init__()
         self.input_dim = input_dim
@@ -118,6 +125,15 @@ class EnhancedMnemonicCortex(nn.Module):
         self.max_external_context_tokens = int(max(8, max_external_context_tokens))
         self.max_parameter_tokens = int(max(8, max_parameter_tokens))
         self.ltm_depth_profile = str(ltm_depth_profile).strip().lower()
+        self.enable_parameter_storage_loop_stack = bool(enable_parameter_storage_loop_stack)
+        self.parameter_loop_slots_per_layer = int(max(1, parameter_loop_slots_per_layer))
+        self.parameter_loop_free_hidden_layers = int(max(0, parameter_loop_free_hidden_layers))
+        self.enable_parameter_loop_ltm_context = bool(enable_parameter_loop_ltm_context)
+        self.enable_parameter_loop_training_writes = bool(enable_parameter_loop_training_writes)
+        self.parameter_loop_training_write_scale = float(max(0.0, parameter_loop_training_write_scale))
+        self.parameter_storage_loop_stack: Optional[ParameterStorageLoopStack] = None
+        self.parameter_storage_loop_gate = nn.Parameter(torch.tensor(-2.0))
+        self.last_parameter_storage_loop_stats: Dict[str, Any] = {}
 
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
         self.working_memory = EnhancedCurvedMemory(
@@ -188,6 +204,11 @@ class EnhancedMnemonicCortex(nn.Module):
         self.global_hidden_orchestrator.register_source(self.sensory_buffer, source_name="cortex.sensory")
         self.global_hidden_orchestrator.register_source(self.working_memory, source_name="cortex.wm")
         self.global_hidden_orchestrator.register_source(self.long_term_memory, source_name="cortex.ltm")
+        if self.enable_parameter_storage_loop_stack:
+            self.enable_parameter_storage_loop(
+                slots_per_layer=self.parameter_loop_slots_per_layer,
+                free_hidden_layers=self.parameter_loop_free_hidden_layers,
+            )
         self.last_global_hidden_attention_stats = {}
 
         # Context projection (kept simple: same dim by default)
@@ -1697,6 +1718,120 @@ class EnhancedMnemonicCortex(nn.Module):
         """Allow callers to extend global hidden-attention coverage at runtime."""
         return self.global_hidden_orchestrator.register_source(module, source_name=source_name)
 
+    def enable_parameter_storage_loop(
+        self,
+        *,
+        slots_per_layer: Optional[int] = None,
+        free_hidden_layers: Optional[int] = None,
+    ) -> ParameterStorageLoopStack:
+        """Mount the product-manifold parameter store as an optional cortex subsystem."""
+        cfg = ParameterStorageLoopConfig(
+            model_dim=int(self.input_dim),
+            parameter_slots_per_layer=int(slots_per_layer or self.parameter_loop_slots_per_layer),
+            free_hidden_layers=int(
+                self.parameter_loop_free_hidden_layers
+                if free_hidden_layers is None
+                else free_hidden_layers
+            ),
+            num_heads=int(self._ctx_heads),
+            enable_training_slot_updates=bool(self.enable_parameter_loop_training_writes),
+        )
+        self.parameter_storage_loop_stack = ParameterStorageLoopStack(cfg)
+        self.enable_parameter_storage_loop_stack = True
+        self.parameter_loop_slots_per_layer = int(cfg.parameter_slots_per_layer)
+        self.parameter_loop_free_hidden_layers = int(cfg.free_hidden_layers)
+        self.global_hidden_orchestrator.register_source(
+            self.parameter_storage_loop_stack,
+            source_name="cortex.parameter_loop",
+        )
+        self.last_parameter_storage_loop_stats = {
+            "enabled": True,
+            "capacity_estimate": self.parameter_storage_loop_stack.estimate_storage_capacity(),
+        }
+        return self.parameter_storage_loop_stack
+
+    def describe_parameter_storage_loop(self) -> Dict[str, Any]:
+        stack = self.parameter_storage_loop_stack
+        if stack is None:
+            cfg = ParameterStorageLoopConfig(
+                model_dim=int(self.input_dim),
+                parameter_slots_per_layer=int(self.parameter_loop_slots_per_layer),
+                free_hidden_layers=int(self.parameter_loop_free_hidden_layers),
+                num_heads=int(self._ctx_heads),
+            )
+            return {
+                "enabled": False,
+                "capacity_estimate": ParameterStorageLoopStack(cfg).estimate_storage_capacity(),
+            }
+        return {
+            "enabled": True,
+            "manifold_stack": list(stack.manifold_stack),
+            "capacity_estimate": stack.estimate_storage_capacity(),
+            "hidden_attention_source": "cortex.parameter_loop",
+            "ltm_context_enabled": bool(self.enable_parameter_loop_ltm_context),
+            "training_slot_updates_enabled": bool(self.enable_parameter_loop_training_writes),
+        }
+
+    def build_parameter_loop_reasoning_adapter(self, *, max_context_tokens: int = 32):
+        if self.parameter_storage_loop_stack is None:
+            raise RuntimeError("parameter_storage_loop_stack is not enabled")
+        from .reasoning_depth import ParameterLoopAdapter, ParameterLoopAdapterConfig
+
+        return ParameterLoopAdapter(
+            ParameterLoopAdapterConfig.enabled_default(
+                key_dim=int(self.input_dim),
+                max_context_tokens=int(max(1, max_context_tokens)),
+            ),
+            parameter_loop=self.parameter_storage_loop_stack,
+        )
+
+    def _sync_parameter_loop_ltm_context(self, query: torch.Tensor) -> Optional[torch.Tensor]:
+        stack = self.parameter_storage_loop_stack
+        if stack is None or not self.enable_parameter_loop_ltm_context:
+            return None
+        ctx = stack.build_ltm_context_tokens(query, max_tokens=self.max_external_context_tokens)
+        self.long_term_memory.set_external_attention_context(ctx)
+        if self.hg_episodic_ltm is not None and hasattr(self.hg_episodic_ltm, "set_external_attention_context"):
+            try:
+                self.hg_episodic_ltm.set_external_attention_context(ctx)
+            except Exception:
+                pass
+        self.last_parameter_storage_loop_stats = {
+            **dict(self.last_parameter_storage_loop_stats),
+            "ltm_context_tokens": int(ctx.size(1)),
+            "ltm_context_enabled": True,
+        }
+        return ctx
+
+    def _apply_parameter_storage_loop(self, seq: torch.Tensor, phase: str) -> torch.Tensor:
+        stack = self.parameter_storage_loop_stack
+        if stack is None:
+            return seq
+        loop_out, trace = stack(
+            seq,
+            recall_boost=0.3,
+            allow_slot_update=bool(self.enable_parameter_loop_training_writes),
+            slot_update_scale=float(self.parameter_loop_training_write_scale),
+            return_trace=True,
+        )
+        gate = torch.sigmoid(self.parameter_storage_loop_gate)
+        mixed = self.mem_bridge_norm((1.0 - gate) * seq + gate * loop_out)
+        self.last_parameter_storage_loop_stats = {
+            **dict(self.last_parameter_storage_loop_stats),
+            "phase": str(phase),
+            "gate": float(gate.detach().item()),
+            "loop_attention_tokens": int(trace.get("loop_attention_tokens", 0)),
+            "effective_storage_units": float(
+                trace.get("capacity_estimate", {}).get("effective_parameter_storage_units", 0.0)
+            ),
+            "effective_to_physical_ratio": float(
+                trace.get("capacity_estimate", {}).get("effective_to_physical_ratio", 0.0)
+            ),
+        }
+        if getattr(self, "diagnostics", None) is not None:
+            self.diagnostics.log(f"parameter_storage_loop_{phase}", self.last_parameter_storage_loop_stats)
+        return mixed
+
     def _bridge_wm_ltm(self, wm_seq: torch.Tensor, ltm_seq: torch.Tensor, phase: str) -> torch.Tensor:
         gate = torch.sigmoid(self.mem_bridge_gate)
         wm_from_ltm, w_wm = self.wm_to_ltm_attn(wm_seq, ltm_seq, ltm_seq, need_weights=True)
@@ -2147,6 +2282,12 @@ class EnhancedMnemonicCortex(nn.Module):
                 'shared_memory_store': self.shared_memory_subsystem.store.to_dict() if self.shared_memory_subsystem is not None else None,
                 'hg_episodic_enabled': bool(self.hg_episodic_ltm is not None),
                 'episodic_write_mode': str(getattr(self, "episodic_write_mode", "legacy")),
+                'parameter_storage_loop_enabled': bool(self.parameter_storage_loop_stack is not None),
+                'parameter_loop_slots_per_layer': int(self.parameter_loop_slots_per_layer),
+                'parameter_loop_free_hidden_layers': int(self.parameter_loop_free_hidden_layers),
+                'parameter_loop_ltm_context_enabled': bool(self.enable_parameter_loop_ltm_context),
+                'parameter_loop_training_writes_enabled': bool(self.enable_parameter_loop_training_writes),
+                'parameter_loop_training_write_scale': float(self.parameter_loop_training_write_scale),
             },
         }
         torch.save(checkpoint, path)
@@ -2168,6 +2309,14 @@ class EnhancedMnemonicCortex(nn.Module):
             self.enable_hg_episodic_ltm(
                 write_mode=str(optional.get('episodic_write_mode', 'legacy')),
                 auto_wire=False,
+            )
+        if optional.get('parameter_storage_loop_enabled', False) and self.parameter_storage_loop_stack is None:
+            self.enable_parameter_loop_ltm_context = bool(optional.get('parameter_loop_ltm_context_enabled', self.enable_parameter_loop_ltm_context))
+            self.enable_parameter_loop_training_writes = bool(optional.get('parameter_loop_training_writes_enabled', self.enable_parameter_loop_training_writes))
+            self.parameter_loop_training_write_scale = float(optional.get('parameter_loop_training_write_scale', self.parameter_loop_training_write_scale))
+            self.enable_parameter_storage_loop(
+                slots_per_layer=int(optional.get('parameter_loop_slots_per_layer', self.parameter_loop_slots_per_layer)),
+                free_hidden_layers=int(optional.get('parameter_loop_free_hidden_layers', self.parameter_loop_free_hidden_layers)),
             )
         
         # Version check
@@ -2263,6 +2412,7 @@ class EnhancedMnemonicCortex(nn.Module):
             # --- Working-memory read phase -----------------------------------
             wm_out = self.working_memory(filtered, operation=self._wm_read_operation())  # (B,S,d)
             self._sync_attention_stacks(wm_out)
+            self._sync_parameter_loop_ltm_context(wm_out)
             ltm_ctx = self.long_term_memory(
                 wm_out,
                 operation='read',
@@ -2278,6 +2428,7 @@ class EnhancedMnemonicCortex(nn.Module):
             bridged = self._apply_secondary_hidden_stack(
                 bridged, wm_out, ltm_ctx, filtered, phase="process"
             )
+            bridged = self._apply_parameter_storage_loop(bridged, phase="process")
             bridged = self._apply_global_hidden_attention(bridged, filtered, phase="process")
             inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
             if isinstance(inter, dict) and inter:
