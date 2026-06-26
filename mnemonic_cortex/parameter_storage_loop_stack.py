@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
+import hashlib
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -36,6 +37,58 @@ MANIFOLD_STORAGE_FACTORS: Dict[str, float] = {
     "fisher_rao": 2.75,
     "quaternion_spatial_loop": 8.00,
 }
+
+
+@dataclass(frozen=True)
+class ParameterBundleRef:
+    """Reference to a live parameter represented in a shadow bundle."""
+
+    name: str
+    shape: Tuple[int, ...]
+    numel: int
+    dtype: str
+    requires_grad: bool
+    group_key: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "shape": list(self.shape),
+            "numel": int(self.numel),
+            "dtype": self.dtype,
+            "requires_grad": bool(self.requires_grad),
+            "group_key": self.group_key,
+        }
+
+
+@dataclass(frozen=True)
+class ParameterBundleRecord:
+    """Metadata for a consolidated referenced-shadow parameter bundle."""
+
+    bundle_id: str
+    group_key: str
+    refs: Tuple[ParameterBundleRef, ...]
+    target_layer: int
+    target_slot_start: int
+    target_slot_count: int
+    total_numel: int
+    summary_norm: float
+    trigger_step: int
+    factors: Tuple[str, ...]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "bundle_id": self.bundle_id,
+            "group_key": self.group_key,
+            "refs": [ref.to_dict() for ref in self.refs],
+            "target_layer": int(self.target_layer),
+            "target_slot_start": int(self.target_slot_start),
+            "target_slot_count": int(self.target_slot_count),
+            "total_numel": int(self.total_numel),
+            "summary_norm": float(self.summary_norm),
+            "trigger_step": int(self.trigger_step),
+            "factors": list(self.factors),
+        }
 
 
 @dataclass(frozen=True)
@@ -147,6 +200,8 @@ class ParameterStorageLoopStack(nn.Module):
         self.register_buffer("last_lightbulb_intensity", torch.tensor(0.0))
         self.last_context_tokens: Optional[torch.Tensor] = None
         self.last_slot_update_trace: Dict[str, object] = {}
+        self.parameter_bundle_registry: Dict[str, ParameterBundleRecord] = {}
+        self.last_parameter_consolidation_trace: Dict[str, Any] = {}
 
     @staticmethod
     def _resolve_heads(dim: int, requested: int) -> int:
@@ -311,6 +366,140 @@ class ParameterStorageLoopStack(nn.Module):
             return out, trace
         return out
 
+    @torch.no_grad()
+    def consolidate_parameter_bundles(
+        self,
+        named_parameters: Iterable[Tuple[str, nn.Parameter]],
+        *,
+        trigger_state: Optional[Dict[str, Any]] = None,
+        max_bundles: int = 4,
+        min_params_per_bundle: int = 1,
+        min_total_numel: int = 1,
+        include_filters: Optional[Sequence[str]] = None,
+        exclude_filters: Optional[Sequence[str]] = None,
+        write_scale: float = 1.0,
+    ) -> Dict[str, Any]:
+        """Copy grouped parameter summaries into loop slots and retain refs.
+
+        This is a referenced-shadow transplant: original nn.Parameter objects
+        remain owned by their modules and optimizers, while bounded summaries are
+        stored in the loop's manifold slot space with stable provenance refs.
+        """
+
+        groups = self._group_named_parameters(
+            named_parameters,
+            include_filters=include_filters,
+            exclude_filters=exclude_filters,
+        )
+        trigger_state = dict(trigger_state or {})
+        trigger_step = int(trigger_state.get("step", 0))
+        candidates = []
+        for group_key, items in groups.items():
+            total_numel = int(sum(param.numel() for _name, param in items))
+            if len(items) < int(max(1, min_params_per_bundle)):
+                continue
+            if total_numel < int(max(1, min_total_numel)):
+                continue
+            candidates.append((group_key, items, total_numel))
+        candidates.sort(key=lambda item: (-item[2], item[0]))
+        candidates = candidates[: int(max(1, max_bundles))]
+
+        lr = max(0.0, min(1.0, float(write_scale))) * float(self.config.training_update_lr or 0.01)
+        lr = max(0.0, min(0.25, lr))
+        created: List[ParameterBundleRecord] = []
+        for offset, (group_key, items, total_numel) in enumerate(candidates):
+            summary = self._bundle_summary_vector(items).to(
+                device=self.visible_parameter_slots.device,
+                dtype=self.visible_parameter_slots.dtype,
+            )
+            layer_idx = (len(self.parameter_bundle_registry) + offset) % int(self.config.visible_layers)
+            slot_idx = (len(self.parameter_bundle_registry) + offset) % int(self.config.parameter_slots_per_layer)
+            visible_target = summary.view(-1)
+            hidden_target = torch.tanh(summary).view(-1)
+            self.visible_parameter_slots[layer_idx, slot_idx].mul_(1.0 - lr).add_(visible_target, alpha=lr)
+            self.hidden_parameter_slots[layer_idx, slot_idx].mul_(1.0 - lr).add_(hidden_target, alpha=lr)
+            refs = tuple(
+                ParameterBundleRef(
+                    name=name,
+                    shape=tuple(int(v) for v in param.shape),
+                    numel=int(param.numel()),
+                    dtype=str(param.dtype).replace("torch.", ""),
+                    requires_grad=bool(param.requires_grad),
+                    group_key=group_key,
+                )
+                for name, param in items
+            )
+            bundle_id = self._bundle_id(group_key, refs, trigger_step)
+            record = ParameterBundleRecord(
+                bundle_id=bundle_id,
+                group_key=group_key,
+                refs=refs,
+                target_layer=int(layer_idx),
+                target_slot_start=int(slot_idx),
+                target_slot_count=1,
+                total_numel=int(total_numel),
+                summary_norm=float(summary.norm().detach().item()),
+                trigger_step=int(trigger_step),
+                factors=tuple(str(v) for v in trigger_state.get("factors", ("training_threshold",))),
+            )
+            self.parameter_bundle_registry[bundle_id] = record
+            created.append(record)
+
+        trace = {
+            "trace_type": "parameter_bundle_consolidation",
+            "mode": "referenced_shadow",
+            "trigger_state": trigger_state,
+            "candidate_groups": int(len(groups)),
+            "created_bundle_count": int(len(created)),
+            "created_bundles": [record.to_dict() for record in created],
+            "registry_size": int(len(self.parameter_bundle_registry)),
+            "optimizer_safe": True,
+            "original_parameters_replaced": False,
+            "original_parameters_frozen": False,
+            "write_scale": float(write_scale),
+            "slot_lr": float(lr),
+        }
+        self.last_parameter_consolidation_trace = trace
+        return trace
+
+    def parameter_bundle_registry_state(self) -> Dict[str, Any]:
+        return {
+            "registry_size": int(len(self.parameter_bundle_registry)),
+            "bundles": {
+                bundle_id: record.to_dict()
+                for bundle_id, record in sorted(self.parameter_bundle_registry.items())
+            },
+        }
+
+    def load_parameter_bundle_registry_state(self, state: Optional[Dict[str, Any]]) -> None:
+        self.parameter_bundle_registry = {}
+        if not state:
+            return
+        for bundle_id, payload in (state.get("bundles") or {}).items():
+            refs = tuple(
+                ParameterBundleRef(
+                    name=str(ref.get("name", "")),
+                    shape=tuple(int(v) for v in ref.get("shape", [])),
+                    numel=int(ref.get("numel", 0)),
+                    dtype=str(ref.get("dtype", "unknown")),
+                    requires_grad=bool(ref.get("requires_grad", True)),
+                    group_key=str(ref.get("group_key", payload.get("group_key", "unknown"))),
+                )
+                for ref in payload.get("refs", [])
+            )
+            self.parameter_bundle_registry[str(bundle_id)] = ParameterBundleRecord(
+                bundle_id=str(payload.get("bundle_id", bundle_id)),
+                group_key=str(payload.get("group_key", "unknown")),
+                refs=refs,
+                target_layer=int(payload.get("target_layer", 0)),
+                target_slot_start=int(payload.get("target_slot_start", 0)),
+                target_slot_count=int(payload.get("target_slot_count", 1)),
+                total_numel=int(payload.get("total_numel", 0)),
+                summary_norm=float(payload.get("summary_norm", 0.0)),
+                trigger_step=int(payload.get("trigger_step", 0)),
+                factors=tuple(str(v) for v in payload.get("factors", [])),
+            )
+
     def detect_lightbulb_moment(self, hidden_state: torch.Tensor, product_token: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         pooled = F.normalize(hidden_state.mean(dim=1), dim=-1, eps=1e-8)
         product = F.normalize(product_token.squeeze(1), dim=-1, eps=1e-8)
@@ -430,6 +619,87 @@ class ParameterStorageLoopStack(nn.Module):
         if boost <= 0.0:
             return torch.ones(fire_mask.size(0), 1, 1, device=fire_mask.device)
         return 1.0 + fire_mask.to(dtype=self.visible_parameter_slots.dtype).view(-1, 1, 1) * boost
+
+    def _group_named_parameters(
+        self,
+        named_parameters: Iterable[Tuple[str, nn.Parameter]],
+        *,
+        include_filters: Optional[Sequence[str]] = None,
+        exclude_filters: Optional[Sequence[str]] = None,
+    ) -> Dict[str, List[Tuple[str, nn.Parameter]]]:
+        include = tuple(str(v) for v in (include_filters or ()))
+        exclude = tuple(str(v) for v in (exclude_filters or ()))
+        groups: Dict[str, List[Tuple[str, nn.Parameter]]] = {}
+        for name, param in named_parameters:
+            if not isinstance(param, nn.Parameter):
+                continue
+            if not bool(param.requires_grad):
+                continue
+            if "parameter_storage_loop_stack" in str(name):
+                continue
+            if include and not any(token in name for token in include):
+                continue
+            if exclude and any(token in name for token in exclude):
+                continue
+            key = self._parameter_group_key(name, param)
+            groups.setdefault(key, []).append((name, param))
+        return groups
+
+    @staticmethod
+    def _parameter_group_key(name: str, param: nn.Parameter) -> str:
+        parts = str(name).split(".")
+        family = parts[0] if parts else "root"
+        role = parts[-1] if parts else "param"
+        if "weight" in role:
+            role = "weight"
+        elif "bias" in role:
+            role = "bias"
+        elif "norm" in str(name).lower():
+            role = "norm"
+        rank = len(tuple(param.shape))
+        numel = int(param.numel())
+        if numel >= 1_000_000:
+            bucket = "xl"
+        elif numel >= 100_000:
+            bucket = "large"
+        elif numel >= 10_000:
+            bucket = "medium"
+        else:
+            bucket = "small"
+        return f"{family}:{role}:rank{rank}:{bucket}"
+
+    def _bundle_summary_vector(self, items: Sequence[Tuple[str, nn.Parameter]]) -> torch.Tensor:
+        features: List[float] = []
+        for name, param in items:
+            data = param.detach().float().reshape(-1)
+            if data.numel() == 0:
+                continue
+            grad = param.grad.detach().float().reshape(-1) if param.grad is not None else None
+            features.extend(
+                [
+                    float(data.mean().item()),
+                    float(data.std(unbiased=False).item()),
+                    float(data.norm().item() / max(1, data.numel())),
+                    float(data.abs().max().item()),
+                    float(data.numel()),
+                    0.0 if grad is None else float(grad.norm().item() / max(1, grad.numel())),
+                    float((int(hashlib.sha256(name.encode("utf-8")).hexdigest()[:8], 16) % 1000) / 1000.0),
+                ]
+            )
+        if not features:
+            features = [0.0]
+        vec = torch.tensor(features, dtype=self.visible_parameter_slots.dtype, device=self.visible_parameter_slots.device)
+        dim = int(self.config.model_dim)
+        if vec.numel() < dim:
+            repeat = int(math.ceil(dim / max(1, vec.numel())))
+            vec = vec.repeat(repeat)
+        vec = vec[:dim]
+        return torch.tanh(vec)
+
+    @staticmethod
+    def _bundle_id(group_key: str, refs: Sequence[ParameterBundleRef], trigger_step: int) -> str:
+        payload = "|".join([group_key, str(trigger_step)] + [ref.name for ref in refs])
+        return "pbl-" + hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
     @staticmethod
     def _expand_slots(slots: torch.Tensor, batch_size: int, ref: torch.Tensor) -> torch.Tensor:

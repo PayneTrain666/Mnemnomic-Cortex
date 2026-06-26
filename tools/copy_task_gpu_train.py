@@ -233,9 +233,11 @@ def _align_logits_targets(logits: torch.Tensor, tgt: torch.Tensor) -> Tuple[torc
 def _move_qh_codebooks_to_device(model, device: torch.device) -> int:
     """
     Some QH codebook tensors are stored in plain dicts, not module buffers.
-    Force-move them to target device to avoid CPU/CUDA mismatch at runtime.
+    qh_banks on TripleHybridMemory is a plain dict (not ModuleDict), so buffers
+    must be moved explicitly. Force-move codebooks and slot banks to target device.
     """
     moved = 0
+    seen_banks = set()
 
     def _move_codebook(codebook):
         nonlocal moved
@@ -250,14 +252,25 @@ def _move_qh_codebooks_to_device(model, device: torch.device) -> int:
                     table[k] = v.to(device)
                     moved += 1
 
+    def _move_slot_bank(bank):
+        nonlocal moved
+        if bank is None or id(bank) in seen_banks:
+            return
+        seen_banks.add(id(bank))
+        if hasattr(bank, "to"):
+            bank.to(device)
+            moved += 1
+        _move_codebook(getattr(bank, "codebook", None))
+
     for mod in model.modules():
-        qh_slot_bank = getattr(mod, "qh_slot_bank", None)
-        if qh_slot_bank is not None:
-            _move_codebook(getattr(qh_slot_bank, "codebook", None))
+        _move_slot_bank(getattr(mod, "qh_slot_bank", None))
         qh_banks = getattr(mod, "qh_banks", None)
-        if isinstance(qh_banks, torch.nn.ModuleDict):
+        if isinstance(qh_banks, dict):
             for bank in qh_banks.values():
-                _move_codebook(getattr(bank, "codebook", None))
+                _move_slot_bank(bank)
+        elif isinstance(qh_banks, torch.nn.ModuleDict):
+            for bank in qh_banks.values():
+                _move_slot_bank(bank)
 
     return moved
 

@@ -97,6 +97,8 @@ def test_qdt_single_gpu_profile_estimate_and_replica_trace():
     assert cfg.num_depths == 8
     assert cfg.triplet_dim == 3
     assert cfg.qspin_guarded_shadow is True
+    assert cfg.qspin_live_activation is True
+    assert cfg.qspin_live_mode == "experimental_live"
     assert estimate["depth_state_scalars_per_token"] == 8 * 3 * 32
     assert y.shape == x.shape
     q_depth = [item for item in trace["items"] if item["stage"] == "quaternion_depth"][0]
@@ -120,3 +122,89 @@ def test_qdt_guarded_qspin_trace_has_no_live_effects():
     assert qspin["payload_transfer"] is False
     assert qspin["writes"] is False
     assert qspin["production_activation"] is False
+
+
+def test_qdt_experimental_live_qspin_applies_routing_and_payload():
+    cfg = qdt_config_from_hardware_profile("single_gpu_8_12gb", input_dim=32)
+    cfg.num_slots = 8
+    cfg.transformer_layers = 1
+    cfg.maae_transformer_layers = 1
+    cfg.cross_model_attention_layers = 1
+    wm = QDTWorkingMemory(cfg)
+    _y, trace = wm(torch.randn(1, 4, 32), operation="read", return_trace=True)
+    live_items = [item for item in trace["items"] if item["stage"] == "qspin_experimental_live"]
+    decisions = [
+        item["metadata"]["qspin"]["decision"]
+        for item in live_items
+        if "qspin" in item["metadata"]
+    ]
+
+    assert decisions[-1]["status"] == "allowed_experimental_live"
+    assert decisions[-1]["live_routing"] is True
+    assert decisions[-1]["payload_transfer"] is True
+    assert any(item["message"] == "live_depth_phase_routing_applied" for item in live_items)
+    payload_item = [item for item in live_items if item["message"] == "bounded_payload_transferred_to_attention"][0]
+    assert payload_item["metadata"]["payload_shape"] == [1, 4, 32]
+    assert payload_item["metadata"]["raw_payload_free"] is True
+
+
+def test_qdt_experimental_live_qspin_kill_switch_blocks_effects():
+    cfg = qdt_config_from_hardware_profile("single_gpu_8_12gb", input_dim=32)
+    cfg.num_slots = 8
+    cfg.transformer_layers = 1
+    cfg.maae_transformer_layers = 1
+    cfg.cross_model_attention_layers = 1
+    cfg.qspin_live_kill_switch_enabled = False
+    wm = QDTWorkingMemory(cfg)
+    _y, trace = wm(torch.randn(1, 4, 32), operation="read", return_trace=True)
+    live_items = [item for item in trace["items"] if item["stage"] == "qspin_experimental_live"]
+    decision = [item["metadata"]["qspin"]["decision"] for item in live_items if "qspin" in item["metadata"]][-1]
+
+    assert decision["status"] == "blocked"
+    assert "kill_switch_not_enabled" in decision["block_reasons"]
+    assert not any(item["message"] == "live_depth_phase_routing_applied" for item in live_items)
+    assert not any(item["message"] == "bounded_payload_transferred_to_attention" for item in live_items)
+
+
+def test_qdt_experimental_live_qspin_missing_evidence_blocks_effects():
+    cfg = qdt_config_from_hardware_profile("single_gpu_8_12gb", input_dim=32)
+    cfg.num_slots = 8
+    cfg.transformer_layers = 1
+    cfg.maae_transformer_layers = 1
+    cfg.cross_model_attention_layers = 1
+    cfg.qspin_source_matrix_complete = False
+    cfg.qspin_rollback_evidence_present = False
+    wm = QDTWorkingMemory(cfg)
+    _y, trace = wm(torch.randn(1, 4, 32), operation="read", return_trace=True)
+    live_items = [item for item in trace["items"] if item["stage"] == "qspin_experimental_live"]
+    decision = [item["metadata"]["qspin"]["decision"] for item in live_items if "qspin" in item["metadata"]][-1]
+
+    assert decision["status"] == "blocked"
+    assert "source_matrix_incomplete" in decision["block_reasons"]
+    assert "rollback_evidence_missing" in decision["block_reasons"]
+
+
+def test_qdt_experimental_live_qspin_write_uses_gated_paths():
+    cfg = qdt_config_from_hardware_profile("single_gpu_8_12gb", input_dim=32)
+    cfg.num_slots = 8
+    cfg.transformer_layers = 1
+    cfg.maae_transformer_layers = 1
+    cfg.cross_model_attention_layers = 1
+    wm = QDTWorkingMemory(cfg)
+    _y, trace = wm(torch.randn(1, 3, 32), operation="write", return_trace=True)
+    live_gate = [
+        item for item in trace["items"]
+        if item["stage"] == "qspin_experimental_live" and item["message"] == "live_write_path_gated"
+    ][0]
+
+    assert live_gate["metadata"]["qspin_decision"]["shared_slot_write"] is True
+    assert live_gate["metadata"]["qspin_decision"]["qh_storage_write"] is True
+    assert live_gate["metadata"]["qspin_decision"]["commit_execution"] is True
+    assert live_gate["metadata"]["commit_gate"] is True
+
+
+def test_qdt_compact_profile_keeps_qspin_live_off_by_default():
+    cfg = qdt_config_from_hardware_profile("compact", input_dim=32)
+
+    assert cfg.qspin_live_activation is False
+    assert cfg.qspin_live_mode == "disabled"

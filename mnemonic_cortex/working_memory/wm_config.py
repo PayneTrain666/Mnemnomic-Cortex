@@ -65,6 +65,18 @@ class QDTWorkingMemoryConfig:
     hardware_profile: str = "custom"
     qspin_guarded_shadow: bool = False
     qspin_source_matrix_complete: bool = True
+    qspin_rollback_evidence_present: bool = True
+    qspin_live_activation: bool = False
+    qspin_live_mode: str = "disabled"
+    qspin_live_kill_switch_enabled: bool = True
+    qspin_live_allow_routing: bool = False
+    qspin_live_allow_payload_transfer: bool = False
+    qspin_live_allow_shared_slot_write: bool = False
+    qspin_live_allow_qh_storage_write: bool = False
+    qspin_live_allow_commit_execution: bool = False
+    qspin_live_max_payload_tokens: int = 8
+    qspin_live_payload_scale: float = 0.05
+    qspin_live_routing_scale: float = 0.10
     eps: float = 1e-8
 
     @staticmethod
@@ -110,6 +122,13 @@ class QDTWorkingMemoryConfig:
                 context_tokens=64,
                 hardware_profile="single_gpu_8_12gb",
                 qspin_guarded_shadow=True,
+                qspin_live_activation=True,
+                qspin_live_mode="experimental_live",
+                qspin_live_allow_routing=True,
+                qspin_live_allow_payload_transfer=True,
+                qspin_live_allow_shared_slot_write=True,
+                qspin_live_allow_qh_storage_write=True,
+                qspin_live_allow_commit_execution=True,
             )
         if key == "deep":
             dim = int(input_dim or 256)
@@ -125,6 +144,8 @@ class QDTWorkingMemoryConfig:
                 context_tokens=96,
                 hardware_profile="deep",
                 qspin_guarded_shadow=True,
+                qspin_live_activation=False,
+                qspin_live_mode="disabled",
             )
         raise ValueError(f"unknown QDT hardware profile: {profile_name}")
 
@@ -153,6 +174,15 @@ class QDTWorkingMemoryConfig:
             raise ValueError("cross_model_attention_layers must be positive")
         if self.context_tokens < 0:
             raise ValueError("context_tokens must be non-negative")
+        self.qspin_live_max_payload_tokens = int(max(1, self.qspin_live_max_payload_tokens))
+        self.qspin_live_payload_scale = float(min(1.0, max(0.0, self.qspin_live_payload_scale)))
+        self.qspin_live_routing_scale = float(min(1.0, max(0.0, self.qspin_live_routing_scale)))
+        mode = str(self.qspin_live_mode).strip().lower()
+        if self.qspin_live_activation and mode != "experimental_live":
+            raise ValueError("qspin_live_activation requires qspin_live_mode='experimental_live'")
+        if not self.qspin_live_activation and mode not in {"disabled", "experimental_live"}:
+            raise ValueError("qspin_live_mode must be disabled or experimental_live")
+        self.qspin_live_mode = mode
         if not 0.0 <= self.residual_fusion_weight <= 1.0:
             raise ValueError("residual_fusion_weight must be in [0,1]")
         if self.eps <= 0:

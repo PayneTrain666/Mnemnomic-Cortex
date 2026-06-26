@@ -19,6 +19,7 @@ class TripleHybridLTMExternalMemoryBank:
     but reads HG, CGMN, Curved, and fused triple-hybrid outputs from the live LTM.
     """
 
+    _FUSED_BANK_KEY = "fused"
     _BANK_KEYS: Tuple[str, ...] = (
         "hg_episodic",
         "cgmn_semantic",
@@ -27,6 +28,49 @@ class TripleHybridLTMExternalMemoryBank:
         "spatial_topological",
         "fused",
     )
+
+    @classmethod
+    def _select_bank_indices(cls, scores: torch.Tensor, top_k: int) -> List[int]:
+        """Pick up to top_k banks, always retaining the holistically-fused read."""
+        n_banks = len(cls._BANK_KEYS)
+        k = max(1, min(int(top_k), n_banks))
+        if k >= n_banks:
+            return list(range(n_banks))
+
+        try:
+            fused_idx = cls._BANK_KEYS.index(cls._FUSED_BANK_KEY)
+        except ValueError:
+            fused_idx = None
+
+        if fused_idx is None:
+            mean_scores = scores.mean(dim=0)
+            _, pick = torch.topk(mean_scores, k=k)
+            return sorted(int(i) for i in pick.tolist())
+
+        component_indices = [i for i in range(n_banks) if i != fused_idx]
+        if k == 1:
+            return [fused_idx]
+
+        mean_scores = scores.mean(dim=0)
+        comp_scores = mean_scores[component_indices]
+        component_k = min(k - 1, len(component_indices))
+        _, top_comp = torch.topk(comp_scores, k=component_k)
+        selected = [component_indices[int(i)] for i in top_comp.tolist()]
+        selected.append(fused_idx)
+        return sorted(selected)
+
+    @staticmethod
+    def _gather_banks(
+        memory_state: torch.Tensor,
+        scores: torch.Tensor,
+        slot_ids: List[List[str]],
+        indices: List[int],
+    ) -> Tuple[torch.Tensor, torch.Tensor, List[List[str]]]:
+        idx = torch.tensor(indices, device=memory_state.device, dtype=torch.long)
+        gathered_state = memory_state.index_select(1, idx)
+        gathered_scores = scores.index_select(1, idx)
+        gathered_ids = [[row[i] for i in indices] for row in slot_ids]
+        return gathered_state, gathered_scores, gathered_ids
 
     def __init__(
         self,
@@ -98,7 +142,7 @@ class TripleHybridLTMExternalMemoryBank:
             ltm.set_external_attention_context(wm_ctx)
 
         read_kwargs = self._read_kwargs_from_query(query)
-        names = ["hg_episodic", "cgmn_semantic", "curved_associative", "procedural_spcp", "spatial_topological", "fused"]
+        names = list(self._BANK_KEYS)
         if hasattr(ltm, "read_banks"):
             bank_reads = ltm.read_banks(seq_tokens, **read_kwargs, include_fused=True)
             reads = [
@@ -147,10 +191,10 @@ class TripleHybridLTMExternalMemoryBank:
         seq_tokens = self._query_sequence(query)
         memory_state, scores, slot_ids = self._read_live_candidates(ltm, seq_tokens, query)
 
-        k = min(int(top_k), memory_state.size(1))
-        memory_state = memory_state[:, :k, :]
-        scores = scores[:, :k]
-        slot_ids = [row[:k] for row in slot_ids]
+        selected = self._select_bank_indices(scores, top_k)
+        k = len(selected)
+        memory_state, scores, slot_ids = self._gather_banks(memory_state, scores, slot_ids, selected)
+        selected_bank_keys = [self._BANK_KEYS[i] for i in selected]
 
         shared_refs = None
         mirror_reads = bool((query.metadata or {}).get("mirror_reads_to_shared_store", False))
@@ -184,14 +228,15 @@ class TripleHybridLTMExternalMemoryBank:
                 "trace_type": "triple_hybrid_ltm_memory_response",
                 "request": query.to_trace(),
                 "top_k": k,
-                "banks": list(self._BANK_KEYS[:k]),
+                "banks": selected_bank_keys,
+                "fused_included": self._FUSED_BANK_KEY in selected_bank_keys,
                 "prefusion_specialization": pref,
                 "shared_slot_refs": shared_refs,
             },
             metadata={
                 "adapter_kind": "triple_hybrid_ltm_adapter",
                 "attached": True,
-                "banks_read": list(self._BANK_KEYS[: memory_state.size(1)]),
+                "banks_read": selected_bank_keys,
             },
             shared_slot_refs=shared_refs,
         )

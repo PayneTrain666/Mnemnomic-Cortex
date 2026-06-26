@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
 import torch
 
@@ -75,11 +75,21 @@ class CortexBuildConfig:
     enable_parameter_loop_ltm_context: bool = True
     enable_parameter_loop_training_writes: bool = False
     parameter_loop_training_write_scale: float = 1.0
+    enable_parameter_loop_auto_consolidation: bool = False
+    parameter_loop_consolidation_interval: int = 100
+    parameter_loop_consolidation_max_bundles: int = 4
+    parameter_loop_consolidation_min_params: int = 1
+    parameter_loop_consolidation_min_total_numel: int = 1024
+    parameter_loop_consolidation_include: Tuple[str, ...] = ()
+    parameter_loop_consolidation_exclude: Tuple[str, ...] = ("parameter_storage_loop_stack",)
     working_memory_fabric: str = "legacy"
     qdt_hardware_profile: str = "single_gpu_8_12gb"
     qdt_num_slots: int = 0
     qdt_transformer_layers: int = 0
     qdt_qspin_guarded_shadow: bool = True
+    qdt_qspin_live_activation: Optional[bool] = None
+    qdt_qspin_live_kill_switch_enabled: bool = True
+    qdt_qspin_live_max_payload_tokens: int = 8
 
     def to_cortex_kwargs(self) -> Dict[str, Any]:
         return {
@@ -106,11 +116,21 @@ class CortexBuildConfig:
             "enable_parameter_loop_ltm_context": bool(self.enable_parameter_loop_ltm_context),
             "enable_parameter_loop_training_writes": bool(self.enable_parameter_loop_training_writes),
             "parameter_loop_training_write_scale": float(self.parameter_loop_training_write_scale),
+            "enable_parameter_loop_auto_consolidation": bool(self.enable_parameter_loop_auto_consolidation),
+            "parameter_loop_consolidation_interval": int(self.parameter_loop_consolidation_interval),
+            "parameter_loop_consolidation_max_bundles": int(self.parameter_loop_consolidation_max_bundles),
+            "parameter_loop_consolidation_min_params": int(self.parameter_loop_consolidation_min_params),
+            "parameter_loop_consolidation_min_total_numel": int(self.parameter_loop_consolidation_min_total_numel),
+            "parameter_loop_consolidation_include": tuple(self.parameter_loop_consolidation_include),
+            "parameter_loop_consolidation_exclude": tuple(self.parameter_loop_consolidation_exclude),
             "working_memory_fabric": str(self.working_memory_fabric),
             "qdt_hardware_profile": str(self.qdt_hardware_profile),
             "qdt_num_slots": int(self.qdt_num_slots),
             "qdt_transformer_layers": int(self.qdt_transformer_layers),
             "qdt_qspin_guarded_shadow": bool(self.qdt_qspin_guarded_shadow),
+            "qdt_qspin_live_activation": self.qdt_qspin_live_activation,
+            "qdt_qspin_live_kill_switch_enabled": bool(self.qdt_qspin_live_kill_switch_enabled),
+            "qdt_qspin_live_max_payload_tokens": int(self.qdt_qspin_live_max_payload_tokens),
         }
 
 
@@ -218,11 +238,27 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
         enable_parameter_loop_ltm_context=_as_bool(cortex_obj.get("enable_parameter_loop_ltm_context", True), True),
         enable_parameter_loop_training_writes=_as_bool(cortex_obj.get("enable_parameter_loop_training_writes", False), False),
         parameter_loop_training_write_scale=float(cortex_obj.get("parameter_loop_training_write_scale", 1.0)),
+        enable_parameter_loop_auto_consolidation=_as_bool(cortex_obj.get("enable_parameter_loop_auto_consolidation", False), False),
+        parameter_loop_consolidation_interval=int(cortex_obj.get("parameter_loop_consolidation_interval", 100)),
+        parameter_loop_consolidation_max_bundles=int(cortex_obj.get("parameter_loop_consolidation_max_bundles", 4)),
+        parameter_loop_consolidation_min_params=int(cortex_obj.get("parameter_loop_consolidation_min_params", 1)),
+        parameter_loop_consolidation_min_total_numel=int(cortex_obj.get("parameter_loop_consolidation_min_total_numel", 1024)),
+        parameter_loop_consolidation_include=_as_str_list(cortex_obj.get("parameter_loop_consolidation_include")),
+        parameter_loop_consolidation_exclude=_as_str_list(
+            cortex_obj.get("parameter_loop_consolidation_exclude", ["parameter_storage_loop_stack"])
+        ),
         working_memory_fabric=str(cortex_obj.get("working_memory_fabric", "legacy")),
         qdt_hardware_profile=str(cortex_obj.get("qdt_hardware_profile", "single_gpu_8_12gb")),
         qdt_num_slots=int(cortex_obj.get("qdt_num_slots", 0)),
         qdt_transformer_layers=int(cortex_obj.get("qdt_transformer_layers", 0)),
         qdt_qspin_guarded_shadow=_as_bool(cortex_obj.get("qdt_qspin_guarded_shadow", True), True),
+        qdt_qspin_live_activation=(
+            _as_bool(cortex_obj.get("qdt_qspin_live_activation"), False)
+            if "qdt_qspin_live_activation" in cortex_obj
+            else None
+        ),
+        qdt_qspin_live_kill_switch_enabled=_as_bool(cortex_obj.get("qdt_qspin_live_kill_switch_enabled", True), True),
+        qdt_qspin_live_max_payload_tokens=int(cortex_obj.get("qdt_qspin_live_max_payload_tokens", 8)),
     )
     features_cfg = FeatureConfig(
         hgm_enabled=_as_bool(features_obj.get("hgm_enabled", False), False),

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 from .capacity_profile import CapacityProfile
 
@@ -49,6 +50,13 @@ class CortexConfig:
     enable_parameter_loop_ltm_context: bool = True
     enable_parameter_loop_training_writes: bool = False
     parameter_loop_training_write_scale: float = 1.0
+    enable_parameter_loop_auto_consolidation: bool = False
+    parameter_loop_consolidation_interval: int = 100
+    parameter_loop_consolidation_max_bundles: int = 4
+    parameter_loop_consolidation_min_params: int = 1
+    parameter_loop_consolidation_min_total_numel: int = 1024
+    parameter_loop_consolidation_include: Tuple[str, ...] = ()
+    parameter_loop_consolidation_exclude: Tuple[str, ...] = ("parameter_storage_loop_stack",)
 
     # Working-memory fabric
     working_memory_fabric: str = "legacy"
@@ -56,6 +64,9 @@ class CortexConfig:
     qdt_num_slots: int = 0
     qdt_transformer_layers: int = 0
     qdt_qspin_guarded_shadow: bool = True
+    qdt_qspin_live_activation: bool | None = None
+    qdt_qspin_live_kill_switch_enabled: bool = True
+    qdt_qspin_live_max_payload_tokens: int = 8
 
     # Transformer depth policy
     depth_profile: str = "standard"
@@ -81,11 +92,18 @@ class CortexConfig:
         self.parameter_loop_slots_per_layer = int(max(1, self.parameter_loop_slots_per_layer))
         self.parameter_loop_free_hidden_layers = int(max(0, self.parameter_loop_free_hidden_layers))
         self.parameter_loop_training_write_scale = float(max(0.0, self.parameter_loop_training_write_scale))
+        self.parameter_loop_consolidation_interval = int(max(1, self.parameter_loop_consolidation_interval))
+        self.parameter_loop_consolidation_max_bundles = int(max(1, self.parameter_loop_consolidation_max_bundles))
+        self.parameter_loop_consolidation_min_params = int(max(1, self.parameter_loop_consolidation_min_params))
+        self.parameter_loop_consolidation_min_total_numel = int(max(1, self.parameter_loop_consolidation_min_total_numel))
+        self.parameter_loop_consolidation_include = tuple(str(v) for v in self.parameter_loop_consolidation_include)
+        self.parameter_loop_consolidation_exclude = tuple(str(v) for v in self.parameter_loop_consolidation_exclude)
         self.working_memory_fabric = str(self.working_memory_fabric).strip().lower()
         if self.working_memory_fabric not in {"legacy", "qdt"}:
             raise ValueError("working_memory_fabric must be 'legacy' or 'qdt'")
         self.qdt_num_slots = int(max(0, self.qdt_num_slots))
         self.qdt_transformer_layers = int(max(0, self.qdt_transformer_layers))
+        self.qdt_qspin_live_max_payload_tokens = int(max(1, self.qdt_qspin_live_max_payload_tokens))
 
     def to_cortex_kwargs(self) -> dict:
         return {
@@ -116,11 +134,21 @@ class CortexConfig:
             "enable_parameter_loop_ltm_context": bool(self.enable_parameter_loop_ltm_context),
             "enable_parameter_loop_training_writes": bool(self.enable_parameter_loop_training_writes),
             "parameter_loop_training_write_scale": float(self.parameter_loop_training_write_scale),
+            "enable_parameter_loop_auto_consolidation": bool(self.enable_parameter_loop_auto_consolidation),
+            "parameter_loop_consolidation_interval": int(self.parameter_loop_consolidation_interval),
+            "parameter_loop_consolidation_max_bundles": int(self.parameter_loop_consolidation_max_bundles),
+            "parameter_loop_consolidation_min_params": int(self.parameter_loop_consolidation_min_params),
+            "parameter_loop_consolidation_min_total_numel": int(self.parameter_loop_consolidation_min_total_numel),
+            "parameter_loop_consolidation_include": tuple(self.parameter_loop_consolidation_include),
+            "parameter_loop_consolidation_exclude": tuple(self.parameter_loop_consolidation_exclude),
             "working_memory_fabric": str(self.working_memory_fabric),
             "qdt_hardware_profile": str(self.qdt_hardware_profile),
             "qdt_num_slots": int(self.qdt_num_slots),
             "qdt_transformer_layers": int(self.qdt_transformer_layers),
             "qdt_qspin_guarded_shadow": bool(self.qdt_qspin_guarded_shadow),
+            "qdt_qspin_live_activation": self.qdt_qspin_live_activation,
+            "qdt_qspin_live_kill_switch_enabled": bool(self.qdt_qspin_live_kill_switch_enabled),
+            "qdt_qspin_live_max_payload_tokens": int(self.qdt_qspin_live_max_payload_tokens),
             "fusion": str(self.fusion),
             "hgm_enabled": bool(self.hgm_enabled),
             "cms_vocab_size": int(self.cms_vocab_size),

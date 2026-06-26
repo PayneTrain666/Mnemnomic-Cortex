@@ -296,6 +296,10 @@ class QuantumHolographicStorage:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> QHStorageRecord:
         self._validate_vector(vector)
+        if self.config.require_write_permission and not bool(write_permission):
+            raise PermissionError("QH storage requires write_permission=True")
+        if self.shared_slot_store.get_content(canonical_slot_id) is None:
+            raise KeyError(f"shared slot has no stored content: {canonical_slot_id}")
         schema = build_qh_code_schema(
             depth_index=depth_index,
             bank_name=bank_name,

@@ -1,4 +1,6 @@
 import torch
+import tempfile
+from pathlib import Path
 
 from mnemonic_cortex import (
     DEFAULT_PARAMETER_LOOP_MANIFOLDS,
@@ -126,3 +128,91 @@ def test_parameter_storage_loop_training_updates_default_to_disabled():
 
     assert trace["slot_update"]["updated"] is False
     assert torch.equal(before, model.visible_parameter_slots.detach())
+
+
+def test_parameter_storage_loop_consolidates_referenced_shadow_bundles():
+    cfg = ParameterStorageLoopConfig(model_dim=16, parameter_slots_per_layer=2, training_update_lr=0.1)
+    store = ParameterStorageLoopStack(cfg)
+    source = torch.nn.Sequential(torch.nn.Linear(16, 16), torch.nn.LayerNorm(16))
+    before = store.visible_parameter_slots.detach().clone()
+    source_param_ids = {name: id(param) for name, param in source.named_parameters()}
+
+    trace = store.consolidate_parameter_bundles(
+        source.named_parameters(),
+        trigger_state={"step": 7, "factors": ("unit_test", "shape_rank")},
+        max_bundles=2,
+        min_total_numel=1,
+        write_scale=1.0,
+    )
+
+    assert trace["mode"] == "referenced_shadow"
+    assert trace["created_bundle_count"] > 0
+    assert trace["optimizer_safe"] is True
+    assert trace["original_parameters_replaced"] is False
+    assert not torch.equal(before, store.visible_parameter_slots.detach())
+    state = store.parameter_bundle_registry_state()
+    assert state["registry_size"] == trace["created_bundle_count"]
+    refs = next(iter(state["bundles"].values()))["refs"]
+    assert refs
+    assert {name: id(param) for name, param in source.named_parameters()} == source_param_ids
+
+
+def test_cortex_auto_parameter_consolidation_trigger_preserves_parameter_ids():
+    model = EnhancedMnemonicCortex(
+        input_dim=16,
+        output_dim=16,
+        ltm_hg_slots=16,
+        ltm_cgmn_slots=16,
+        ltm_curved_slots=8,
+        ltm_spatial_slots=8,
+        enable_parameter_storage_loop_stack=True,
+        parameter_loop_slots_per_layer=2,
+        parameter_loop_free_hidden_layers=0,
+        enable_parameter_loop_auto_consolidation=True,
+        parameter_loop_consolidation_interval=1,
+        parameter_loop_consolidation_max_bundles=2,
+        parameter_loop_consolidation_min_total_numel=1,
+    )
+    model.train()
+    before_ids = {name: id(param) for name, param in model.named_parameters()}
+
+    trace = model._maybe_consolidate_trainable_parameters()
+
+    assert trace["triggered"] is True
+    assert trace["created_bundle_count"] > 0
+    assert model.describe_parameter_storage_loop()["bundle_registry"]["registry_size"] > 0
+    after_ids = {name: id(param) for name, param in model.named_parameters()}
+    assert before_ids == after_ids
+
+
+def test_parameter_loop_bundle_registry_survives_checkpoint_roundtrip():
+    def build_model():
+        return EnhancedMnemonicCortex(
+            input_dim=16,
+            output_dim=16,
+            ltm_hg_slots=16,
+            ltm_cgmn_slots=16,
+            ltm_curved_slots=8,
+            ltm_spatial_slots=8,
+            enable_parameter_storage_loop_stack=True,
+            parameter_loop_slots_per_layer=2,
+            parameter_loop_free_hidden_layers=0,
+            enable_parameter_loop_auto_consolidation=True,
+            parameter_loop_consolidation_interval=1,
+            parameter_loop_consolidation_max_bundles=1,
+            parameter_loop_consolidation_min_total_numel=1,
+        )
+
+    model = build_model()
+    model.train()
+    trace = model._maybe_consolidate_trainable_parameters()
+    assert trace["created_bundle_count"] == 1
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "param_loop.pt"
+        model.save_checkpoint(str(path))
+        loaded = build_model()
+        loaded.load_checkpoint(str(path), strict=True)
+
+    registry = loaded.describe_parameter_storage_loop()["bundle_registry"]
+    assert registry["registry_size"] == 1
+    assert next(iter(registry["bundles"].values()))["refs"]

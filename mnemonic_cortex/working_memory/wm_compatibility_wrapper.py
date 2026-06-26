@@ -26,6 +26,18 @@ class QDTWMCompatibilityConfig:
     hardware_profile: str = "custom"
     qspin_guarded_shadow: bool = False
     qspin_source_matrix_complete: bool = True
+    qspin_rollback_evidence_present: bool = True
+    qspin_live_activation: bool = False
+    qspin_live_mode: str = "disabled"
+    qspin_live_kill_switch_enabled: bool = True
+    qspin_live_allow_routing: bool = False
+    qspin_live_allow_payload_transfer: bool = False
+    qspin_live_allow_shared_slot_write: bool = False
+    qspin_live_allow_qh_storage_write: bool = False
+    qspin_live_allow_commit_execution: bool = False
+    qspin_live_max_payload_tokens: int = 8
+    qspin_live_payload_scale: float = 0.05
+    qspin_live_routing_scale: float = 0.10
     default_operation: str = "process"
     return_trace_by_default: bool = False
 
@@ -93,6 +105,18 @@ class QDTWMCompatibilityWrapper(nn.Module):
                 hardware_profile=config.hardware_profile,
                 qspin_guarded_shadow=config.qspin_guarded_shadow,
                 qspin_source_matrix_complete=config.qspin_source_matrix_complete,
+                qspin_rollback_evidence_present=config.qspin_rollback_evidence_present,
+                qspin_live_activation=config.qspin_live_activation,
+                qspin_live_mode=config.qspin_live_mode,
+                qspin_live_kill_switch_enabled=config.qspin_live_kill_switch_enabled,
+                qspin_live_allow_routing=config.qspin_live_allow_routing,
+                qspin_live_allow_payload_transfer=config.qspin_live_allow_payload_transfer,
+                qspin_live_allow_shared_slot_write=config.qspin_live_allow_shared_slot_write,
+                qspin_live_allow_qh_storage_write=config.qspin_live_allow_qh_storage_write,
+                qspin_live_allow_commit_execution=config.qspin_live_allow_commit_execution,
+                qspin_live_max_payload_tokens=config.qspin_live_max_payload_tokens,
+                qspin_live_payload_scale=config.qspin_live_payload_scale,
+                qspin_live_routing_scale=config.qspin_live_routing_scale,
             )
         )
         self._memory_importance = nn.Parameter(torch.ones(config.num_slots))

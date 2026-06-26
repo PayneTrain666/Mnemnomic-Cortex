@@ -29,6 +29,12 @@ from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 from .wm_quantum_holographic_storage import QuantumHolographicStorage, QuantumHolographicStorageConfig
 from .wm_system_commit_gate import SystemCommitGate, SystemWriteProposal
 from .qspin_runtime_shadow_activation import QSpinRuntimeFeatureFlagEvaluator, QSpinRuntimeFeatureFlagSnapshot
+from .qspin_experimental_live_activation import (
+    QSpinExperimentalLiveActivationController,
+    QSpinExperimentalLiveConfig,
+    QSpinExperimentalLiveMode,
+    QSpinExperimentalLiveRequest,
+)
 
 
 class QDTWorkingMemory(nn.Module):
@@ -165,6 +171,7 @@ class QDTWorkingMemory(nn.Module):
         self.last_attention_stack_tokens = None
         self._ltm_adapter = None
         self.last_qspin_shadow_trace = None
+        self.last_qspin_live_trace = None
 
     def attach_ltm_adapter(self, triple_hybrid, shared_slot_store=None):
         """Replace synthetic LTM bank with live triple-hybrid adapter."""
@@ -231,6 +238,75 @@ class QDTWorkingMemory(nn.Module):
         self.last_qspin_shadow_trace = trace
         return trace
 
+    def _qspin_live_config(self) -> QSpinExperimentalLiveConfig:
+        mode = (
+            QSpinExperimentalLiveMode.EXPERIMENTAL_LIVE
+            if str(getattr(self.config, "qspin_live_mode", "disabled")).strip().lower() == "experimental_live"
+            else QSpinExperimentalLiveMode.DISABLED
+        )
+        return QSpinExperimentalLiveConfig(
+            enabled=bool(getattr(self.config, "qspin_live_activation", False)),
+            mode=mode,
+            allow_live_routing=bool(getattr(self.config, "qspin_live_allow_routing", False)),
+            allow_payload_transfer=bool(getattr(self.config, "qspin_live_allow_payload_transfer", False)),
+            allow_shared_slot_write=bool(getattr(self.config, "qspin_live_allow_shared_slot_write", False)),
+            allow_qh_storage_write=bool(getattr(self.config, "qspin_live_allow_qh_storage_write", False)),
+            allow_commit_execution=bool(getattr(self.config, "qspin_live_allow_commit_execution", False)),
+            max_payload_tokens=int(getattr(self.config, "qspin_live_max_payload_tokens", 8)),
+            payload_scale=float(getattr(self.config, "qspin_live_payload_scale", 0.05)),
+            routing_scale=float(getattr(self.config, "qspin_live_routing_scale", 0.10)),
+        ).validate()
+
+    def _evaluate_qspin_live(self, operation: str, context_map_name: Optional[str], *, write_permission_present: bool) -> Dict[str, Any]:
+        cfg = self._qspin_live_config()
+        requested_writes = operation == "write"
+        mode = cfg.mode if cfg.enabled else QSpinExperimentalLiveMode.DISABLED
+        req = QSpinExperimentalLiveRequest(
+            request_id=f"qspin_live_{operation}",
+            operation=operation,
+            mode=mode,
+            source_matrix_complete=bool(getattr(self.config, "qspin_source_matrix_complete", True)),
+            rollback_evidence_present=bool(getattr(self.config, "qspin_rollback_evidence_present", True)),
+            kill_switch_enabled=bool(getattr(self.config, "qspin_live_kill_switch_enabled", True)),
+            write_permission_present=bool(write_permission_present),
+            live_routing_requested=True,
+            payload_transfer_requested=True,
+            shared_slot_write_requested=requested_writes,
+            qh_storage_write_requested=requested_writes,
+            commit_execution_requested=requested_writes,
+            metadata={"context_map_name": context_map_name or "quantum_holographic"},
+        )
+        result = QSpinExperimentalLiveActivationController(cfg).evaluate(req).to_dict()
+        self.last_qspin_live_trace = result
+        return result
+
+    def _qspin_live_decision(self, live_trace: Dict[str, Any]) -> Dict[str, Any]:
+        decision = live_trace.get("decision", {})
+        return decision if isinstance(decision, dict) else {}
+
+    def _apply_qspin_live_depth_routing(self, depth_state: torch.Tensor, live_trace: Dict[str, Any]):
+        decision = self._qspin_live_decision(live_trace)
+        if not decision.get("live_routing", False):
+            return depth_state, None
+        scale = float(getattr(self.config, "qspin_live_routing_scale", 0.10))
+        routed = (1.0 - scale) * depth_state + scale * depth_state.roll(shifts=1, dims=1)
+        return routed, {
+            "mode": "experimental_live",
+            "effect": "depth_phase_roll_blend",
+            "routing_scale": scale,
+            "input_shape": list(depth_state.shape),
+            "output_shape": list(routed.shape),
+            "raw_payload_free": True,
+        }
+
+    def _build_qspin_live_payload(self, depth_state: torch.Tensor, live_trace: Dict[str, Any]) -> Optional[torch.Tensor]:
+        decision = self._qspin_live_decision(live_trace)
+        if not decision.get("payload_transfer", False):
+            return None
+        max_tokens = int(getattr(self.config, "qspin_live_max_payload_tokens", 8))
+        payload = torch.tanh(depth_state.mean(dim=(1, 3)))[:, :max_tokens, :].contiguous()
+        return payload.detach()
+
     def _validate_input(self, x: torch.Tensor) -> None:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
             raise ValueError(f"Expected x [B,T,{self.config.input_dim}], got {tuple(x.shape)}")
@@ -258,6 +334,16 @@ class QDTWorkingMemory(nn.Module):
             "guarded_qspin_shadow_metadata",
             qspin=self._build_qspin_guarded_shadow_trace(operation, context_map_name),
         )
+        qspin_live_trace = self._evaluate_qspin_live(
+            operation,
+            context_map_name,
+            write_permission_present=True,
+        )
+        trace.add(
+            "qspin_experimental_live",
+            "experimental_live_activation_evaluated",
+            qspin=qspin_live_trace,
+        )
 
         if operation == "write":
             out, curved_trace = self.curved_core(x, operation="write", importance=importance, return_trace=True)
@@ -276,7 +362,10 @@ class QDTWorkingMemory(nn.Module):
                 task_mode=context_map_name or "quantum_holographic",
                 confidence=1.0,
                 write_permission=True,
-                metadata={"source": "QDTWorkingMemory.write_path"},
+                metadata={
+                    "source": "QDTWorkingMemory.write_path",
+                    "qspin_experimental_live": self._qspin_live_decision(qspin_live_trace),
+                },
             )
             stage_trace = self.system_commit_gate.stage(proposal)
             evaluation = self.system_commit_gate.evaluate(proposal.proposal_id)
@@ -284,6 +373,14 @@ class QDTWorkingMemory(nn.Module):
             trace.add("system_commit_gate", "write_proposal_staged", stage_trace=stage_trace)
             trace.add("system_commit_gate", "write_proposal_evaluated", evaluation=evaluation.to_dict())
             trace.add("system_commit_gate", "write_decision", decision=decision.to_dict(), gate_summary=self.system_commit_gate.trace_summary())
+            trace.add(
+                "qspin_experimental_live",
+                "live_write_path_gated",
+                qspin_decision=self._qspin_live_decision(qspin_live_trace),
+                shared_slot_write_gate=True,
+                qh_storage_write_gate=True,
+                commit_gate=True,
+            )
 
             confidence = 1.0 if decision.decision in {"commit", "quarantine"} else 0.0
             disagreement = 1.0 if decision.decision in {"reject", "quarantine"} else 0.0
@@ -304,6 +401,9 @@ class QDTWorkingMemory(nn.Module):
 
         depth_state, q_trace = self.quaternion_depth(triplet_fused, return_trace=True)
         trace.merge_dict("quaternion_depth", q_trace)
+        depth_state, routing_trace = self._apply_qspin_live_depth_routing(depth_state, qspin_live_trace)
+        if routing_trace is not None:
+            trace.add("qspin_experimental_live", "live_depth_phase_routing_applied", routing=routing_trace)
 
         depth_state, intra_trace = self.intra_depth(depth_state, return_trace=True)
         trace.merge_dict("intra_depth", intra_trace)
@@ -328,9 +428,29 @@ class QDTWorkingMemory(nn.Module):
                 context_map=context_map_name or "default",
             )
 
+        qspin_payload = self._build_qspin_live_payload(depth_state, qspin_live_trace)
+        effective_context = context
+        maae_input = curved_out
+        if qspin_payload is not None:
+            scale = float(getattr(self.config, "qspin_live_payload_scale", 0.05))
+            if qspin_payload.size(1) < maae_input.size(1):
+                pad = qspin_payload[:, -1:, :].expand(-1, maae_input.size(1) - qspin_payload.size(1), -1)
+                payload_for_tokens = torch.cat([qspin_payload, pad], dim=1)
+            else:
+                payload_for_tokens = qspin_payload[:, : maae_input.size(1), :]
+            maae_input = maae_input + scale * payload_for_tokens
+            effective_context = qspin_payload if effective_context is None else effective_context
+            trace.add(
+                "qspin_experimental_live",
+                "bounded_payload_transferred_to_attention",
+                payload_shape=list(qspin_payload.shape),
+                payload_scale=scale,
+                raw_payload_free=True,
+            )
+
         maae_tokens, maae_trace = self.memory_augmented_attention(
-            curved_out,
-            context=context,
+            maae_input,
+            context=effective_context,
             require_write_permission=False,
             prior_trace=trace.to_dict(),
             return_trace=True,
@@ -346,7 +466,7 @@ class QDTWorkingMemory(nn.Module):
         dual_tokens, dual_fusion_trace = self.dual_fusion(
             maae_tokens,
             depth_state=depth_state,
-            context=context,
+            context=effective_context,
             return_trace=True,
         )
         if self.external_attention_context is not None:

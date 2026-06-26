@@ -8,6 +8,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
+from .consolidated_memory_depth_stack import (
+    ConsolidatedMemoryDepthCfg,
+    ConsolidatedMemoryDepthStack,
+    DEFAULT_CMS_DEPTH_MANIFOLDS,
+)
 
 
 def _project_sphere(x: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
@@ -37,6 +42,12 @@ class ConsolidatedMemoryCfg:
     use_fisher: bool = True
     use_torus: bool = True
     use_phase: bool = True
+    enable_depth_stack: bool = True
+    memory_slots_per_layer: int = 64
+    depth_free_hidden_layers: int = 32
+    depth_num_heads: int = 8
+    qh_num_depths: int = 8
+    depth_manifold_stack: Tuple[str, ...] = DEFAULT_CMS_DEPTH_MANIFOLDS
 
 
 class ConsolidatedMemoryUnit(nn.Module):
@@ -131,16 +142,29 @@ class ConsolidatedMemoryStore(nn.Module):
         self.read_norm = nn.LayerNorm(default_cfg.d_model)
         self.sim_temp = nn.Parameter(torch.tensor(1.0))
         self._creation_hooks = []
+        qh_depths = int(default_cfg.qh_num_depths) if bool(default_cfg.enable_depth_stack) else 8
         self.qh_slot_bank = QuantumHologramSlotBank(
             QuantumHologramConfig(
                 enabled=True,
                 hrr_dim=int(default_cfg.d_model),
                 num_slots=2048,
-                num_depths=8,
+                num_depths=max(1, qh_depths),
                 bank_name="consolidated_store",
             )
         )
         self._qh_key_slot_map: Dict[str, int] = {}
+        self.depth_stack: Optional[ConsolidatedMemoryDepthStack] = None
+        if bool(default_cfg.enable_depth_stack):
+            depth_cfg = ConsolidatedMemoryDepthCfg(
+                model_dim=int(default_cfg.d_model),
+                memory_slots_per_layer=int(default_cfg.memory_slots_per_layer),
+                free_hidden_layers=int(default_cfg.depth_free_hidden_layers),
+                num_heads=int(default_cfg.depth_num_heads),
+                depth_manifold_stack=tuple(default_cfg.depth_manifold_stack),
+                qh_num_depths=int(default_cfg.qh_num_depths),
+            )
+            self.depth_stack = ConsolidatedMemoryDepthStack(depth_cfg)
+        self.last_depth_stack_trace: Dict[str, object] = {}
 
     def register_creation_hook(self, hook):
         self._creation_hooks.append(hook)
@@ -205,19 +229,67 @@ class ConsolidatedMemoryStore(nn.Module):
             phase = torch.as_tensor(phase_src[1], device=anchor.device, dtype=anchor.dtype)
         else:
             phase = torch.roll(anchor, shifts=1, dims=-1)
+        depth_index = 0
+        if self.depth_stack is not None:
+            depth_index = int(len(self._qh_key_slot_map) % int(self.default_cfg.qh_num_depths))
+            encoded = self.depth_stack.encode_depth_view(anchor, depth_index=depth_index)
+            anchor = encoded.to(device=anchor.device, dtype=anchor.dtype)
+            direction = self.depth_stack.encode_depth_view(direction, depth_index=(depth_index + 1) % int(self.default_cfg.qh_num_depths))
+            phase = self.depth_stack.encode_depth_view(phase, depth_index=(depth_index + 2) % int(self.default_cfg.qh_num_depths))
         self.qh_slot_bank.store_batch(
             slot_indices=torch.tensor([slot_id], device=anchor.device, dtype=torch.long),
             anchor=anchor.unsqueeze(0),
             direction=direction.unsqueeze(0),
             phase=phase.unsqueeze(0),
-            depth_index=0,
+            depth_index=int(depth_index),
             bank_name="consolidated_store",
         )
 
+    def apply_depth_stack(self, x: torch.Tensor, *, recall_boost: float = 0.0, return_trace: bool = False):
+        if self.depth_stack is None:
+            if return_trace:
+                return x, {"enabled": False}
+            return x
+        if return_trace:
+            out, trace = self.depth_stack(x, recall_boost=recall_boost, return_trace=True)
+            self.last_depth_stack_trace = dict(trace)
+            return out, trace
+        out = self.depth_stack(x, recall_boost=recall_boost, return_trace=False)
+        self.last_depth_stack_trace = dict(getattr(self.depth_stack, "last_depth_trace", {}))
+        return out
+
+    @torch.no_grad()
+    def build_depth_context_tokens(self, query: Optional[torch.Tensor] = None, *, max_tokens: int = 48) -> torch.Tensor:
+        if self.depth_stack is None:
+            ref = query if query is not None else self.read_norm.weight
+            device = ref.device
+            dtype = ref.dtype if torch.is_floating_point(ref) else self.read_norm.weight.dtype
+            bsz = int(query.size(0)) if query is not None and query.dim() >= 2 else 1
+            return torch.zeros(bsz, 1, self.default_cfg.d_model, device=device, dtype=dtype)
+        return self.depth_stack.build_ltm_context_tokens(query, max_tokens=max_tokens)
+
+    def describe_depth_stack(self) -> Dict[str, object]:
+        if self.depth_stack is None:
+            return {"enabled": False}
+        return {
+            "enabled": True,
+            "depth_manifold_stack": list(self.depth_stack.depth_manifold_stack),
+            "visible_manifold_stack": list(self.depth_stack.visible_manifold_stack),
+            "capacity_estimate": self.depth_stack.estimate_storage_capacity(),
+            "free_hidden_layers": int(self.depth_stack.config.free_hidden_layers),
+            "qh_num_depths": int(self.default_cfg.qh_num_depths),
+        }
+
     def _fused(self, unit: ConsolidatedMemoryUnit) -> torch.Tensor:
         if unit.cfg.use_euclid:
-            return self.read_norm(unit.E)
-        return torch.zeros(self.default_cfg.d_model, device=next(self.parameters()).device)
+            base = self.read_norm(unit.E)
+        else:
+            base = torch.zeros(self.default_cfg.d_model, device=next(self.parameters()).device)
+        if self.depth_stack is not None:
+            seq = base.view(1, 1, -1)
+            enriched = self.depth_stack(seq, return_trace=False)
+            base = 0.65 * base + 0.35 * enriched.reshape(-1)
+        return base
 
     @torch.no_grad()
     def read(self, key: str) -> torch.Tensor:

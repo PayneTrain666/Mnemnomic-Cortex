@@ -105,12 +105,37 @@ try:
 except Exception:
     QDTWorkingMemory = None
 
+try:
+    from .qspin_experimental_live_activation import (
+        QSpinExperimentalLiveActivationController,
+        QSpinExperimentalLiveBlockReason,
+        QSpinExperimentalLiveConfig,
+        QSpinExperimentalLiveDecision,
+        QSpinExperimentalLiveMode,
+        QSpinExperimentalLiveRequest,
+        QSpinExperimentalLiveResult,
+        QSpinExperimentalLiveStatus,
+        build_qspin_experimental_live_config,
+    )
+except Exception:
+    QSpinExperimentalLiveActivationController = None
+    QSpinExperimentalLiveConfig = None
+
 __all__ = [
     "EnhancedCurvedMemory",
     "WMCurvedAssociativeCore",
     "QDTWorkingMemoryConfig",
     "QDTWorkingMemoryCapacityEstimate",
     "qdt_config_from_hardware_profile",
+    "QSpinExperimentalLiveActivationController",
+    "QSpinExperimentalLiveBlockReason",
+    "QSpinExperimentalLiveConfig",
+    "QSpinExperimentalLiveDecision",
+    "QSpinExperimentalLiveMode",
+    "QSpinExperimentalLiveRequest",
+    "QSpinExperimentalLiveResult",
+    "QSpinExperimentalLiveStatus",
+    "build_qspin_experimental_live_config",
     "WMTrace",
     "TraceItem",
     "WMTripletState",

@@ -27,6 +27,18 @@ class CortexWorkingMemoryIntegrationConfig:
     hardware_profile: str = "custom"
     qspin_guarded_shadow: bool = False
     qspin_source_matrix_complete: bool = True
+    qspin_rollback_evidence_present: bool = True
+    qspin_live_activation: bool = False
+    qspin_live_mode: str = "disabled"
+    qspin_live_kill_switch_enabled: bool = True
+    qspin_live_allow_routing: bool = False
+    qspin_live_allow_payload_transfer: bool = False
+    qspin_live_allow_shared_slot_write: bool = False
+    qspin_live_allow_qh_storage_write: bool = False
+    qspin_live_allow_commit_execution: bool = False
+    qspin_live_max_payload_tokens: int = 8
+    qspin_live_payload_scale: float = 0.05
+    qspin_live_routing_scale: float = 0.10
     default_operation: str = "process"
     return_trace_by_default: bool = False
     use_compatibility_wrapper: bool = True
@@ -76,6 +88,18 @@ class CortexWorkingMemoryIntegrationConfig:
             hardware_profile=qdt_cfg.hardware_profile,
             qspin_guarded_shadow=qdt_cfg.qspin_guarded_shadow,
             qspin_source_matrix_complete=qdt_cfg.qspin_source_matrix_complete,
+            qspin_rollback_evidence_present=qdt_cfg.qspin_rollback_evidence_present,
+            qspin_live_activation=qdt_cfg.qspin_live_activation,
+            qspin_live_mode=qdt_cfg.qspin_live_mode,
+            qspin_live_kill_switch_enabled=qdt_cfg.qspin_live_kill_switch_enabled,
+            qspin_live_allow_routing=qdt_cfg.qspin_live_allow_routing,
+            qspin_live_allow_payload_transfer=qdt_cfg.qspin_live_allow_payload_transfer,
+            qspin_live_allow_shared_slot_write=qdt_cfg.qspin_live_allow_shared_slot_write,
+            qspin_live_allow_qh_storage_write=qdt_cfg.qspin_live_allow_qh_storage_write,
+            qspin_live_allow_commit_execution=qdt_cfg.qspin_live_allow_commit_execution,
+            qspin_live_max_payload_tokens=qdt_cfg.qspin_live_max_payload_tokens,
+            qspin_live_payload_scale=qdt_cfg.qspin_live_payload_scale,
+            qspin_live_routing_scale=qdt_cfg.qspin_live_routing_scale,
             use_compatibility_wrapper=use_compatibility_wrapper,
             preserve_old_reference=preserve_old_reference,
         )
@@ -94,6 +118,18 @@ class CortexWorkingMemoryIntegrationConfig:
             hardware_profile=self.hardware_profile,
             qspin_guarded_shadow=self.qspin_guarded_shadow,
             qspin_source_matrix_complete=self.qspin_source_matrix_complete,
+            qspin_rollback_evidence_present=self.qspin_rollback_evidence_present,
+            qspin_live_activation=self.qspin_live_activation,
+            qspin_live_mode=self.qspin_live_mode,
+            qspin_live_kill_switch_enabled=self.qspin_live_kill_switch_enabled,
+            qspin_live_allow_routing=self.qspin_live_allow_routing,
+            qspin_live_allow_payload_transfer=self.qspin_live_allow_payload_transfer,
+            qspin_live_allow_shared_slot_write=self.qspin_live_allow_shared_slot_write,
+            qspin_live_allow_qh_storage_write=self.qspin_live_allow_qh_storage_write,
+            qspin_live_allow_commit_execution=self.qspin_live_allow_commit_execution,
+            qspin_live_max_payload_tokens=self.qspin_live_max_payload_tokens,
+            qspin_live_payload_scale=self.qspin_live_payload_scale,
+            qspin_live_routing_scale=self.qspin_live_routing_scale,
         )
 
     def compatibility_config(self) -> QDTWMCompatibilityConfig:
@@ -110,6 +146,18 @@ class CortexWorkingMemoryIntegrationConfig:
             hardware_profile=self.hardware_profile,
             qspin_guarded_shadow=self.qspin_guarded_shadow,
             qspin_source_matrix_complete=self.qspin_source_matrix_complete,
+            qspin_rollback_evidence_present=self.qspin_rollback_evidence_present,
+            qspin_live_activation=self.qspin_live_activation,
+            qspin_live_mode=self.qspin_live_mode,
+            qspin_live_kill_switch_enabled=self.qspin_live_kill_switch_enabled,
+            qspin_live_allow_routing=self.qspin_live_allow_routing,
+            qspin_live_allow_payload_transfer=self.qspin_live_allow_payload_transfer,
+            qspin_live_allow_shared_slot_write=self.qspin_live_allow_shared_slot_write,
+            qspin_live_allow_qh_storage_write=self.qspin_live_allow_qh_storage_write,
+            qspin_live_allow_commit_execution=self.qspin_live_allow_commit_execution,
+            qspin_live_max_payload_tokens=self.qspin_live_max_payload_tokens,
+            qspin_live_payload_scale=self.qspin_live_payload_scale,
+            qspin_live_routing_scale=self.qspin_live_routing_scale,
             default_operation=self.default_operation,
             return_trace_by_default=self.return_trace_by_default,
         )
@@ -245,7 +293,10 @@ def replace_cortex_working_memory(
             "qspin_guarded_shadow": {
                 "enabled": bool(config.qspin_guarded_shadow),
                 "source_matrix_complete": bool(config.qspin_source_matrix_complete),
-                "live_payload_transfer": False,
+                "live_payload_transfer": bool(config.qspin_live_allow_payload_transfer and config.qspin_live_activation),
+                "experimental_live_activation": bool(config.qspin_live_activation),
+                "live_mode": str(config.qspin_live_mode),
+                "live_kill_switch_enabled": bool(config.qspin_live_kill_switch_enabled),
                 "production_activation": False,
             },
         },
@@ -275,6 +326,10 @@ replace_cortex_working_memory(
         context_tokens={config.context_tokens},
         hardware_profile="{config.hardware_profile}",
         qspin_guarded_shadow={config.qspin_guarded_shadow},
+        qspin_live_activation={config.qspin_live_activation},
+        qspin_live_mode="{config.qspin_live_mode}",
+        qspin_live_kill_switch_enabled={config.qspin_live_kill_switch_enabled},
+        qspin_live_max_payload_tokens={config.qspin_live_max_payload_tokens},
         default_operation="{config.default_operation}",
         return_trace_by_default={config.return_trace_by_default},
         use_compatibility_wrapper={config.use_compatibility_wrapper},

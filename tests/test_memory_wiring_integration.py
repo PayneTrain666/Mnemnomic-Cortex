@@ -87,6 +87,8 @@ def test_triple_hybrid_ltm_adapter_reads_live_banks():
     assert response.metadata["adapter_kind"] == "triple_hybrid_ltm_adapter"
     assert response.memory_state.shape == (2, 4, 32)
     assert float(response.scores.mean().item()) != 0.0
+    assert "fused" in response.metadata["banks_read"]
+    assert response.trace.get("fused_included") is True
 
 
 def test_qdt_ltm_adapter_wires_through_cortex_full_stack():

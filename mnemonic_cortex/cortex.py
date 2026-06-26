@@ -94,6 +94,21 @@ class EnhancedMnemonicCortex(nn.Module):
                  enable_parameter_loop_ltm_context: bool = True,
                  enable_parameter_loop_training_writes: bool = False,
                  parameter_loop_training_write_scale: float = 1.0,
+                 enable_parameter_loop_auto_consolidation: bool = False,
+                 parameter_loop_consolidation_interval: int = 100,
+                 parameter_loop_consolidation_max_bundles: int = 4,
+                 parameter_loop_consolidation_min_params: int = 1,
+                 parameter_loop_consolidation_min_total_numel: int = 1024,
+                 parameter_loop_consolidation_include: Optional[Sequence[str]] = None,
+                 parameter_loop_consolidation_exclude: Optional[Sequence[str]] = None,
+                 working_memory_fabric: str = "legacy",
+                 qdt_hardware_profile: str = "single_gpu_8_12gb",
+                 qdt_num_slots: int = 0,
+                 qdt_transformer_layers: int = 0,
+                 qdt_qspin_guarded_shadow: bool = True,
+                 qdt_qspin_live_activation: Optional[bool] = None,
+                 qdt_qspin_live_kill_switch_enabled: bool = True,
+                 qdt_qspin_live_max_payload_tokens: int = 8,
                  hgm_enabled: bool = False):
         super().__init__()
         self.input_dim = input_dim
@@ -131,9 +146,29 @@ class EnhancedMnemonicCortex(nn.Module):
         self.enable_parameter_loop_ltm_context = bool(enable_parameter_loop_ltm_context)
         self.enable_parameter_loop_training_writes = bool(enable_parameter_loop_training_writes)
         self.parameter_loop_training_write_scale = float(max(0.0, parameter_loop_training_write_scale))
+        self.enable_parameter_loop_auto_consolidation = bool(enable_parameter_loop_auto_consolidation)
+        self.parameter_loop_consolidation_interval = int(max(1, parameter_loop_consolidation_interval))
+        self.parameter_loop_consolidation_max_bundles = int(max(1, parameter_loop_consolidation_max_bundles))
+        self.parameter_loop_consolidation_min_params = int(max(1, parameter_loop_consolidation_min_params))
+        self.parameter_loop_consolidation_min_total_numel = int(max(1, parameter_loop_consolidation_min_total_numel))
+        self.parameter_loop_consolidation_include = tuple(str(v) for v in (parameter_loop_consolidation_include or ()))
+        self.parameter_loop_consolidation_exclude = tuple(str(v) for v in (parameter_loop_consolidation_exclude or ()))
+        self.parameter_loop_consolidation_step = 0
+        self.last_parameter_loop_consolidation_trace: Dict[str, Any] = {}
         self.parameter_storage_loop_stack: Optional[ParameterStorageLoopStack] = None
         self.parameter_storage_loop_gate = nn.Parameter(torch.tensor(-2.0))
         self.last_parameter_storage_loop_stats: Dict[str, Any] = {}
+        self.working_memory_fabric = str(working_memory_fabric).strip().lower()
+        if self.working_memory_fabric not in {"legacy", "qdt"}:
+            raise ValueError("working_memory_fabric must be 'legacy' or 'qdt'")
+        self.qdt_hardware_profile = str(qdt_hardware_profile).strip().lower()
+        self.qdt_num_slots = int(max(0, qdt_num_slots))
+        self.qdt_transformer_layers = int(max(0, qdt_transformer_layers))
+        self.qdt_qspin_guarded_shadow = bool(qdt_qspin_guarded_shadow)
+        self.qdt_qspin_live_activation = qdt_qspin_live_activation
+        self.qdt_qspin_live_kill_switch_enabled = bool(qdt_qspin_live_kill_switch_enabled)
+        self.qdt_qspin_live_max_payload_tokens = int(max(1, qdt_qspin_live_max_payload_tokens))
+        self.qdt_working_memory_migration_trace: Dict[str, Any] = {}
 
         self.sensory_buffer = EnhancedSensoryBuffer(sensory_buffer_size, input_dim)
         self.working_memory = EnhancedCurvedMemory(
@@ -188,6 +223,8 @@ class EnhancedMnemonicCortex(nn.Module):
             max_external_context_tokens=self.max_external_context_tokens,
             max_parameter_tokens=self.max_parameter_tokens,
         )
+        if self.working_memory_fabric == "qdt":
+            self._enable_qdt_working_memory_fabric()
         self.global_hidden_orchestrator = HiddenAttentionOrchestrator(
             HiddenAttentionConfig(
                 model_dim=int(input_dim),
@@ -317,6 +354,8 @@ class EnhancedMnemonicCortex(nn.Module):
         self._advanced_merge_queue = []
         self._advanced_nudge_keys = set()
         self._advanced_merge_counter = 0
+        self.consolidated_memory_depth_gate = nn.Parameter(torch.tensor(-1.5))
+        self.last_cms_depth_stack_stats: Dict[str, Any] = {}
         self.last_router_decision = None
         self.diagnostics = ModelDiagnostics(enabled=False)
         self.reasoning_bridge_enabled = False
@@ -1242,11 +1281,28 @@ class EnhancedMnemonicCortex(nn.Module):
           - cross-domain distiller
           - per-domain quantizers and quant-aware fuser
         """
-        cms_cfg = cms_cfg or ConsolidatedMemoryCfg(d_model=self.input_dim)
+        cms_cfg = cms_cfg or ConsolidatedMemoryCfg(
+            d_model=self.input_dim,
+            enable_depth_stack=True,
+            memory_slots_per_layer=max(32, min(128, self.input_dim // 2)),
+            depth_free_hidden_layers=min(64, max(32, int(self.global_hidden_max_layers // 2))),
+            depth_num_heads=int(self._pick_num_heads(self.input_dim)),
+            qh_num_depths=8,
+        )
         broker_cfg = broker_cfg or BrokerCfg()
         domains = list(cps_domains or ["core", "science", "reasoning", "creativity"])
 
         self.advanced_cms = ConsolidatedMemoryStore(cms_cfg)
+        if self.advanced_cms.depth_stack is not None:
+            self.global_hidden_orchestrator.register_source(
+                self.advanced_cms.depth_stack,
+                source_name="cortex.cms_depth_stack",
+            )
+            self.last_cms_depth_stack_stats = {
+                "enabled": True,
+                "hidden_attention_source": "cortex.cms_depth_stack",
+                "capacity_estimate": self.advanced_cms.describe_depth_stack().get("capacity_estimate", {}),
+            }
         self.multi_cps = MultiCPSManager()
         # Keep existing CPS as core domain.
         self.multi_cps.register("core", self.cps, self.cps_fuser)
@@ -1298,9 +1354,20 @@ class EnhancedMnemonicCortex(nn.Module):
         self._advanced_merge_counter = 0
         self.diagnostics.log(
             "advanced_consolidation_enabled",
-            {"domains": list(self.multi_cps.cps.keys())},
+            {
+                "domains": list(self.multi_cps.cps.keys()),
+                "cms_depth_stack": self.advanced_cms.describe_depth_stack(),
+            },
         )
         return self
+
+    def describe_consolidated_memory_depth_stack(self) -> Dict[str, Any]:
+        if self.advanced_cms is None:
+            return {"enabled": False, "reason": "advanced_cms_disabled"}
+        desc = self.advanced_cms.describe_depth_stack()
+        desc["hidden_attention_source"] = "cortex.cms_depth_stack" if desc.get("enabled") else None
+        desc["last_stats"] = dict(self.last_cms_depth_stack_stats)
+        return desc
 
     def enable_cps_cms_full_stack(
         self,
@@ -1750,6 +1817,52 @@ class EnhancedMnemonicCortex(nn.Module):
         }
         return self.parameter_storage_loop_stack
 
+    def _enable_qdt_working_memory_fabric(self) -> None:
+        from .working_memory.wm_cortex_integration import (
+            CortexWorkingMemoryIntegrationConfig,
+            replace_cortex_working_memory,
+            wire_qdt_ltm_adapter,
+        )
+
+        cfg = CortexWorkingMemoryIntegrationConfig.from_hardware_profile(
+            self.qdt_hardware_profile,
+            input_dim=int(self.input_dim),
+            use_compatibility_wrapper=True,
+            preserve_old_reference=True,
+        )
+        if self.qdt_num_slots > 0:
+            cfg.num_slots = int(self.qdt_num_slots)
+        if self.qdt_transformer_layers > 0:
+            cfg.transformer_layers = int(self.qdt_transformer_layers)
+            cfg.maae_transformer_layers = int(self.qdt_transformer_layers)
+        cfg.qspin_guarded_shadow = bool(self.qdt_qspin_guarded_shadow)
+        if self.qdt_qspin_live_activation is not None:
+            cfg.qspin_live_activation = bool(self.qdt_qspin_live_activation)
+            cfg.qspin_live_mode = "experimental_live" if cfg.qspin_live_activation else "disabled"
+        cfg.qspin_live_kill_switch_enabled = bool(self.qdt_qspin_live_kill_switch_enabled)
+        cfg.qspin_live_max_payload_tokens = int(self.qdt_qspin_live_max_payload_tokens)
+        result = replace_cortex_working_memory(self, cfg)
+        live_ltm_attached = wire_qdt_ltm_adapter(self)
+        self.qdt_working_memory_migration_trace = {
+            **result.to_dict(),
+            "live_ltm_adapter_attached": bool(live_ltm_attached),
+        }
+
+    def describe_working_memory_fabric(self) -> Dict[str, Any]:
+        wm = getattr(self, "working_memory", None)
+        qdt = getattr(wm, "qdt_working_memory", wm)
+        cfg = getattr(qdt, "config", None)
+        return {
+            "fabric": str(self.working_memory_fabric),
+            "working_memory_class": type(wm).__name__ if wm is not None else None,
+            "qdt_class": type(qdt).__name__ if qdt is not None else None,
+            "qdt_config": cfg.to_dict() if cfg is not None and hasattr(cfg, "to_dict") else None,
+            "qdt_capacity_estimate": cfg.capacity_estimate(batch_size=1, seq_len=1).to_dict()
+            if cfg is not None and hasattr(cfg, "capacity_estimate")
+            else None,
+            "migration_trace": dict(getattr(self, "qdt_working_memory_migration_trace", {})),
+        }
+
     def describe_parameter_storage_loop(self) -> Dict[str, Any]:
         stack = self.parameter_storage_loop_stack
         if stack is None:
@@ -1770,6 +1883,8 @@ class EnhancedMnemonicCortex(nn.Module):
             "hidden_attention_source": "cortex.parameter_loop",
             "ltm_context_enabled": bool(self.enable_parameter_loop_ltm_context),
             "training_slot_updates_enabled": bool(self.enable_parameter_loop_training_writes),
+            "auto_consolidation_enabled": bool(self.enable_parameter_loop_auto_consolidation),
+            "bundle_registry": stack.parameter_bundle_registry_state(),
         }
 
     def build_parameter_loop_reasoning_adapter(self, *, max_context_tokens: int = 32):
@@ -1831,6 +1946,85 @@ class EnhancedMnemonicCortex(nn.Module):
         if getattr(self, "diagnostics", None) is not None:
             self.diagnostics.log(f"parameter_storage_loop_{phase}", self.last_parameter_storage_loop_stats)
         return mixed
+
+    def _apply_consolidated_memory_depth(self, seq: torch.Tensor, phase: str) -> torch.Tensor:
+        cms = self.advanced_cms
+        if cms is None or cms.depth_stack is None:
+            return seq
+        depth_out, trace = cms.apply_depth_stack(seq, recall_boost=0.25, return_trace=True)
+        gate = torch.sigmoid(self.consolidated_memory_depth_gate)
+        mixed = self.mem_bridge_norm((1.0 - gate) * seq + gate * depth_out)
+        capacity = trace.get("capacity_estimate", {}) if isinstance(trace, dict) else {}
+        self.last_cms_depth_stack_stats = {
+            "enabled": True,
+            "phase": str(phase),
+            "gate": float(gate.detach().item()),
+            "loop_attention_tokens": int(trace.get("loop_attention_tokens", 0)) if isinstance(trace, dict) else 0,
+            "depth_manifold_stack": list(cms.depth_stack.depth_manifold_stack),
+            "super_product_manifold": trace.get("super_product_manifold") if isinstance(trace, dict) else None,
+            "effective_memory_storage_units": float(capacity.get("effective_memory_storage_units", 0.0)),
+            "effective_to_physical_ratio": float(capacity.get("effective_to_physical_ratio", 0.0)),
+            "free_hidden_layers": int(cms.depth_stack.config.free_hidden_layers),
+        }
+        if getattr(self, "diagnostics", None) is not None:
+            self.diagnostics.log(f"consolidated_memory_depth_{phase}", self.last_cms_depth_stack_stats)
+        return mixed
+
+    def _sync_cms_depth_ltm_context(self, query: torch.Tensor) -> None:
+        cms = self.advanced_cms
+        ltm = getattr(self, "long_term_memory", None)
+        if cms is None or cms.depth_stack is None or ltm is None:
+            return
+        if not hasattr(ltm, "set_parameter_loop_context_tokens"):
+            return
+        try:
+            ctx = cms.build_depth_context_tokens(query, max_tokens=min(48, int(self.max_external_context_tokens)))
+            ltm.set_parameter_loop_context_tokens(ctx)
+        except Exception:
+            pass
+
+    def _maybe_consolidate_trainable_parameters(self) -> Dict[str, Any]:
+        stack = self.parameter_storage_loop_stack
+        self.parameter_loop_consolidation_step += 1
+        if stack is None:
+            return {"triggered": False, "reason": "parameter_storage_loop_disabled"}
+        if not (self.training and self.enable_parameter_loop_auto_consolidation):
+            return {"triggered": False, "reason": "disabled_or_not_training", "step": int(self.parameter_loop_consolidation_step)}
+        if self.parameter_loop_consolidation_step % int(self.parameter_loop_consolidation_interval) != 0:
+            return {
+                "triggered": False,
+                "reason": "interval_not_reached",
+                "step": int(self.parameter_loop_consolidation_step),
+                "interval": int(self.parameter_loop_consolidation_interval),
+            }
+        trace = stack.consolidate_parameter_bundles(
+            self.named_parameters(),
+            trigger_state={
+                "step": int(self.parameter_loop_consolidation_step),
+                "factors": (
+                    "module_family",
+                    "shape_rank",
+                    "role_keyword",
+                    "size_bucket",
+                    "training_threshold",
+                ),
+            },
+            max_bundles=int(self.parameter_loop_consolidation_max_bundles),
+            min_params_per_bundle=int(self.parameter_loop_consolidation_min_params),
+            min_total_numel=int(self.parameter_loop_consolidation_min_total_numel),
+            include_filters=self.parameter_loop_consolidation_include,
+            exclude_filters=self.parameter_loop_consolidation_exclude,
+            write_scale=float(self.parameter_loop_training_write_scale),
+        )
+        trace["triggered"] = bool(trace.get("created_bundle_count", 0) > 0)
+        self.last_parameter_loop_consolidation_trace = trace
+        self.last_parameter_storage_loop_stats = {
+            **dict(self.last_parameter_storage_loop_stats),
+            "last_bundle_consolidation": trace,
+        }
+        if getattr(self, "diagnostics", None) is not None:
+            self.diagnostics.log("parameter_loop_bundle_consolidation", trace)
+        return trace
 
     def _bridge_wm_ltm(self, wm_seq: torch.Tensor, ltm_seq: torch.Tensor, phase: str) -> torch.Tensor:
         gate = torch.sigmoid(self.mem_bridge_gate)
@@ -2238,6 +2432,18 @@ class EnhancedMnemonicCortex(nn.Module):
         metrics["hgm_enabled"] = 1.0 if self.hgm_enabled else 0.0
         hgm_events = [evt for evt in self.diagnostics.events if evt.get("event") == "hgm_run"]
         metrics["hgm_assignments"] = float(hgm_events[-1].get("payload", {}).get("assignment_count", self.last_hgm_assignments)) if hgm_events else float(self.last_hgm_assignments)
+        if self.advanced_cms is not None and self.advanced_cms.depth_stack is not None:
+            metrics["cms_depth_stack_enabled"] = 1.0
+            metrics["cms_depth_free_hidden_layers"] = float(self.advanced_cms.depth_stack.config.free_hidden_layers)
+            metrics["cms_depth_qh_num_depths"] = float(self.advanced_cms.default_cfg.qh_num_depths)
+            cap = self.advanced_cms.depth_stack.estimate_storage_capacity()
+            metrics["cms_depth_effective_storage_units"] = float(cap.get("effective_memory_storage_units", 0.0))
+            metrics["cms_depth_effective_ratio"] = float(cap.get("effective_to_physical_ratio", 0.0))
+            for k, v in self.last_cms_depth_stack_stats.items():
+                if isinstance(v, (float, int)):
+                    metrics[f"cms_depth_{k}"] = float(v)
+        else:
+            metrics["cms_depth_stack_enabled"] = 0.0
         return metrics
 
     @torch.no_grad()
@@ -2288,6 +2494,19 @@ class EnhancedMnemonicCortex(nn.Module):
                 'parameter_loop_ltm_context_enabled': bool(self.enable_parameter_loop_ltm_context),
                 'parameter_loop_training_writes_enabled': bool(self.enable_parameter_loop_training_writes),
                 'parameter_loop_training_write_scale': float(self.parameter_loop_training_write_scale),
+                'parameter_loop_auto_consolidation_enabled': bool(self.enable_parameter_loop_auto_consolidation),
+                'parameter_loop_consolidation_interval': int(self.parameter_loop_consolidation_interval),
+                'parameter_loop_consolidation_max_bundles': int(self.parameter_loop_consolidation_max_bundles),
+                'parameter_loop_consolidation_min_params': int(self.parameter_loop_consolidation_min_params),
+                'parameter_loop_consolidation_min_total_numel': int(self.parameter_loop_consolidation_min_total_numel),
+                'parameter_loop_consolidation_include': list(self.parameter_loop_consolidation_include),
+                'parameter_loop_consolidation_exclude': list(self.parameter_loop_consolidation_exclude),
+                'parameter_loop_bundle_registry': (
+                    self.parameter_storage_loop_stack.parameter_bundle_registry_state()
+                    if self.parameter_storage_loop_stack is not None
+                    else None
+                ),
+                'parameter_loop_consolidation_step': int(self.parameter_loop_consolidation_step),
             },
         }
         torch.save(checkpoint, path)
@@ -2314,10 +2533,25 @@ class EnhancedMnemonicCortex(nn.Module):
             self.enable_parameter_loop_ltm_context = bool(optional.get('parameter_loop_ltm_context_enabled', self.enable_parameter_loop_ltm_context))
             self.enable_parameter_loop_training_writes = bool(optional.get('parameter_loop_training_writes_enabled', self.enable_parameter_loop_training_writes))
             self.parameter_loop_training_write_scale = float(optional.get('parameter_loop_training_write_scale', self.parameter_loop_training_write_scale))
+            self.enable_parameter_loop_auto_consolidation = bool(optional.get('parameter_loop_auto_consolidation_enabled', self.enable_parameter_loop_auto_consolidation))
+            self.parameter_loop_consolidation_interval = int(optional.get('parameter_loop_consolidation_interval', self.parameter_loop_consolidation_interval))
+            self.parameter_loop_consolidation_max_bundles = int(optional.get('parameter_loop_consolidation_max_bundles', self.parameter_loop_consolidation_max_bundles))
+            self.parameter_loop_consolidation_min_params = int(optional.get('parameter_loop_consolidation_min_params', self.parameter_loop_consolidation_min_params))
+            self.parameter_loop_consolidation_min_total_numel = int(optional.get('parameter_loop_consolidation_min_total_numel', self.parameter_loop_consolidation_min_total_numel))
+            self.parameter_loop_consolidation_include = tuple(optional.get('parameter_loop_consolidation_include', self.parameter_loop_consolidation_include) or ())
+            self.parameter_loop_consolidation_exclude = tuple(optional.get('parameter_loop_consolidation_exclude', self.parameter_loop_consolidation_exclude) or ())
+            self.parameter_loop_consolidation_step = int(optional.get('parameter_loop_consolidation_step', self.parameter_loop_consolidation_step))
             self.enable_parameter_storage_loop(
                 slots_per_layer=int(optional.get('parameter_loop_slots_per_layer', self.parameter_loop_slots_per_layer)),
                 free_hidden_layers=int(optional.get('parameter_loop_free_hidden_layers', self.parameter_loop_free_hidden_layers)),
             )
+            registry_state = optional.get('parameter_loop_bundle_registry')
+            if registry_state and self.parameter_storage_loop_stack is not None:
+                self.parameter_storage_loop_stack.load_parameter_bundle_registry_state(registry_state)
+        elif optional.get('parameter_storage_loop_enabled', False) and self.parameter_storage_loop_stack is not None:
+            registry_state = optional.get('parameter_loop_bundle_registry')
+            if registry_state:
+                self.parameter_storage_loop_stack.load_parameter_bundle_registry_state(registry_state)
         
         # Version check
         version = checkpoint.get('version', 'unknown')
@@ -2413,6 +2647,7 @@ class EnhancedMnemonicCortex(nn.Module):
             wm_out = self.working_memory(filtered, operation=self._wm_read_operation())  # (B,S,d)
             self._sync_attention_stacks(wm_out)
             self._sync_parameter_loop_ltm_context(wm_out)
+            self._sync_cms_depth_ltm_context(wm_out)
             ltm_ctx = self.long_term_memory(
                 wm_out,
                 operation='read',
@@ -2429,6 +2664,7 @@ class EnhancedMnemonicCortex(nn.Module):
                 bridged, wm_out, ltm_ctx, filtered, phase="process"
             )
             bridged = self._apply_parameter_storage_loop(bridged, phase="process")
+            bridged = self._apply_consolidated_memory_depth(bridged, phase="process")
             bridged = self._apply_global_hidden_attention(bridged, filtered, phase="process")
             inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
             if isinstance(inter, dict) and inter:
@@ -2439,6 +2675,7 @@ class EnhancedMnemonicCortex(nn.Module):
 
             # --- Consolidation into long-term memory ------------------------
             if self.training:  # consolidate only during training
+                self._maybe_consolidate_trainable_parameters()
                 # Learned write gate with STE
                 gate, gate_prob = self._ste_write_gate(filtered)  # (B,1)
                 scaled = bridged * imp.unsqueeze(-1)  # (B,S,d)
