@@ -23,6 +23,12 @@ class CortexWorkingMemoryIntegrationConfig:
     transformer_layers: int = 2
     maae_transformer_layers: int = 2
     cross_model_attention_layers: int = 4
+    context_tokens: int = 0
+    hardware_profile: str = "custom"
+    qspin_guarded_shadow: bool = False
+    qspin_source_matrix_complete: bool = True
+    default_operation: str = "process"
+    return_trace_by_default: bool = False
     use_compatibility_wrapper: bool = True
     preserve_old_reference: bool = True
     old_reference_attr: str = "legacy_working_memory"
@@ -42,6 +48,37 @@ class CortexWorkingMemoryIntegrationConfig:
             raise ValueError("input_dim must be divisible by num_heads")
         if not self.old_reference_attr:
             raise ValueError("old_reference_attr must be non-empty")
+        if self.context_tokens < 0:
+            raise ValueError("context_tokens must be non-negative")
+        if self.default_operation not in {"read", "process", "write"}:
+            raise ValueError("default_operation must be read/process/write")
+
+    @classmethod
+    def from_hardware_profile(
+        cls,
+        profile_name: str,
+        *,
+        input_dim: int | None = None,
+        use_compatibility_wrapper: bool = True,
+        preserve_old_reference: bool = True,
+    ) -> "CortexWorkingMemoryIntegrationConfig":
+        qdt_cfg = QDTWorkingMemoryConfig.from_hardware_profile(profile_name, input_dim=input_dim)
+        return cls(
+            input_dim=qdt_cfg.input_dim,
+            hidden_dim=qdt_cfg.hidden_dim,
+            num_depths=qdt_cfg.num_depths,
+            num_slots=qdt_cfg.num_slots,
+            num_heads=qdt_cfg.num_heads,
+            transformer_layers=qdt_cfg.transformer_layers,
+            maae_transformer_layers=qdt_cfg.maae_transformer_layers,
+            cross_model_attention_layers=qdt_cfg.cross_model_attention_layers,
+            context_tokens=qdt_cfg.context_tokens,
+            hardware_profile=qdt_cfg.hardware_profile,
+            qspin_guarded_shadow=qdt_cfg.qspin_guarded_shadow,
+            qspin_source_matrix_complete=qdt_cfg.qspin_source_matrix_complete,
+            use_compatibility_wrapper=use_compatibility_wrapper,
+            preserve_old_reference=preserve_old_reference,
+        )
 
     def qdt_config(self) -> QDTWorkingMemoryConfig:
         return QDTWorkingMemoryConfig(
@@ -53,6 +90,10 @@ class CortexWorkingMemoryIntegrationConfig:
             transformer_layers=self.transformer_layers,
             maae_transformer_layers=self.maae_transformer_layers,
             cross_model_attention_layers=self.cross_model_attention_layers,
+            context_tokens=self.context_tokens,
+            hardware_profile=self.hardware_profile,
+            qspin_guarded_shadow=self.qspin_guarded_shadow,
+            qspin_source_matrix_complete=self.qspin_source_matrix_complete,
         )
 
     def compatibility_config(self) -> QDTWMCompatibilityConfig:
@@ -63,6 +104,14 @@ class CortexWorkingMemoryIntegrationConfig:
             num_slots=self.num_slots,
             num_heads=self.num_heads,
             transformer_layers=self.transformer_layers,
+            maae_transformer_layers=self.maae_transformer_layers,
+            cross_model_attention_layers=self.cross_model_attention_layers,
+            context_tokens=self.context_tokens,
+            hardware_profile=self.hardware_profile,
+            qspin_guarded_shadow=self.qspin_guarded_shadow,
+            qspin_source_matrix_complete=self.qspin_source_matrix_complete,
+            default_operation=self.default_operation,
+            return_trace_by_default=self.return_trace_by_default,
         )
 
 
@@ -191,6 +240,14 @@ def replace_cortex_working_memory(
                 "qh_storage": True,
                 "system_commit_gate": True,
             },
+            "hardware_profile": config.hardware_profile,
+            "capacity_estimate": config.qdt_config().capacity_estimate(batch_size=1, seq_len=1).to_dict(),
+            "qspin_guarded_shadow": {
+                "enabled": bool(config.qspin_guarded_shadow),
+                "source_matrix_complete": bool(config.qspin_source_matrix_complete),
+                "live_payload_transfer": False,
+                "production_activation": False,
+            },
         },
     )
 
@@ -213,6 +270,13 @@ replace_cortex_working_memory(
         num_slots={config.num_slots},
         num_heads={config.num_heads},
         transformer_layers={config.transformer_layers},
+        maae_transformer_layers={config.maae_transformer_layers},
+        cross_model_attention_layers={config.cross_model_attention_layers},
+        context_tokens={config.context_tokens},
+        hardware_profile="{config.hardware_profile}",
+        qspin_guarded_shadow={config.qspin_guarded_shadow},
+        default_operation="{config.default_operation}",
+        return_trace_by_default={config.return_trace_by_default},
         use_compatibility_wrapper={config.use_compatibility_wrapper},
         preserve_old_reference={config.preserve_old_reference},
     ),

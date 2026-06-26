@@ -20,6 +20,12 @@ class QDTWMCompatibilityConfig:
     num_slots: int = 8
     num_heads: int = 0
     transformer_layers: int = 2
+    maae_transformer_layers: int = 2
+    cross_model_attention_layers: int = 4
+    context_tokens: int = 0
+    hardware_profile: str = "custom"
+    qspin_guarded_shadow: bool = False
+    qspin_source_matrix_complete: bool = True
     default_operation: str = "process"
     return_trace_by_default: bool = False
 
@@ -81,6 +87,12 @@ class QDTWMCompatibilityWrapper(nn.Module):
                 num_slots=config.num_slots,
                 num_heads=config.num_heads,
                 transformer_layers=config.transformer_layers,
+                maae_transformer_layers=config.maae_transformer_layers,
+                cross_model_attention_layers=config.cross_model_attention_layers,
+                context_tokens=config.context_tokens,
+                hardware_profile=config.hardware_profile,
+                qspin_guarded_shadow=config.qspin_guarded_shadow,
+                qspin_source_matrix_complete=config.qspin_source_matrix_complete,
             )
         )
         self._memory_importance = nn.Parameter(torch.ones(config.num_slots))
@@ -202,7 +214,7 @@ class QDTWMCompatibilityWrapper(nn.Module):
         raise AttributeError("underlying QDTWorkingMemory does not support attach_ltm_adapter")
 
     def get_metrics(self) -> Dict[str, Any]:
-        metrics: Dict[str, Any] = {"wm_wrapper": "QDTWMCompatibilityWrapper"}
+        metrics: Dict[str, Any] = {"wm_wrapper": "QDTWMCompatibilityWrapper", "qdt_wrapper_enabled": True}
         if hasattr(self.qdt_working_memory, "get_metrics"):
             try:
                 metrics.update(self.qdt_working_memory.get_metrics())

@@ -10,9 +10,11 @@ from .wm_curved_core import WMCurvedAssociativeCore
 
 # Optional architecture-lock exports.
 try:
-    from .wm_config import QDTWorkingMemoryConfig
+    from .wm_config import QDTWorkingMemoryCapacityEstimate, QDTWorkingMemoryConfig, qdt_config_from_hardware_profile
 except Exception:
     QDTWorkingMemoryConfig = None
+    QDTWorkingMemoryCapacityEstimate = None
+    qdt_config_from_hardware_profile = None
 
 try:
     from .wm_trace import WMTrace, TraceItem
@@ -107,6 +109,8 @@ __all__ = [
     "EnhancedCurvedMemory",
     "WMCurvedAssociativeCore",
     "QDTWorkingMemoryConfig",
+    "QDTWorkingMemoryCapacityEstimate",
+    "qdt_config_from_hardware_profile",
     "WMTrace",
     "TraceItem",
     "WMTripletState",

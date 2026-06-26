@@ -35,6 +35,11 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
                     "  enable_parameter_loop_ltm_context: true",
                     "  enable_parameter_loop_training_writes: false",
                     "  parameter_loop_training_write_scale: 0.5",
+                    "  working_memory_fabric: qdt",
+                    "  qdt_hardware_profile: single_gpu_8_12gb",
+                    "  qdt_num_slots: 6",
+                    "  qdt_transformer_layers: 1",
+                    "  qdt_qspin_guarded_shadow: true",
                     "features:",
                     "  hgm_enabled: true",
                     "  reasoning_bridge_enabled: false",
@@ -67,6 +72,11 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
     assert unified.cortex.enable_parameter_loop_ltm_context is True
     assert unified.cortex.enable_parameter_loop_training_writes is False
     assert unified.cortex.parameter_loop_training_write_scale == 0.5
+    assert unified.cortex.working_memory_fabric == "qdt"
+    assert unified.cortex.qdt_hardware_profile == "single_gpu_8_12gb"
+    assert unified.cortex.qdt_num_slots == 6
+    assert unified.cortex.qdt_transformer_layers == 1
+    assert unified.cortex.qdt_qspin_guarded_shadow is True
     # Features section can promote constructor flag.
     assert unified.cortex.hgm_enabled is True
     assert unified.features.hgm_enabled is True
@@ -114,6 +124,10 @@ def test_build_cortex_from_yaml_constructs_model_from_typed_entrypoint():
                     "  parameter_loop_slots_per_layer: 2",
                     "  parameter_loop_free_hidden_layers: 1",
                     "  enable_parameter_loop_ltm_context: true",
+                    "  working_memory_fabric: qdt",
+                    "  qdt_hardware_profile: single_gpu_8_12gb",
+                    "  qdt_num_slots: 4",
+                    "  qdt_transformer_layers: 1",
                     "  hgm_enabled: true",
                     "stores: {}",
                     "ahg: {}",
@@ -130,6 +144,12 @@ def test_build_cortex_from_yaml_constructs_model_from_typed_entrypoint():
     assert model.long_term_memory.curved.M == 20
     assert model.parameter_storage_loop_stack is not None
     assert model.describe_parameter_storage_loop()["enabled"] is True
+    fabric = model.describe_working_memory_fabric()
+    assert fabric["fabric"] == "qdt"
+    assert fabric["qdt_config"]["num_depths"] == 8
+    assert fabric["qdt_config"]["num_slots"] == 4
+    assert fabric["qdt_config"]["qspin_guarded_shadow"] is True
+    assert fabric["migration_trace"]["live_ltm_adapter_attached"] is True
     assert unified.cortex.hgm_enabled is True
     assert model.hgm_enabled is True
 

@@ -50,6 +50,13 @@ class CortexConfig:
     enable_parameter_loop_training_writes: bool = False
     parameter_loop_training_write_scale: float = 1.0
 
+    # Working-memory fabric
+    working_memory_fabric: str = "legacy"
+    qdt_hardware_profile: str = "single_gpu_8_12gb"
+    qdt_num_slots: int = 0
+    qdt_transformer_layers: int = 0
+    qdt_qspin_guarded_shadow: bool = True
+
     # Transformer depth policy
     depth_profile: str = "standard"
 
@@ -74,6 +81,11 @@ class CortexConfig:
         self.parameter_loop_slots_per_layer = int(max(1, self.parameter_loop_slots_per_layer))
         self.parameter_loop_free_hidden_layers = int(max(0, self.parameter_loop_free_hidden_layers))
         self.parameter_loop_training_write_scale = float(max(0.0, self.parameter_loop_training_write_scale))
+        self.working_memory_fabric = str(self.working_memory_fabric).strip().lower()
+        if self.working_memory_fabric not in {"legacy", "qdt"}:
+            raise ValueError("working_memory_fabric must be 'legacy' or 'qdt'")
+        self.qdt_num_slots = int(max(0, self.qdt_num_slots))
+        self.qdt_transformer_layers = int(max(0, self.qdt_transformer_layers))
 
     def to_cortex_kwargs(self) -> dict:
         return {
@@ -104,6 +116,11 @@ class CortexConfig:
             "enable_parameter_loop_ltm_context": bool(self.enable_parameter_loop_ltm_context),
             "enable_parameter_loop_training_writes": bool(self.enable_parameter_loop_training_writes),
             "parameter_loop_training_write_scale": float(self.parameter_loop_training_write_scale),
+            "working_memory_fabric": str(self.working_memory_fabric),
+            "qdt_hardware_profile": str(self.qdt_hardware_profile),
+            "qdt_num_slots": int(self.qdt_num_slots),
+            "qdt_transformer_layers": int(self.qdt_transformer_layers),
+            "qdt_qspin_guarded_shadow": bool(self.qdt_qspin_guarded_shadow),
             "fusion": str(self.fusion),
             "hgm_enabled": bool(self.hgm_enabled),
             "cms_vocab_size": int(self.cms_vocab_size),

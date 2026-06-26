@@ -75,6 +75,11 @@ class CortexBuildConfig:
     enable_parameter_loop_ltm_context: bool = True
     enable_parameter_loop_training_writes: bool = False
     parameter_loop_training_write_scale: float = 1.0
+    working_memory_fabric: str = "legacy"
+    qdt_hardware_profile: str = "single_gpu_8_12gb"
+    qdt_num_slots: int = 0
+    qdt_transformer_layers: int = 0
+    qdt_qspin_guarded_shadow: bool = True
 
     def to_cortex_kwargs(self) -> Dict[str, Any]:
         return {
@@ -101,6 +106,11 @@ class CortexBuildConfig:
             "enable_parameter_loop_ltm_context": bool(self.enable_parameter_loop_ltm_context),
             "enable_parameter_loop_training_writes": bool(self.enable_parameter_loop_training_writes),
             "parameter_loop_training_write_scale": float(self.parameter_loop_training_write_scale),
+            "working_memory_fabric": str(self.working_memory_fabric),
+            "qdt_hardware_profile": str(self.qdt_hardware_profile),
+            "qdt_num_slots": int(self.qdt_num_slots),
+            "qdt_transformer_layers": int(self.qdt_transformer_layers),
+            "qdt_qspin_guarded_shadow": bool(self.qdt_qspin_guarded_shadow),
         }
 
 
@@ -208,6 +218,11 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
         enable_parameter_loop_ltm_context=_as_bool(cortex_obj.get("enable_parameter_loop_ltm_context", True), True),
         enable_parameter_loop_training_writes=_as_bool(cortex_obj.get("enable_parameter_loop_training_writes", False), False),
         parameter_loop_training_write_scale=float(cortex_obj.get("parameter_loop_training_write_scale", 1.0)),
+        working_memory_fabric=str(cortex_obj.get("working_memory_fabric", "legacy")),
+        qdt_hardware_profile=str(cortex_obj.get("qdt_hardware_profile", "single_gpu_8_12gb")),
+        qdt_num_slots=int(cortex_obj.get("qdt_num_slots", 0)),
+        qdt_transformer_layers=int(cortex_obj.get("qdt_transformer_layers", 0)),
+        qdt_qspin_guarded_shadow=_as_bool(cortex_obj.get("qdt_qspin_guarded_shadow", True), True),
     )
     features_cfg = FeatureConfig(
         hgm_enabled=_as_bool(features_obj.get("hgm_enabled", False), False),

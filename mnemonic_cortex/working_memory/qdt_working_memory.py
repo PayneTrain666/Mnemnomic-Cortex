@@ -28,6 +28,7 @@ from .wm_dual_fusion import WMDualFusionController, WMDualFusionConfig
 from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 from .wm_quantum_holographic_storage import QuantumHolographicStorage, QuantumHolographicStorageConfig
 from .wm_system_commit_gate import SystemCommitGate, SystemWriteProposal
+from .qspin_runtime_shadow_activation import QSpinRuntimeFeatureFlagEvaluator, QSpinRuntimeFeatureFlagSnapshot
 
 
 class QDTWorkingMemory(nn.Module):
@@ -163,6 +164,7 @@ class QDTWorkingMemory(nn.Module):
         self.cross_model_norm = nn.LayerNorm(config.input_dim)
         self.last_attention_stack_tokens = None
         self._ltm_adapter = None
+        self.last_qspin_shadow_trace = None
 
     def attach_ltm_adapter(self, triple_hybrid, shared_slot_store=None):
         """Replace synthetic LTM bank with live triple-hybrid adapter."""
@@ -197,6 +199,38 @@ class QDTWorkingMemory(nn.Module):
     def get_attention_stack_output(self) -> Optional[torch.Tensor]:
         return self.last_attention_stack_tokens
 
+    def _build_qspin_guarded_shadow_trace(self, operation: str, context_map_name: Optional[str]) -> Dict[str, Any]:
+        if not bool(getattr(self.config, "qspin_guarded_shadow", False)):
+            trace = {
+                "enabled": False,
+                "mode": "disabled",
+                "reason": "qspin_guarded_shadow_disabled",
+                "live_routing": False,
+                "payload_transfer": False,
+                "writes": False,
+                "production_activation": False,
+            }
+            self.last_qspin_shadow_trace = trace
+            return trace
+        snapshot = QSpinRuntimeFeatureFlagSnapshot()
+        block_reasons = [reason.value for reason in QSpinRuntimeFeatureFlagEvaluator().evaluate(snapshot)]
+        trace = {
+            "enabled": True,
+            "mode": "guarded_experimental_shadow",
+            "operation": str(operation),
+            "context_map_name": context_map_name or "quantum_holographic",
+            "source_matrix_complete": bool(getattr(self.config, "qspin_source_matrix_complete", True)),
+            "unsafe_feature_flags": [],
+            "block_reasons": block_reasons,
+            "allowed_shadow_only": bool(not block_reasons and getattr(self.config, "qspin_source_matrix_complete", True)),
+            "live_routing": False,
+            "payload_transfer": False,
+            "writes": False,
+            "production_activation": False,
+        }
+        self.last_qspin_shadow_trace = trace
+        return trace
+
     def _validate_input(self, x: torch.Tensor) -> None:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
             raise ValueError(f"Expected x [B,T,{self.config.input_dim}], got {tuple(x.shape)}")
@@ -218,6 +252,11 @@ class QDTWorkingMemory(nn.Module):
             stage="WM-2C",
             write_permission_required=operation == "write",
             qdt_config=self.config.to_dict(),
+        )
+        trace.add(
+            "qspin_guarded_shadow",
+            "guarded_qspin_shadow_metadata",
+            qspin=self._build_qspin_guarded_shadow_trace(operation, context_map_name),
         )
 
         if operation == "write":
@@ -299,7 +338,7 @@ class QDTWorkingMemory(nn.Module):
         maae_tokens = self.maae_stack_norm(maae_tokens + self.maae_stack(maae_tokens))
         trace.merge_dict("memory_augmented_attention", maae_trace)
         trace.add(
-            "memory_augmented_attention",
+            "memory_augmented_attention_stack",
             "maae_stack_applied",
             layers=int(self.config.maae_transformer_layers),
         )

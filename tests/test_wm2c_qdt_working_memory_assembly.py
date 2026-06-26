@@ -1,6 +1,6 @@
 import torch
 
-from mnemonic_cortex.working_memory import QDTWorkingMemoryConfig, QDTWorkingMemory
+from mnemonic_cortex.working_memory import QDTWorkingMemoryConfig, QDTWorkingMemory, qdt_config_from_hardware_profile
 
 
 def make_wm():
@@ -80,3 +80,43 @@ def test_qdt_working_memory_config_rejects_bad_heads():
     except ValueError:
         return
     raise AssertionError("Expected ValueError")
+
+
+def test_qdt_single_gpu_profile_estimate_and_replica_trace():
+    cfg = qdt_config_from_hardware_profile("single_gpu_8_12gb", input_dim=32)
+    cfg.num_slots = 8
+    cfg.transformer_layers = 1
+    cfg.maae_transformer_layers = 1
+    cfg.cross_model_attention_layers = 1
+    estimate = cfg.capacity_estimate(batch_size=1, seq_len=3).to_dict()
+    wm = QDTWorkingMemory(cfg)
+    x = torch.randn(1, 3, 32)
+    y, trace = wm(x, operation="read", context_map_name="quantum_holographic", return_trace=True)
+
+    assert cfg.hardware_profile == "single_gpu_8_12gb"
+    assert cfg.num_depths == 8
+    assert cfg.triplet_dim == 3
+    assert cfg.qspin_guarded_shadow is True
+    assert estimate["depth_state_scalars_per_token"] == 8 * 3 * 32
+    assert y.shape == x.shape
+    q_depth = [item for item in trace["items"] if item["stage"] == "quaternion_depth"][0]
+    assert q_depth["metadata"]["payload"]["output_shape"] == [1, 8, 3, 3, 32]
+
+
+def test_qdt_guarded_qspin_trace_has_no_live_effects():
+    cfg = qdt_config_from_hardware_profile("single_gpu_8_12gb", input_dim=32)
+    cfg.num_slots = 8
+    cfg.transformer_layers = 1
+    cfg.maae_transformer_layers = 1
+    cfg.cross_model_attention_layers = 1
+    wm = QDTWorkingMemory(cfg)
+    _y, trace = wm(torch.randn(1, 2, 32), operation="process", return_trace=True)
+    qspin = [item for item in trace["items"] if item["stage"] == "qspin_guarded_shadow"][0]["metadata"]["qspin"]
+
+    assert qspin["enabled"] is True
+    assert qspin["mode"] == "guarded_experimental_shadow"
+    assert qspin["allowed_shadow_only"] is True
+    assert qspin["live_routing"] is False
+    assert qspin["payload_transfer"] is False
+    assert qspin["writes"] is False
+    assert qspin["production_activation"] is False
