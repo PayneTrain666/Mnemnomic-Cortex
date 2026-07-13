@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Bridges CPS keys to vocabulary tokens / skills / entities.
+How it fits in the system: Connects parameter-store identities to language-like tokens.
+Status: ACTIVE when CPS lexicon bridging used
+Important notes for non-coders: Mostly naming and key helpers.
+"""
+
 from typing import Dict, List
 
 from .cps import ConsolidatedParamStore, UnifiedParam, UnifiedParamCfg

@@ -1,4 +1,13 @@
-"""Rollback snapshot binding plan for WRITE-PREP-4.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt rollback snapshot binding plan.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Rollback snapshot binding plan for WRITE-PREP-4.
 
 This module links WRITE-PREP-1 rollback requirements and WRITE-PREP-3 synthetic
 rollback replay evidence into a plan for later real rollback_stack binding.  It

@@ -1,4 +1,14 @@
-"""Configuration for the Spatial LTM + geometry-aware MANN subsystem."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Long-term memory package module: config.
+How it fits in the system: Supports LTM banks, MANN/geometry helpers, or package wiring used with cortex LTM.
+Status: ACTIVE / LEGACY depending on file
+Important notes for non-coders: Some files are local copies or aliases; prefer top-level cortex + triple_hybrid for product runtime.
+
+Technical notes (original):
+Configuration for the Spatial LTM + geometry-aware MANN subsystem.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -1,4 +1,14 @@
-"""Dependency-light procedural memory store/retrieval for HGM-3."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: procedural memory.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Dependency-light procedural memory store/retrieval for HGM-3.
+"""
 
 from __future__ import annotations
 

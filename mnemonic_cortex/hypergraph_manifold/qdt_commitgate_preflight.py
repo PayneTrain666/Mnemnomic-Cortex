@@ -1,4 +1,13 @@
-"""CommitGate-style preflight checks for HGM/QDT dry-run proposals.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt commitgate preflight.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+CommitGate-style preflight checks for HGM/QDT dry-run proposals.
 
 This module deliberately avoids SystemCommitGate.stage and commit. It evaluates
 proposal preview records against the gates expected by QDT/WM contracts.

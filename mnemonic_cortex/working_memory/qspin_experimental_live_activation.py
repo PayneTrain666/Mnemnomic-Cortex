@@ -1,4 +1,13 @@
-"""Experimental QSPIN live activation contracts.
+"""
+Plain-language summary
+----------------------
+What this file is for: Experimental controller for guarded QSPIN live activation.
+How it fits in the system: Only relevant if a future stage explicitly authorizes activation.
+Status: INERT / guarded
+Important notes for non-coders: Default remains disabled per project safety rules.
+
+Technical notes (original):
+Experimental QSPIN live activation contracts.
 
 This module is intentionally separate from the existing PROD-1 shadow-only
 contracts. It allows opt-in experimental live effects while keeping fail-closed

@@ -1,4 +1,13 @@
-"""HGM-4 result dataclasses for trace-safe QDT/WM bridge planning.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm4 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-4 result dataclasses for trace-safe QDT/WM bridge planning.
 
 HGM-4 is intentionally dry-run/read-only by default. It produces bridge
 contracts, shared slot-lattice hook records, and execution previews without

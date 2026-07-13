@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Tracks running statistics that decide lightbulb activation.
+How it fits in the system: Controller layer above raw lightbulb detectors.
+Status: OPT-IN
+Important notes for non-coders: Tuning here changes how often 'aha' recall fires.
+"""
+
 import math
 
 import torch

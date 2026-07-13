@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Audits which modules fire and how large parameters are.
+How it fits in the system: Produces structural / activation audit reports.
+Status: WORKING (utility)
+Important notes for non-coders: Used by tools/comprehensive_model_audit.py.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

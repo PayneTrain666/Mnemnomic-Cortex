@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Dry-run or sandbox helper (dry_run_backend_interface).
+How it fits in the system: Lets engineers rehearse a path safely without committing live side effects.
+Status: LOW-USE / SAFETY SCAFFOLD
+Important notes for non-coders: Not the everyday training path.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

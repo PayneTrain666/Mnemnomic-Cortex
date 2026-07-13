@@ -1,4 +1,13 @@
-"""High-level HGM/QDT write-preparation pipeline.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm qdt write prep pipeline.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+High-level HGM/QDT write-preparation pipeline.
 
 This orchestrates read-only contract probes, tensor proposal previews, slot ID
 mapping, q-spin/QH conversion previews, and rollback snapshot handshakes.

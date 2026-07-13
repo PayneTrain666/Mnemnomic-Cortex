@@ -1,4 +1,13 @@
-"""HGM/HPME foundation package.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module:   init  .
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM/HPME foundation package.
 
 HGM-0A adds typed, validation-first primitives for Hypergraph Manifold
 spaces and Hyperset Probability Matrix Expansion. It is additive and does

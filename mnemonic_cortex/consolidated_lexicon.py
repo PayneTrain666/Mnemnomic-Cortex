@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Shared vocabulary / concept lexicon backed by geometric distances.
+How it fits in the system: Lets consolidation attach stable names/concepts to patterns.
+Status: ACTIVE when lexicon/CMS path on
+Important notes for non-coders: Works with CMS ops and CPS bridges.
+"""
+
 import math
 from typing import Dict, List, Optional
 

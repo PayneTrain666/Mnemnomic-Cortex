@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Resolves conflicting memory candidates.
+How it fits in the system: Chooses or blends when memories disagree.
+Status: ACTIVE / OPT-IN
+Important notes for non-coders: Important for coherent recall under conflict.
+"""
+
 from dataclasses import dataclass
 from typing import Dict
 

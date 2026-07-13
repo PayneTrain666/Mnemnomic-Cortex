@@ -1,4 +1,14 @@
-"""Comprehensive neural-layer and parameter-space audit for Mnemonic Cortex models."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Writes comprehensive layer and parameter audit reports.
+How it fits in the system: Operator tool for inspecting what the model contains and what activates.
+Status: WORKING
+Important notes for non-coders: Outputs under reports/.
+
+Technical notes (original):
+Comprehensive neural-layer and parameter-space audit for Mnemonic Cortex models.
+"""
 from __future__ import annotations
 
 import argparse

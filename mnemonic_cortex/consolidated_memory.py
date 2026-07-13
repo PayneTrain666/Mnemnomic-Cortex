@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Consolidated Memory Store (CMS) with holographic slot support.
+How it fits in the system: Used when advanced consolidation / depth stacking is enabled.
+Status: ACTIVE when enabled / OPT-IN otherwise
+Important notes for non-coders: Depth stack lives in consolidated_memory_depth_stack.py.
+"""
+
 import math
 import time
 from dataclasses import dataclass

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergeometric / episodic-style long-term memory bank.
+How it fits in the system: One of the main LTM banks inside triple-hybrid fusion.
+Status: ACTIVE
+Important notes for non-coders: Stores episode-like patterns rather than only word meanings.
+"""
+
 import math
 import torch
 import torch.nn as nn

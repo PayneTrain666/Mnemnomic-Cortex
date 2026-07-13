@@ -1,4 +1,13 @@
-"""Trace-safe HGM-4 memory integration plans.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: trace safe memory integration.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Trace-safe HGM-4 memory integration plans.
 
 Plans and previews are read-only contracts. This module never writes to the
 working-memory/QDT runtime and never calls hardware or network services.

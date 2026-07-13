@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Older curved working-memory implementation kept for compatibility.
+How it fits in the system: Legacy WM path retained beside QDT-WM.
+Status: LEGACY
+Important notes for non-coders: Can still consume parameters if cortex keeps legacy_working_memory.
+"""
+
 from __future__ import annotations
 
 from .wm_foundation_guards import ensure_finite_tensor, ensure_rank, safe_jsonable, foundation_trace, row_stochastic, clamp_norm

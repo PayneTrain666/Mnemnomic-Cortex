@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Full GPU trainer for copy / reverse sequence tasks with curriculum and checkpoints.
+How it fits in the system: Primary practical training script for the cortex stack on GPU.
+Status: WORKING
+Important notes for non-coders: Keeps a defensive QH device helper; primary fix is in LTM/QH modules.
+"""
+
 import argparse
 import contextlib
 import glob
@@ -31,8 +40,13 @@ from data.copy_task_dataloader import (
 )
 from mnemonic_cortex.memory import SlotWriteRequest
 from mnemonic_cortex.optimizer import OptimizerConfig, build_optimizer, build_warmup_cosine_scheduler
+from mnemonic_cortex.trainable_parameter_cps import TrainableParameterCPSConfig
 
 
+# =============================================================================
+# SECTION: SETUP HELPERS
+# Seeding, batch unpacking, curriculum length, checkpoint path setup.
+# =============================================================================
 def seed_all(seed: int = 42):
     random.seed(seed)
     torch.manual_seed(seed)
@@ -230,11 +244,15 @@ def _align_logits_targets(logits: torch.Tensor, tgt: torch.Tensor) -> Tuple[torc
     return logits[:, :L, :], tgt[:, :L]
 
 
+# --- DEVICE SAFETY: defensive QH move (primary fix now lives in LTM/QH modules) ---
 def _move_qh_codebooks_to_device(model, device: torch.device) -> int:
     """
-    Some QH codebook tensors are stored in plain dicts, not module buffers.
-    qh_banks on TripleHybridMemory is a plain dict (not ModuleDict), so buffers
-    must be moved explicitly. Force-move codebooks and slot banks to target device.
+    Defensive QH device sync.
+
+    EnhancedTripleHybridMemory.qh_banks is now an nn.ModuleDict and
+    QuantumHologramSlotBank._apply migrates codebook dict tensors, so
+    model.to(device) is sufficient. This helper remains as a belt-and-suspenders
+    check for older checkpoints / alternate holders.
     """
     moved = 0
     seen_banks = set()
@@ -491,6 +509,10 @@ def _save_checkpoint(
         "args": vars(args),
         "saved_at": float(time.time()),
     }
+    if hasattr(model, "trainable_parameter_cps_manifest"):
+        payload["trainable_parameter_cps_manifest"] = (
+            model.trainable_parameter_cps_manifest()
+        )
     if mastery_model is not None:
         payload["mastery_state_dict"] = mastery_model.state_dict()
     torch.save(payload, path)
@@ -562,6 +584,7 @@ def _load_state_dict_compatible(model: torch.nn.Module, incoming: Dict[str, torc
     return {"loaded": len(compatible), "skipped": skipped}
 
 
+# --- EVAL PATH: measure loss / accuracy without updating weights ---
 def _evaluate(model, loader, device, *, use_aligned_targets: bool = False) -> Tuple[float, float, float]:
     model.eval()
     total_loss = 0.0
@@ -600,9 +623,24 @@ def _evaluate(model, loader, device, *, use_aligned_targets: bool = False) -> Tu
     )
 
 
+# =============================================================================
+# SECTION: MAIN TRAINING LOOP
+# Builds the model, moves it to GPU, runs curriculum epochs, saves checkpoints.
+# =============================================================================
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    p.add_argument(
+        "--working_memory_fabric",
+        choices=["qdt", "legacy"],
+        default="qdt",
+        help="Working-memory implementation; QDT is the training default.",
+    )
+    p.add_argument(
+        "--qdt_hardware_profile",
+        choices=["compact", "single_gpu_8_12gb", "deep"],
+        default="single_gpu_8_12gb",
+    )
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--total_steps", type=int, default=500)
@@ -719,6 +757,11 @@ def main():
     p.add_argument("--disable_shared_slot_writes", dest="enable_shared_slot_writes", action="store_false")
     p.add_argument("--shared_slot_max_episodes_per_step", type=int, default=4)
     p.add_argument("--shared_slot_consolidation_every", type=int, default=5)
+    p.add_argument("--enable_trainable_parameter_cps", action="store_true")
+    p.add_argument("--trainable_cps_compress", action="store_true")
+    p.add_argument("--trainable_cps_max_rank", type=int, default=8)
+    p.add_argument("--trainable_cps_reconstruction_tolerance", type=float, default=1e-4)
+    p.add_argument("--trainable_cps_output_tolerance", type=float, default=1e-5)
     p.set_defaults(copy_enable_sin_encoder=True, copy_enable_sin_decoder=True)
     p.set_defaults(auto_resume_best=True, auto_resume_weights_only=True)
     p.set_defaults(enable_diagnostics=True)
@@ -762,7 +805,19 @@ def main():
         task_decoder_use_sinusoidal=bool(args.task_decoder_use_sinusoidal),
         ltm_enable_spatial_ltm=False,
         ltm_auto_wire_spatial=False,
+        working_memory_fabric=str(args.working_memory_fabric),
+        qdt_hardware_profile=str(args.qdt_hardware_profile),
+        qdt_qspin_guarded_shadow=True,
+        qdt_qspin_live_activation=False,
+        qdt_qspin_live_kill_switch_enabled=True,
     ).to(device)
+    wm_fabric = model.cortex.describe_working_memory_fabric()
+    print(
+        "[copy] working_memory="
+        f"{wm_fabric['fabric']} class={wm_fabric['working_memory_class']} "
+        "qspin_live=false",
+        flush=True,
+    )
     if args.disable_fusion:
         _disable_fusion_paths(model)
     if hasattr(model, "cortex") and hasattr(model.cortex, "enable_diagnostics"):
@@ -849,6 +904,43 @@ def main():
         )
         model.cortex.apply_topology_policy("copy_task_tailored")
 
+    resume_ckpt = None
+    if args.resume_checkpoint:
+        resume_ckpt = torch.load(args.resume_checkpoint, map_location=device)
+        trainable_cps_manifest = resume_ckpt.get("trainable_parameter_cps_manifest")
+        if (
+            trainable_cps_manifest
+            and hasattr(model, "prepare_trainable_parameter_cps_from_manifest")
+        ):
+            model.prepare_trainable_parameter_cps_from_manifest(
+                trainable_cps_manifest
+            )
+            model.to(device)
+
+    if args.enable_trainable_parameter_cps:
+        store = getattr(model, "trainable_parameter_cps", None)
+        if store is None:
+            store = model.enable_trainable_parameter_cps(
+                TrainableParameterCPSConfig(
+                    exclude=("*qspin*", "*trainable_parameter_cps*"),
+                    enable_compression=bool(args.trainable_cps_compress),
+                    max_rank=int(args.trainable_cps_max_rank),
+                    reconstruction_tolerance=float(
+                        args.trainable_cps_reconstruction_tolerance
+                    ),
+                    output_tolerance=float(args.trainable_cps_output_tolerance),
+                )
+            )
+            proposal = store.stage(model)
+            store.commit(proposal)
+            if args.trainable_cps_compress:
+                store.compress_committed()
+        model.to(device)
+        print(
+            f"[copy] trainable_cps={store.capacity_report()}",
+            flush=True,
+        )
+
     opt_params = list(model.parameters())
     if mastery_model is not None:
         opt_params += list(mastery_model.parameters())
@@ -905,7 +997,7 @@ def main():
             )
 
     if args.resume_checkpoint:
-        ckpt = torch.load(args.resume_checkpoint, map_location=device)
+        ckpt = resume_ckpt
         strict = bool(args.resume_strict)
         load_stats = _load_state_dict_compatible(model, ckpt.get("model_state_dict", {}), strict=strict)
         if not strict and int(load_stats.get("skipped", 0)) > 0:

@@ -1,4 +1,13 @@
-"""HGM-8 result dataclasses for runtime embedding/replay/benchmark evaluation.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm8 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-8 result dataclasses for runtime embedding/replay/benchmark evaluation.
 
 HGM-8 is evaluation-first. It builds deterministic runtime embedding records,
 replays HGM-7 transaction logs as safe evaluation objects, and scores the

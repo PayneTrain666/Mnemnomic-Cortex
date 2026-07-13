@@ -1,4 +1,13 @@
-"""QSPIN-PROD-4 synthetic QH/shared-slot sandbox.
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+QSPIN-PROD-4 synthetic QH/shared-slot sandbox.
 
 The sandbox is local metadata only. It is isolated from real QD6A shared-slot,
 QH, and external-memory stores. Real writes are rejected. Sandbox-local writes

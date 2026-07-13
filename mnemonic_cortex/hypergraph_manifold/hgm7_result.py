@@ -1,4 +1,13 @@
-"""HGM-7 result dataclasses for guarded write-execution scaffolding.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm7 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-7 result dataclasses for guarded write-execution scaffolding.
 
 HGM-7 introduces a transaction log and recovery verification harness, but it
 remains simulation-mode and preview-safe by default. It does not write into

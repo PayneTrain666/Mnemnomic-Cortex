@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Optional loop storing parameter bundles across geometry manifolds.
+How it fits in the system: Extra structure beyond ordinary weight tensors.
+Status: OPT-IN
+Important notes for non-coders: Training writes may stay disabled even when present.
+"""
+
 from __future__ import annotations
 
 import math

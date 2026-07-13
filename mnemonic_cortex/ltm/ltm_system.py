@@ -1,4 +1,14 @@
-"""Triple-hybrid LTM with explicit Spatial LTM and per-depth geometry charts."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Long-term memory package module: ltm system.
+How it fits in the system: Supports LTM banks, MANN/geometry helpers, or package wiring used with cortex LTM.
+Status: ACTIVE / LEGACY depending on file
+Important notes for non-coders: Some files are local copies or aliases; prefer top-level cortex + triple_hybrid for product runtime.
+
+Technical notes (original):
+Triple-hybrid LTM with explicit Spatial LTM and per-depth geometry charts.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

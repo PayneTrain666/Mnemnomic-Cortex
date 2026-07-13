@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Small utilities: seeding, tensor-core hints, memory-access helpers.
+How it fits in the system: Shared housekeeping for experiments.
+Status: WORKING
+Important notes for non-coders: No model architecture here.
+"""
+
 import os
 import torch
 import torch.nn as nn

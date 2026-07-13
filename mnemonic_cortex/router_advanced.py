@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Advanced domain router across memory / skill domains.
+How it fits in the system: Higher-level routing used with multi-CPS / distillation setups.
+Status: ACTIVE / OPT-IN by feature
+Important notes for non-coders: Related losses live in router_losses.py.
+"""
+
 from typing import Dict, List, Optional, Tuple
 
 import torch

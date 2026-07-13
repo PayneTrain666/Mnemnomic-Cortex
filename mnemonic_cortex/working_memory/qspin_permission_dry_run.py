@@ -1,4 +1,13 @@
-"""QSPIN-PROD-3 QH/shared-slot/external-memory permission dry-run.
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+QSPIN-PROD-3 QH/shared-slot/external-memory permission dry-run.
 
 Performs metadata-only permission checks. PROD-3 rejects all writes and never
 performs real reads/writes.

@@ -1,4 +1,13 @@
-"""Runtime result dataclasses for HGM/HPME probability expansion.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: runtime result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Runtime result dataclasses for HGM/HPME probability expansion.
 
 HGM-0B keeps runtime outputs explicit and audit-friendly. The classes in this
 module intentionally avoid torch/numpy dependencies so they can be used in

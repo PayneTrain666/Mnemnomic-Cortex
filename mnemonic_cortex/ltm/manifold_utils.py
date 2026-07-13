@@ -1,4 +1,13 @@
-"""Stable geometry utilities for Spatial LTM and geometry-aware MANN.
+"""
+Plain-language summary
+----------------------
+What this file is for: Long-term memory package module: manifold utils.
+How it fits in the system: Supports LTM banks, MANN/geometry helpers, or package wiring used with cortex LTM.
+Status: ACTIVE / LEGACY depending on file
+Important notes for non-coders: Some files are local copies or aliases; prefer top-level cortex + triple_hybrid for product runtime.
+
+Technical notes (original):
+Stable geometry utilities for Spatial LTM and geometry-aware MANN.
 
 The spatial channel is a compact SE(3)-inspired metric: translation distance,
 unit-quaternion orientation distance, and optional residual feature distance.

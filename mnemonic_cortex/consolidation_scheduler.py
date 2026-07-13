@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Schedules when consolidation should run.
+How it fits in the system: Timing layer above brokers.
+Status: OPT-IN / ACTIVE when scheduled consolidation used
+Important notes for non-coders: Does not store memories itself.
+"""
+
 import time
 from dataclasses import dataclass
 from typing import Callable, List, Tuple

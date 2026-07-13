@@ -42,6 +42,14 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
                     "  parameter_loop_consolidation_min_total_numel: 10",
                     "  parameter_loop_consolidation_include: [long_term_memory]",
                     "  parameter_loop_consolidation_exclude: [parameter_storage_loop_stack]",
+                    "  enable_trainable_parameter_cps: true",
+                    "  trainable_parameter_cps_include: [ctx_proj]",
+                    "  trainable_parameter_cps_exclude: [qspin]",
+                    "  trainable_parameter_cps_enable_compression: true",
+                    "  trainable_parameter_cps_max_rank: 4",
+                    "  trainable_parameter_cps_min_cohort_size: 3",
+                    "  trainable_parameter_cps_reconstruction_tolerance: 0.001",
+                    "  trainable_parameter_cps_output_tolerance: 0.0001",
                     "  working_memory_fabric: qdt",
                     "  qdt_hardware_profile: single_gpu_8_12gb",
                     "  qdt_num_slots: 6",
@@ -88,6 +96,14 @@ def test_unified_yaml_loader_parses_cortex_global_and_features():
     assert unified.cortex.parameter_loop_consolidation_min_total_numel == 10
     assert unified.cortex.parameter_loop_consolidation_include == ("long_term_memory",)
     assert unified.cortex.parameter_loop_consolidation_exclude == ("parameter_storage_loop_stack",)
+    assert unified.cortex.enable_trainable_parameter_cps is True
+    assert unified.cortex.trainable_parameter_cps_include == ("ctx_proj",)
+    assert unified.cortex.trainable_parameter_cps_exclude == ("qspin",)
+    assert unified.cortex.trainable_parameter_cps_enable_compression is True
+    assert unified.cortex.trainable_parameter_cps_max_rank == 4
+    assert unified.cortex.trainable_parameter_cps_min_cohort_size == 3
+    assert unified.cortex.trainable_parameter_cps_reconstruction_tolerance == 0.001
+    assert unified.cortex.trainable_parameter_cps_output_tolerance == 0.0001
     assert unified.cortex.working_memory_fabric == "qdt"
     assert unified.cortex.qdt_hardware_profile == "single_gpu_8_12gb"
     assert unified.cortex.qdt_num_slots == 6

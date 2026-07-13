@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Detects 'aha' moments and can boost recall temperature.
+How it fits in the system: Triggers stronger memory recall when novelty or importance spikes.
+Status: OPT-IN / ACTIVE when enabled
+Important notes for non-coders: Older lightbulb path; see also lightbulb_recall_v2.
+"""
+
 import torch
 import torch.nn as nn
 

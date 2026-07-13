@@ -1,4 +1,14 @@
-"""Read-only HGM slot ID to QDT/WM slot mapping plan."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt slot mapping plan.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Read-only HGM slot ID to QDT/WM slot mapping plan.
+"""
 
 from __future__ import annotations
 

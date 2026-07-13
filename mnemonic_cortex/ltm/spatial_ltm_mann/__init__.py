@@ -1,4 +1,13 @@
-"""Backward-compatible alias package for Spatial LTM + MANN reconstruction.
+"""
+Plain-language summary
+----------------------
+What this file is for: Long-term memory package module:   init  .
+How it fits in the system: Supports LTM banks, MANN/geometry helpers, or package wiring used with cortex LTM.
+Status: ACTIVE / LEGACY depending on file
+Important notes for non-coders: Some files are local copies or aliases; prefer top-level cortex + triple_hybrid for product runtime.
+
+Technical notes (original):
+Backward-compatible alias package for Spatial LTM + MANN reconstruction.
 
 Re-exports the canonical ``mnemonic_cortex.ltm`` public API so older import paths
 keep working without duplicating implementation modules.

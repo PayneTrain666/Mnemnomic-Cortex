@@ -1,4 +1,13 @@
-"""HGM-10 release consolidation dataclasses.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm10 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-10 release consolidation dataclasses.
 
 HGM-10 freezes the additive HGM/HPME v0.1 public API surface, consolidates
 release evidence, and emits an integration roadmap. It does not enable live

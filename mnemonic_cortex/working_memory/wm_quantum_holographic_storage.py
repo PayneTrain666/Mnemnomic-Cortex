@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: WM-side quantum holographic storage interface.
+How it fits in the system: Metadata/compatible QH hooks for working memory writes.
+Status: INCOMPLETE / interface-compatible
+Important notes for non-coders: Persistent QH backend is still deferred per readiness docs.
+"""
+
 from __future__ import annotations
 
 from .wm_external_memory_guards import ensure_external_memory_response, ensure_mann_trace_visibility, ensure_fusion_inputs, ensure_shared_slot_id, ensure_shared_slot_record, ensure_qh_code_schema, ensure_qh_storage_record, interference_score, external_memory_contract_trace, external_memory_trace

@@ -1,4 +1,14 @@
-"""High-level HGM-10 final release consolidation entry point."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm10 pipeline.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+High-level HGM-10 final release consolidation entry point.
+"""
 
 from __future__ import annotations
 

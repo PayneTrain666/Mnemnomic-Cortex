@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Fuses multiple CPS views into one usable signal.
+How it fits in the system: Combines parameter-store outputs for downstream use.
+Status: ACTIVE when CPS path on
+Important notes for non-coders: Quant-aware cousin exists in quant_fuser.py.
+"""
+
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 

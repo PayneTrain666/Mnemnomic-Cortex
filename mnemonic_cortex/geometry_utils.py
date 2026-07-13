@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Low-level geometry helpers (quaternions, angles, etc.).
+How it fits in the system: Math toolkit used by topology and manifold code.
+Status: WORKING
+Important notes for non-coders: Foundation utilities; not a full memory system.
+"""
+
 import math
 import torch
 import torch.nn as nn

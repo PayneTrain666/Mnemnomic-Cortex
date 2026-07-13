@@ -4,6 +4,10 @@ import torch.nn as nn
 from mnemonic_cortex.cortex import EnhancedMnemonicCortex
 from mnemonic_cortex.anti_hallucination import AHGThresholds, HallucinationGuard
 from mnemonic_cortex.model_audit import run_model_audit
+from mnemonic_cortex.trainable_parameter_cps import (
+    TrainableParameterCPS,
+    TrainableParameterCPSConfig,
+)
 from benchmark.tasks import TOK2IDX  # for SOS token when auto-shifting target inputs
 import math
 
@@ -160,6 +164,63 @@ class CortexSeqModel(nn.Module):
     def topology_step(self, loss_value: float):
         if hasattr(self.cortex, "topology_step"):
             self.cortex.topology_step(float(loss_value))
+
+    def enable_trainable_parameter_cps(
+        self,
+        config: TrainableParameterCPSConfig | None = None,
+    ) -> TrainableParameterCPS:
+        """Mount an opt-in weight CPS for embedding, decoder, and cortex."""
+        existing = getattr(self, "trainable_parameter_cps", None)
+        if existing is not None:
+            return existing
+        store = TrainableParameterCPS(
+            config
+            or TrainableParameterCPSConfig(
+                exclude=("*qspin*", "*trainable_parameter_cps*"),
+            )
+        )
+        object.__setattr__(self, "trainable_parameter_cps", store)
+        return store
+
+    def stage_trainable_parameter_consolidation(self, *, probe=None):
+        store = self.enable_trainable_parameter_cps()
+        proposal = store.stage(self)
+        if probe is not None:
+            store.evaluate_probe(probe)
+        return proposal
+
+    def commit_trainable_parameter_consolidation(self, proposal=None, *, optimizer=None):
+        store = self.enable_trainable_parameter_cps()
+        if proposal is None and store.proposal is None:
+            proposal = store.stage(self)
+        return store.commit(proposal, optimizer=optimizer)
+
+    def compress_trainable_parameter_groups(self, *, probe=None, optimizer=None):
+        store = self.enable_trainable_parameter_cps()
+        return store.compress_committed(probe=probe, optimizer=optimizer)
+
+    def rollback_trainable_parameter_consolidation(self, *, optimizer=None):
+        if optimizer is not None:
+            raise ValueError(
+                "rollback changes parameter ownership; rebuild the optimizer"
+            )
+        store = getattr(self, "trainable_parameter_cps", None)
+        return None if store is None else store.rollback()
+
+    def trainable_parameter_cps_manifest(self):
+        store = getattr(self, "trainable_parameter_cps", None)
+        return None if store is None else store.to_manifest()
+
+    def prepare_trainable_parameter_cps_from_manifest(self, manifest):
+        cfg = dict(manifest.get("config") or {})
+        cfg["include"] = tuple(cfg.get("include", ("*",)))
+        cfg["exclude"] = tuple(cfg.get("exclude", ()))
+        store = self.enable_trainable_parameter_cps(
+            TrainableParameterCPSConfig(**cfg)
+        )
+        if manifest.get("commit", {}).get("committed", False):
+            store.prepare_from_manifest(self, manifest)
+        return store
 
     def flush_cms_logger(self):
         if hasattr(self.cortex, "flush_cms_logger"):

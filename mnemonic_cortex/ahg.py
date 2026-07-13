@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Anti-Hallucination Guard: decides when an answer looks unsupported.
+How it fits in the system: Safety layer that can block or flag risky outputs.
+Status: OPT-IN
+Important notes for non-coders: Enable when evaluating truthfulness-sensitive tasks.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

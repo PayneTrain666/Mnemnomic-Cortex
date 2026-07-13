@@ -1,4 +1,13 @@
-"""QSPIN-PROD-2 guarded bridge dispatch simulation.
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+QSPIN-PROD-2 guarded bridge dispatch simulation.
 
 Simulates bridge route selection after PROD-1 gates, payload dry-run, and shadow
 bus dispatch have approved simulation metadata. It never performs live routing

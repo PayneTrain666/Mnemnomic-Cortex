@@ -1,4 +1,13 @@
-"""Transaction-log generation for HGM-7 guarded write execution.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: transaction log.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Transaction-log generation for HGM-7 guarded write execution.
 
 The log records simulated/blocked/test-isolated operation attempts. It never
 performs QDT/WM writes by itself.

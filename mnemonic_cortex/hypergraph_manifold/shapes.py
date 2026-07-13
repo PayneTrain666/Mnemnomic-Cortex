@@ -1,4 +1,14 @@
-"""Tensor shape contracts for hyperset probability matrices/tensors."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: shapes.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Tensor shape contracts for hyperset probability matrices/tensors.
+"""
 
 from __future__ import annotations
 

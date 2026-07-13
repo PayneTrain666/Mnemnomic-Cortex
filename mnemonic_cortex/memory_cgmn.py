@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: CGMN semantic long-term memory bank.
+How it fits in the system: Holds meaning-oriented patterns used during fusion.
+Status: ACTIVE
+Important notes for non-coders: Works alongside HG, curved/SPCP, and spatial banks.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

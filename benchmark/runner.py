@@ -90,8 +90,16 @@ def run(
     train_loader = DataLoader(train_ds, batch_size, shuffle=True, collate_fn=collate_fn)
     test_loader  = DataLoader(test_ds, batch_size, shuffle=False, collate_fn=collate_fn)
     model_kwargs = {}
-    if model_name.lower() == "cortex" and cms_log_dir:
-        model_kwargs["cms_log_dir"] = cms_log_dir
+    if model_name.lower() == "cortex":
+        model_kwargs.update(
+            working_memory_fabric="qdt",
+            qdt_hardware_profile="single_gpu_8_12gb",
+            qdt_qspin_guarded_shadow=True,
+            qdt_qspin_live_activation=False,
+            qdt_qspin_live_kill_switch_enabled=True,
+        )
+        if cms_log_dir:
+            model_kwargs["cms_log_dir"] = cms_log_dir
     model = get_model(model_name, VOCAB_SIZE, **model_kwargs).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=TOK2IDX['<pad>'])

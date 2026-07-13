@@ -1,4 +1,13 @@
-"""QDT/HGM runtime integration evaluation for HGM-9.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt runtime evaluation.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+QDT/HGM runtime integration evaluation for HGM-9.
 
 The module inspects and scores contracts only. It never writes into QDT/WM,
 never imports heavy runtime modules, and never enables production execution.

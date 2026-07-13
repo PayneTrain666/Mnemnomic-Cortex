@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Routes information among hybrid memory banks.
+How it fits in the system: Decides how much each bank should contribute.
+Status: ACTIVE
+Important notes for non-coders: Central traffic controller inside triple-hybrid style stacks.
+"""
+
 from __future__ import annotations
 
 from typing import Optional, Tuple

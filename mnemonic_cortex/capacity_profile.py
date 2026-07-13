@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Preset size envelopes such as compact, standard, and deep.
+How it fits in the system: Quick coherent sets of slot counts and dimensions.
+Status: ACTIVE
+Important notes for non-coders: Deep profiles need more GPU memory.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

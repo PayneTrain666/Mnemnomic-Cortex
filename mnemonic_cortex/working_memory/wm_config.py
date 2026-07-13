@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Configuration objects for QDT working memory.
+How it fits in the system: Knobs that size and enable WM features.
+Status: ACTIVE
+Important notes for non-coders: Change here to resize WM behavior.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict

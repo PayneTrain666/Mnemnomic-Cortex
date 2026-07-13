@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Curved / resonant memory bank (also historically tied to older WM).
+How it fits in the system: Provides a curved-geometry memory path inside LTM / legacy WM.
+Status: ACTIVE / LEGACY overlap
+Important notes for non-coders: Modern WM prefers QDT; this bank remains important in LTM.
+"""
+
 import torch
 import torch.distributed as dist
 import torch.nn as nn

@@ -1,7 +1,16 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Builds optimizers and learning-rate schedules for training.
+How it fits in the system: Training support, not a memory system.
+Status: WORKING
+Important notes for non-coders: Used by smoke training and some tool scripts.
+"""
+
 import math
 import time
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 import torch
 import torch.nn.functional as F
@@ -21,9 +30,110 @@ class OptimizerConfig:
     eps: float = 1e-8
 
 
+def unique_trainable_parameters(params: Iterable) -> list:
+    """Return trainable parameters once each, preserving their first-seen order."""
+    unique = []
+    seen_ids = set()
+    for param in params:
+        if not getattr(param, "requires_grad", False):
+            continue
+        param_id = id(param)
+        if param_id in seen_ids:
+            continue
+        seen_ids.add(param_id)
+        unique.append(param)
+    return unique
+
+
+def _option_values_equal(left: Any, right: Any) -> bool:
+    if left is right:
+        return True
+    if isinstance(left, torch.Tensor) and isinstance(right, torch.Tensor):
+        return bool(torch.equal(left, right))
+    try:
+        result = left == right
+    except (TypeError, ValueError):
+        return False
+    return bool(result) if isinstance(result, (bool, int)) else False
+
+
+def _group_options_equal(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    return left.keys() == right.keys() and all(
+        _option_values_equal(left[key], right[key]) for key in left
+    )
+
+
+def _prepare_parameter_groups(
+    groups: Iterable[Mapping[str, Any]],
+    defaults: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    prepared = []
+    seen: dict[int, tuple[int, dict[str, Any]]] = {}
+
+    for group_index, group in enumerate(groups):
+        if not isinstance(group, Mapping):
+            raise TypeError(
+                "optimizer parameters must be all Parameters or all param-group dictionaries"
+            )
+        if "params" not in group:
+            raise ValueError(f"optimizer param group {group_index} is missing 'params'")
+
+        raw_params = group["params"]
+        if isinstance(raw_params, torch.Tensor):
+            raw_params = [raw_params]
+
+        options = {key: value for key, value in group.items() if key != "params"}
+        effective_options = dict(defaults)
+        effective_options.update(options)
+        unique_params = []
+
+        for param in raw_params:
+            if not getattr(param, "requires_grad", False):
+                continue
+            param_id = id(param)
+            previous = seen.get(param_id)
+            if previous is None:
+                seen[param_id] = (group_index, effective_options)
+                unique_params.append(param)
+                continue
+
+            previous_index, previous_options = previous
+            if not _group_options_equal(previous_options, effective_options):
+                raise ValueError(
+                    "the same Parameter appears in optimizer param groups "
+                    f"{previous_index} and {group_index} with conflicting options"
+                )
+            # An identity duplicate with identical effective options is harmless.
+
+        if unique_params:
+            prepared.append({"params": unique_params, **options})
+
+    return prepared
+
+
 def build_optimizer(params: Iterable, cfg: OptimizerConfig) -> Optimizer:
-    trainable = [p for p in params if getattr(p, "requires_grad", False)]
+    supplied = list(params)
     name = str(cfg.name).strip().lower()
+    defaults = {
+        "lr": float(cfg.lr),
+        "betas": tuple(cfg.betas),
+        "eps": float(cfg.eps),
+    }
+    if name == "adamw":
+        defaults["weight_decay"] = float(cfg.weight_decay)
+    elif name != "adam":
+        raise ValueError(f"unknown optimizer name={cfg.name}")
+
+    contains_groups = bool(supplied) and isinstance(supplied[0], Mapping)
+    if contains_groups:
+        trainable = _prepare_parameter_groups(supplied, defaults)
+    else:
+        if any(isinstance(item, Mapping) for item in supplied):
+            raise TypeError(
+                "optimizer parameters must be all Parameters or all param-group dictionaries"
+            )
+        trainable = unique_trainable_parameters(supplied)
+
     if name == "adamw":
         return torch.optim.AdamW(
             trainable,
@@ -39,7 +149,43 @@ def build_optimizer(params: Iterable, cfg: OptimizerConfig) -> Optimizer:
             betas=tuple(cfg.betas),
             eps=float(cfg.eps),
         )
-    raise ValueError(f"unknown optimizer name={cfg.name}")
+
+
+def optimizer_references_parameters(
+    optimizer: Optimizer,
+    parameters: Iterable,
+) -> bool:
+    """Return whether an optimizer holds any listed Parameter by identity."""
+    parameter_ids = {id(param) for param in parameters}
+    return any(
+        id(param) in parameter_ids
+        for group in optimizer.param_groups
+        for param in group["params"]
+    )
+
+
+def guard_optimizer_parameter_replacement(
+    optimizer: Optimizer,
+    parameters: Iterable,
+) -> None:
+    """Refuse structural replacement while the optimizer still holds old params."""
+    if optimizer_references_parameters(optimizer, parameters):
+        raise RuntimeError(
+            "unsafe Parameter replacement: the optimizer still references a Parameter "
+            "slated for structural replacement; rebuild the optimizer after replacement "
+            "so parameter groups and optimizer state cannot become stale"
+        )
+
+
+def migrate_optimizer_parameter_replacements(
+    optimizer: Optimizer,
+    replacements: Mapping | Iterable[tuple],
+) -> Optimizer:
+    """Guard an unsupported in-place migration and require a safe optimizer rebuild."""
+    pairs = replacements.items() if isinstance(replacements, Mapping) else replacements
+    old_parameters = [old_param for old_param, _new_param in pairs]
+    guard_optimizer_parameter_replacement(optimizer, old_parameters)
+    return optimizer
 
 
 def build_warmup_cosine_scheduler(

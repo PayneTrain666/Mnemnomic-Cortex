@@ -1,4 +1,13 @@
-"""HGM-2 manifold chart router.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: manifold router.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-2 manifold chart router.
 
 Routes HGM-1 ``BoundScenarioHyperedge`` records into compatible manifold
 charts. The router is deterministic, dependency-light, and fail-closed for

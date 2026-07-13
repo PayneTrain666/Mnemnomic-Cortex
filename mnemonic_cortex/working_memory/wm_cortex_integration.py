@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Hooks that attach QDT working memory into EnhancedMnemonicCortex.
+How it fits in the system: Integration glue between cortex and WM.
+Status: ACTIVE when QDT-WM enabled
+Important notes for non-coders: Not a standalone memory algorithm.
+"""
+
 from __future__ import annotations
 
 from .wm_commit_cortex_guards import ensure_commit_proposal_like, ensure_commit_decision_like, ensure_rollback_trace, ensure_compatibility_input, ensure_migration_template_safety, ensure_no_fake_real_source_patch_claim, commit_cortex_contract_trace, commit_cortex_trace

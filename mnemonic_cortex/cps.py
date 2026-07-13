@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Consolidated Parameter Store: shared parameter / concept geometry store.
+How it fits in the system: Holds unified parameters that multiple domains can share.
+Status: ACTIVE / OPT-IN by feature
+Important notes for non-coders: Often paired with CPS fuser and multi-CPS manager.
+"""
+
 import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional

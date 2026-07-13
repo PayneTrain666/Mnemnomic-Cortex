@@ -1,4 +1,13 @@
-"""Rollback snapshot binding dry-run for WRITE-PREP-6.
+"""
+Plain-language summary
+----------------------
+What this file is for: Dry-run or sandbox helper (qdt_rollback_snapshot_binding_dryrun).
+How it fits in the system: Lets engineers rehearse a path safely without committing live side effects.
+Status: LOW-USE / SAFETY SCAFFOLD
+Important notes for non-coders: Not the everyday training path.
+
+Technical notes (original):
+Rollback snapshot binding dry-run for WRITE-PREP-6.
 
 This module strengthens the WRITE-PREP-4 binding plan by linking it to isolated
 SharedSlotStore parity evidence and QHStorageRecord sandbox evidence. It still

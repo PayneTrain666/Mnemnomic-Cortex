@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Tiny smoke training loop to verify the stack runs.
+How it fits in the system: Quick sanity check rather than full training.
+Status: WORKING / LOW-USE
+Important notes for non-coders: For real GPU curricula prefer tools/copy_task_gpu_train.py.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -14,6 +23,9 @@ def smoke_run(device=None):
         fusion='cross_attn',
         cms_vocab_size=4096,
         cms_senses=3,
+        working_memory_fabric='qdt',
+        qdt_hardware_profile='compact',
+        qdt_qspin_live_activation=False,
     ).to(device)
     enable_tensor_cores(cortex); optimize_memory_access(cortex)
 
@@ -32,7 +44,15 @@ def tiny_train_step(steps=5, device=None):
     seed_everything(123)
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     B,S,d_in,d_out = 16, 7, 128, 128
-    model = EnhancedMnemonicCortex(input_dim=d_in, output_dim=d_out, cms_vocab_size=4096, cms_senses=3).to(device)
+    model = EnhancedMnemonicCortex(
+        input_dim=d_in,
+        output_dim=d_out,
+        cms_vocab_size=4096,
+        cms_senses=3,
+        working_memory_fabric='qdt',
+        qdt_hardware_profile='compact',
+        qdt_qspin_live_activation=False,
+    ).to(device)
     opt = optim.AdamW(model.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
 

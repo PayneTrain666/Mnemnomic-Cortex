@@ -1,4 +1,13 @@
-"""HGM-2 result dataclasses for manifold routing and depth retrieval.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm2 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-2 result dataclasses for manifold routing and depth retrieval.
 
 HGM-2 routes HGM-1 bound scenario hyperedges into geometry-aware
 manifold chart assignments and then creates depth-layer retrieval targets.

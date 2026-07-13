@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: The long-term memory engine that runs several memory banks and fuses their answers.
+How it fits in the system: Cortex uses this as the main LTM; holographic slot banks (qh_banks) live here too.
+Status: ACTIVE / WORKING
+Important notes for non-coders: qh_banks is a ModuleDict so GPU moves work with model.to(cuda).
+"""
+
 import logging
 
 import torch
@@ -23,6 +32,7 @@ from .topology_manager import TopologyManagerV3
 
 logger = logging.getLogger(__name__)
 
+# Geometry maps: which mathematical "shape of space" each memory bank prefers at each depth.
 DEFAULT_MEMORY_GEOMETRY_MAPS = {
     "hg_episodic": [
         "hyperbolic",
@@ -77,12 +87,17 @@ DEFAULT_MEMORY_GEOMETRY_MAPS = {
 }
 
 
+# =============================================================================
+# SECTION: LONG-TERM MEMORY FUSION ENGINE
+# EnhancedTripleHybridMemory owns the banks + fusion + holographic slot banks.
+# =============================================================================
 class EnhancedTripleHybridMemory(nn.Module):
     """Wrapper combining HG, CGMN, and Curved memories with selectable fusion:
        - 'weighted' (default): learned static mix
        - 'cross_attn': cross-attention over {HG,CGMN,Curved} per timestep
     Also propagates temperature and energy-efficient mode; exposes consolidation.
     """
+    # --- INIT / BUILD: create HG, CGMN, curved/SPCP, spatial banks and fusion wiring ---
     def __init__(
         self,
         input_dim: int,
@@ -523,17 +538,27 @@ class EnhancedTripleHybridMemory(nn.Module):
         if self.spatial_ltm is not None:
             self.global_hidden_orchestrator.register_source(self.spatial_ltm, source_name="triple.spatial")
         self.last_global_hidden_attention_stats = {}
-        self.qh_banks = {
-            "hg": QuantumHologramSlotBank(
-                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.hg_slots), bank_name="triple_hg")
-            ),
-            "cgmn": QuantumHologramSlotBank(
-                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.cgmn_slots), bank_name="triple_cgmn")
-            ),
-            "curved": QuantumHologramSlotBank(
-                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.curved_slots), bank_name="triple_curved")
-            ),
-        }
+        # --- HOLOGRAPHIC SLOT BANKS (qh_banks): ModuleDict so GPU .to() migrates them ---
+        # ModuleDict so model.to(device) migrates QH hologram buffers (plain dicts do not).
+        self.qh_banks = nn.ModuleDict(
+            {
+                "hg": QuantumHologramSlotBank(
+                    QuantumHologramConfig(
+                        hrr_dim=self.input_dim, num_slots=max(64, self.hg_slots), bank_name="triple_hg"
+                    )
+                ),
+                "cgmn": QuantumHologramSlotBank(
+                    QuantumHologramConfig(
+                        hrr_dim=self.input_dim, num_slots=max(64, self.cgmn_slots), bank_name="triple_cgmn"
+                    )
+                ),
+                "curved": QuantumHologramSlotBank(
+                    QuantumHologramConfig(
+                        hrr_dim=self.input_dim, num_slots=max(64, self.curved_slots), bank_name="triple_curved"
+                    )
+                ),
+            }
+        )
         if self.procedural_spcp is not None:
             self.qh_banks["spcp"] = QuantumHologramSlotBank(
                 QuantumHologramConfig(
@@ -544,7 +569,9 @@ class EnhancedTripleHybridMemory(nn.Module):
             )
         if self.enable_spatial_ltm:
             self.qh_banks["spatial"] = QuantumHologramSlotBank(
-                QuantumHologramConfig(hrr_dim=self.input_dim, num_slots=max(64, self.spatial_slots), bank_name="triple_spatial")
+                QuantumHologramConfig(
+                    hrr_dim=self.input_dim, num_slots=max(64, self.spatial_slots), bank_name="triple_spatial"
+                )
             )
         self.bank_geometry_maps: Dict[str, list[str]] = {
             "hg": list(DEFAULT_MEMORY_GEOMETRY_MAPS["hg_episodic"]),
@@ -1149,7 +1176,7 @@ class EnhancedTripleHybridMemory(nn.Module):
 
     @torch.no_grad()
     def _record_qh_triplets_for_bank(self, bank_name: str, pooled: torch.Tensor) -> None:
-        bank = self.qh_banks.get(bank_name)
+        bank = self.qh_banks[bank_name] if bank_name in self.qh_banks else None
         if bank is None or pooled.numel() == 0:
             return
         vec = pooled.detach()
@@ -1466,6 +1493,7 @@ class EnhancedTripleHybridMemory(nn.Module):
             out.pop("fused", None)
         return out
 
+    # --- FORWARD PATH: read/write across banks and fuse into one output ---
     def forward(
         self,
         x: torch.Tensor,

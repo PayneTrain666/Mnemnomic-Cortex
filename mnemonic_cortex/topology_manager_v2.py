@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Newer topology manager with history tracking.
+How it fits in the system: Helps cortex navigate geometry choices over time.
+Status: ACTIVE
+Important notes for non-coders: Preferred over topology_manager.py for new wiring.
+"""
+
 import torch
 import torch.nn as nn
 from collections import deque

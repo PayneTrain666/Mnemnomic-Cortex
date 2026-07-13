@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Runtime diagnostics snapshot helpers for the model.
+How it fits in the system: Developer visibility into health and internal stats.
+Status: WORKING (utility)
+Important notes for non-coders: Does not change model behavior by itself.
+"""
+
 import json
 import os
 import time

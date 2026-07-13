@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Manages several Consolidated Parameter Stores at once.
+How it fits in the system: Multi-domain CPS orchestration.
+Status: OPT-IN
+Important notes for non-coders: Some related tests have historically been flaky — check health register.
+"""
+
 from typing import Dict, List, Optional
 
 import torch

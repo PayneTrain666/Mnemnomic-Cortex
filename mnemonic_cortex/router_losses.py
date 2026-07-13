@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Training losses that keep routers well-behaved.
+How it fits in the system: Regularizes routing decisions during learning.
+Status: ACTIVE when advanced routing trains
+Important notes for non-coders: Not a runtime memory store.
+"""
+
 import math
 
 import torch

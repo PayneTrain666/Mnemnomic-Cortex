@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Public package entry that exports parameter-storage loop and CMS depth-stack helpers.
+How it fits in the system: This is what `import mnemonic_cortex` exposes first for those advanced storage features.
+Status: ACTIVE
+Important notes for non-coders: Most of the brain lives in cortex.py and subpackages, not only this file.
+"""
+
 # QSPIN PROD-7 generated package marker.
 
 from .parameter_storage_loop_stack import (
@@ -16,6 +25,23 @@ from .consolidated_memory_depth_stack import (
     ConsolidatedMemoryDepthStack,
     estimate_consolidated_memory_depth_capacity,
 )
+from .trainable_parameter_cps import (
+    CPSBackedEmbedding,
+    CPSBackedLinear,
+    CPSBackedMultiheadAttention,
+    CommitMetadata,
+    ConsolidationCommit,
+    ConsolidationEvaluation,
+    ConsolidationProposal,
+    EvaluationMetadata,
+    ParameterCohort,
+    ParameterRefMetadata,
+    ProposalMetadata,
+    RollbackRecord,
+    TrainableParameterCPS,
+    TrainableParameterCPSConfig,
+    TrainableParameterRef,
+)
 
 __all__ = [
     "DEFAULT_PARAMETER_LOOP_MANIFOLDS",
@@ -30,4 +56,19 @@ __all__ = [
     "ConsolidatedMemoryDepthCfg",
     "ConsolidatedMemoryDepthStack",
     "estimate_consolidated_memory_depth_capacity",
+    "CPSBackedEmbedding",
+    "CPSBackedLinear",
+    "CPSBackedMultiheadAttention",
+    "CommitMetadata",
+    "ConsolidationCommit",
+    "ConsolidationEvaluation",
+    "ConsolidationProposal",
+    "EvaluationMetadata",
+    "ParameterCohort",
+    "ParameterRefMetadata",
+    "ProposalMetadata",
+    "RollbackRecord",
+    "TrainableParameterCPS",
+    "TrainableParameterCPSConfig",
+    "TrainableParameterRef",
 ]

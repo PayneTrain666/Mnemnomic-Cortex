@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Adapters so evaluation scripts can call different model backends uniformly.
+How it fits in the system: Glue for eval_ahg and similar tools.
+Status: WORKING
+Important notes for non-coders: Not a training script.
+"""
+
 from typing import Dict, List, Optional
 import re
 

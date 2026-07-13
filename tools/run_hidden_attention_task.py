@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Trains or evaluates the hidden-attention stress task.
+How it fits in the system: Exercises the hidden-attention orchestrator under copy-like workloads.
+Status: WORKING
+Important notes for non-coders: May still call a defensive QH move helper for older paths.
+"""
+
 import argparse
 import json
 import os
@@ -120,6 +129,17 @@ def main():
     p.add_argument("--val_samples", type=int, default=384)
     p.add_argument("--max_len", type=int, default=24)
     p.add_argument("--report_out", default="reports/hidden_attention_task_report.json")
+    p.add_argument(
+        "--working_memory_fabric",
+        choices=["qdt", "legacy"],
+        default="qdt",
+        help="Working-memory implementation; QDT is the training default.",
+    )
+    p.add_argument(
+        "--qdt_hardware_profile",
+        choices=["compact", "single_gpu_8_12gb", "deep"],
+        default="single_gpu_8_12gb",
+    )
     args = p.parse_args()
 
     seed_all(int(args.seed))
@@ -144,7 +164,18 @@ def main():
         ltm_auto_wire_spatial=False,
         enable_global_hidden_attention=True,
         ltm_enable_global_hidden_attention=True,
+        working_memory_fabric=str(args.working_memory_fabric),
+        qdt_hardware_profile=str(args.qdt_hardware_profile),
+        qdt_qspin_guarded_shadow=True,
+        qdt_qspin_live_activation=False,
+        qdt_qspin_live_kill_switch_enabled=True,
     ).to(device)
+    fabric = model.cortex.describe_working_memory_fabric()
+    print(
+        f"[hidden-task] working_memory={fabric['fabric']} "
+        f"class={fabric['working_memory_class']} qspin_live=false",
+        flush=True,
+    )
     moved = _move_qh_codebooks_to_device(model, device)
     if moved > 0:
         print(f"[hidden-task] moved_qh_codebook_tensors={moved} to device={device}", flush=True)

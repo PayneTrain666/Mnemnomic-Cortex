@@ -1,4 +1,13 @@
-"""Safe write replay evaluator for HGM-8.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: safe write replay.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Safe write replay evaluator for HGM-8.
 
 Replay evaluation consumes HGM-7 logs/results and never performs live writes.
 """

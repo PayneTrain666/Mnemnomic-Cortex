@@ -1,4 +1,13 @@
-"""Read-only proposal materialization contracts for HGM->QDT/WM.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt proposal materialization.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Read-only proposal materialization contracts for HGM->QDT/WM.
 
 The functions here produce finite bounded tensor *previews* as tuples of
 floats.  They do not construct SystemWriteProposal instances or stage writes.

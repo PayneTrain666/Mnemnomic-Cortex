@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Newer consolidation broker with clearer config.
+How it fits in the system: Coordinates multi-store consolidation in modern builds.
+Status: ACTIVE when consolidation enabled
+Important notes for non-coders: Preferred broker implementation.
+"""
+
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 

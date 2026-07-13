@@ -1,4 +1,13 @@
-"""Dependency-light HGM embedding trainer scaffold.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: embedding trainer.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Dependency-light HGM embedding trainer scaffold.
 
 This is not a production learned trainer. It builds deterministic baseline
 embeddings from HGM bridge records for evaluation, scoring, and future

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Adapter that lets working memory read/write the triple-hybrid LTM banks.
+How it fits in the system: Cross-link between WM and LTM fusion.
+Status: WORKING
+Important notes for non-coders: top_k selection always keeps the fused bank.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple

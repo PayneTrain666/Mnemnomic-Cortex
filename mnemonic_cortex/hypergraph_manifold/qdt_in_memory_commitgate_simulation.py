@@ -1,4 +1,13 @@
-"""Isolated in-memory CommitGate simulation for HGM/QDT WRITE-PREP-3.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt in memory commitgate simulation.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Isolated in-memory CommitGate simulation for HGM/QDT WRITE-PREP-3.
 
 This module simulates staging/commit behavior against immutable preview records
 and a synthetic slot-store sandbox. It never calls SystemCommitGate.stage,

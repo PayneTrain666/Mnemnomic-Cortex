@@ -1,4 +1,14 @@
-"""Cortex wiring for spatial LTM banks, extension, and WM lattice mirroring."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Wiring glue between spatial LTM and the cortex / WM lattice.
+How it fits in the system: Connects spatial banks so cortex can mirror and use them.
+Status: ACTIVE when spatial LTM enabled
+Important notes for non-coders: Mostly integration code, not a standalone memory.
+
+Technical notes (original):
+Cortex wiring for spatial LTM banks, extension, and WM lattice mirroring.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

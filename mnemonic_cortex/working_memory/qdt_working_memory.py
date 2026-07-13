@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Main modern working-memory assembly (QDT-WM): depths, fusion, and commit-gated writes.
+How it fits in the system: Active scratchpad between sensory input and long-term memory when QDT is enabled.
+Status: ACTIVE when QDT-WM enabled
+Important notes for non-coders: This is the center of the working_memory package.
+"""
+
 from __future__ import annotations
 
 from .wm_commit_cortex_guards import ensure_commit_proposal_like, ensure_commit_decision_like, ensure_rollback_trace, ensure_compatibility_input, ensure_migration_template_safety, ensure_no_fake_real_source_patch_claim, commit_cortex_contract_trace, commit_cortex_trace

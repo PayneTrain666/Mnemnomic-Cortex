@@ -1,4 +1,13 @@
-"""Trace-safe bridge payload construction for HGM-4.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: bridge payloads.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Trace-safe bridge payload construction for HGM-4.
 
 This module converts HGM records into small, redacted, lineage-preserving
 payloads suitable for dry-run QDT/WM bridge planning.

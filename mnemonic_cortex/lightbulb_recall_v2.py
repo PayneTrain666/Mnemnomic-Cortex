@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Newer lightbulb-style explosive recall controller.
+How it fits in the system: Modernized recall boost path used by some cortex builds.
+Status: ACTIVE when enabled (prefer over v1 where wired)
+Important notes for non-coders: Works with event logging.
+"""
+
 from dataclasses import dataclass
 
 import torch

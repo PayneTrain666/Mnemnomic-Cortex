@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Short-term holding area for recent inputs, with attention and salience.
+How it fits in the system: First memory stage before working memory and long-term retrieval.
+Status: ACTIVE
+Important notes for non-coders: Like a small echo of what just happened.
+"""
+
 import torch
 import torch.nn as nn
 

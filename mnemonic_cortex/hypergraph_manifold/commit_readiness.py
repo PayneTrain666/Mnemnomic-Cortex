@@ -1,4 +1,14 @@
-"""Commit-readiness scoring for HGM-6 preview-only transactions."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: commit readiness.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Commit-readiness scoring for HGM-6 preview-only transactions.
+"""
 
 from __future__ import annotations
 

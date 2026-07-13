@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Older consolidation broker that coordinates stores.
+How it fits in the system: Legacy orchestration for consolidation jobs.
+Status: LEGACY / still referenced
+Important notes for non-coders: Prefer consolidation_broker_v2 where cortex uses it.
+"""
+
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 

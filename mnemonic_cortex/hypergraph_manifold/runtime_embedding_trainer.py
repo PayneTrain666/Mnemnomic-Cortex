@@ -1,4 +1,13 @@
-"""Runtime embedding trainer scaffold for HGM-8.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: runtime embedding trainer.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Runtime embedding trainer scaffold for HGM-8.
 
 This module is intentionally dependency-light and deterministic. It prepares
 runtime-ready embedding records from HGM-5/HGM-7 records without training a

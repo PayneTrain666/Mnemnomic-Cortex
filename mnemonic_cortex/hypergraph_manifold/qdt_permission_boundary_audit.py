@@ -1,4 +1,13 @@
-"""Permissioned CommitGate boundary audit for HGM/QDT WRITE-PREP-5.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt permission boundary audit.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Permissioned CommitGate boundary audit for HGM/QDT WRITE-PREP-5.
 
 The audit checks that the permission boundary remains closed. It does not call
 SystemCommitGate.stage/commit and it does not mutate any QDT/WM store.

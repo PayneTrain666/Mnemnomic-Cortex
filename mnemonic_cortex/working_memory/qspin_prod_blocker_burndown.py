@@ -1,4 +1,13 @@
-"""QSPIN-PROD-8 production blocker burn-down planning.
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+QSPIN-PROD-8 production blocker burn-down planning.
 
 Planning only. This module never closes production blockers without evidence and
 never authorizes activation.

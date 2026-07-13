@@ -1,4 +1,14 @@
-"""Production write blocker burn-down register for HGM/QDT WRITE-PREP-5."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt production write blocker burndown.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Production write blocker burn-down register for HGM/QDT WRITE-PREP-5.
+"""
 
 from __future__ import annotations
 

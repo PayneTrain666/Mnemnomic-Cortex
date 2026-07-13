@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Reasoning-depth component: depth capacity metrics.
+How it fits in the system: Supports multi-layer deeper routing across memory depths when enabled.
+Status: OPT-IN
+Important notes for non-coders: Many adapters stay off until a controller explicitly enables them.
+"""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional

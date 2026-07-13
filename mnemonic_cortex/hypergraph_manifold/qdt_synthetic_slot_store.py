@@ -1,4 +1,13 @@
-"""Synthetic SharedSlotStore sandbox for HGM/QDT WRITE-PREP-3.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt synthetic slot store.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Synthetic SharedSlotStore sandbox for HGM/QDT WRITE-PREP-3.
 
 The sandbox is an immutable record of slot-like states used only for simulation.
 It never calls or mutates the real SharedSlotStore.

@@ -1,4 +1,13 @@
-"""HGM/QDT WRITE-PREP-6 result contracts.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm qdt write prep6 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM/QDT WRITE-PREP-6 result contracts.
 
 WRITE-PREP-6 builds isolated real SharedSlotStore parity previews,
 QHStorageRecord sandbox construction records, and rollback snapshot binding

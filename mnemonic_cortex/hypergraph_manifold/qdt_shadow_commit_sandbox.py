@@ -1,4 +1,13 @@
-"""Shadow commit sandbox for WRITE-PREP-7.
+"""
+Plain-language summary
+----------------------
+What this file is for: Dry-run or sandbox helper (qdt_shadow_commit_sandbox).
+How it fits in the system: Lets engineers rehearse a path safely without committing live side effects.
+Status: LOW-USE / SAFETY SCAFFOLD
+Important notes for non-coders: Not the everyday training path.
+
+Technical notes (original):
+Shadow commit sandbox for WRITE-PREP-7.
 
 The sandbox records what a future commit would need to do, but all stage/commit
 and storage mutation flags remain false for live systems.

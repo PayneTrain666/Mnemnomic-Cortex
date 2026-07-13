@@ -1,4 +1,14 @@
-"""Spatial atlas LTM bank adapter for triple-hybrid integration."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Spatial / topological atlas bank for places and structure.
+How it fits in the system: Optional spatial LTM path wired into triple-hybrid.
+Status: OPT-IN / ACTIVE when spatial LTM is enabled
+Important notes for non-coders: Useful when the task needs layout or map-like memory.
+
+Technical notes (original):
+Spatial atlas LTM bank adapter for triple-hybrid integration.
+"""
 from __future__ import annotations
 
 from typing import Any, Optional

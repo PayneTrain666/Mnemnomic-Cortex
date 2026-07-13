@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Knowledge-distillation helpers across domains.
+How it fits in the system: Lets one part of the system teach another.
+Status: OPT-IN
+Important notes for non-coders: Training technique, not a memory bank.
+"""
+
 from typing import List
 
 import torch

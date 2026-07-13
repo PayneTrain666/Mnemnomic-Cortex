@@ -1,4 +1,14 @@
-"""Count parameter space for copy-task model configurations."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Prints trainable parameter counts for common copy-task configs.
+How it fits in the system: Quick capacity check before training.
+Status: WORKING
+Important notes for non-coders: Useful when deciding if you have VRAM headroom.
+
+Technical notes (original):
+Count parameter space for copy-task model configurations.
+"""
 import os
 import sys
 
@@ -43,6 +53,7 @@ def breakdown_cortex(model):
         "shared_memory_subsystem": getattr(c, "shared_memory_subsystem", None),
         "hg_episodic_ltm": getattr(c, "hg_episodic_ltm", None),
         "reasoning_controller_api": getattr(c, "reasoning_controller_api", None),
+        "trainable_parameter_cps": getattr(c, "trainable_parameter_cps", None),
     }
     out = {}
     for k, v in parts.items():
@@ -115,6 +126,23 @@ def report(label, model, mastery=None):
             print(f"    {k:28s} {fmt(t):>10s}  trainable {fmt(tr)}")
 
     total, trainable = count_params(model)
+    trainable_cps = getattr(model, "trainable_parameter_cps", None)
+    if trainable_cps is None:
+        trainable_cps = getattr(model.cortex, "trainable_parameter_cps", None)
+    if trainable_cps is not None and hasattr(trainable_cps, "capacity_report"):
+        cap = trainable_cps.capacity_report()
+        print("  --- trainable CPS literal capacity ---")
+        for key in (
+            "original_eligible_scalars",
+            "literal_trainable_scalars",
+            "unique_scalars_after_sharing",
+            "compressed_scalars",
+            "real_compression_ratio",
+            "literal_bytes",
+            "estimated_adam_training_bytes",
+        ):
+            if key in cap:
+                print(f"    {key:34s} {cap[key]}")
     if mastery is not None:
         mt, mtr = count_params(mastery)
         print(f"  {'copy_mastery_model':30s} {fmt(mt):>10s}  trainable {fmt(mtr)}")

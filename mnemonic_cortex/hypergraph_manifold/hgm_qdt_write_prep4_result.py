@@ -1,4 +1,13 @@
-"""HGM/QDT WRITE-PREP-4 result contracts.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm qdt write prep4 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM/QDT WRITE-PREP-4 result contracts.
 
 WRITE-PREP-4 constructs real QDT/WM contract-object previews in dry-run mode,
 defines a synthetic CommitGate adapter boundary, and plans rollback snapshot

@@ -1,4 +1,14 @@
-"""Public API for the memory helper subpackage."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Shared-slot memory subsystem module:   init  .
+How it fits in the system: Manages shared memory slots that multiple systems can read/write under rules.
+Status: OPT-IN
+Important notes for non-coders: Not always enabled in standard capacity profiles.
+
+Technical notes (original):
+Public API for the memory helper subpackage.
+"""
 
 from .shared_slot_allocator import SharedSlotAllocator
 from .shared_slot_arbitrator import ArbitrationDecision, SharedSlotArbitrator, SlotReadRequest

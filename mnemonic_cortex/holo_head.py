@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Holographic readout head for producing outputs from hologram-like states.
+How it fits in the system: Optional output pathway tied to holographic representations.
+Status: OPT-IN / LOW-USE depending on build
+Important notes for non-coders: Not always the main task decoder.
+"""
+
 import math
 
 import torch

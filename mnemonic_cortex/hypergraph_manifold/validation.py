@@ -1,4 +1,13 @@
-"""Validation primitives for HGM/HPME.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: validation.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Validation primitives for HGM/HPME.
 
 Validation is deliberately fail-closed: invalid data produces explicit
 errors, not silent coercion or best-effort guessing.

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Working-memory (QDT-WM) component: wm geometry linker.
+How it fits in the system: Part of the active scratchpad stack that sits between sensory input and long-term memory.
+Status: ACTIVE / OPT-IN depending on flags
+Important notes for non-coders: See qdt_working_memory.py for the main assembly; this file is one piece of that stack.
+"""
+
 from __future__ import annotations
 
 from .wm_attention_guards import ensure_attention_query, ensure_candidate_tensor, ensure_attention_scores, stable_softmax, bounded_attention_topk, ensure_lane_output, attention_contract_trace, attention_trace

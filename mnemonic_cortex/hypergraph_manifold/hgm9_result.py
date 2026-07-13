@@ -1,4 +1,13 @@
-"""HGM-9 result dataclasses for runtime integration readiness.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm9 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-9 result dataclasses for runtime integration readiness.
 
 HGM-9 is evaluation-first. It scores HGM/QDT runtime adapter readiness,
 slot-lattice replay quality, and production-readiness gates without enabling

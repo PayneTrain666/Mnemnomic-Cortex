@@ -1,4 +1,13 @@
-"""Dry-run SystemWriteProposal preview builder for HGM/QDT integration.
+"""
+Plain-language summary
+----------------------
+What this file is for: Dry-run or sandbox helper (qdt_dry_run_proposal_builder).
+How it fits in the system: Lets engineers rehearse a path safely without committing live side effects.
+Status: LOW-USE / SAFETY SCAFFOLD
+Important notes for non-coders: Not the everyday training path.
+
+Technical notes (original):
+Dry-run SystemWriteProposal preview builder for HGM/QDT integration.
 
 The builder creates proposal-shaped preview records from WRITE-PREP-1 contracts.
 It does not instantiate/stage/commit live SystemWriteProposal objects. Optional

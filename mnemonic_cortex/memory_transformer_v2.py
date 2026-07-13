@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Transformer wrappers around the individual memory banks.
+How it fits in the system: Lets each bank refine its own representation before fusion.
+Status: ACTIVE
+Important notes for non-coders: Prefer this v2 stack over older transformer helpers.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Optional, Sequence, Tuple

@@ -1,4 +1,13 @@
-"""QSPIN-PROD-3 metadata-safe payload codec roundtrip stubs.
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+QSPIN-PROD-3 metadata-safe payload codec roundtrip stubs.
 
 Roundtrips metadata only. No raw payloads, tensors, payload transfer, storage,
 shared-slot writes, external-memory writes, or QH writes are permitted.

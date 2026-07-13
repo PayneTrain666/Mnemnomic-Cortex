@@ -1,4 +1,14 @@
-"""High-level HGM/QDT WRITE-PREP-4 pipeline."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm qdt write prep4 pipeline.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+High-level HGM/QDT WRITE-PREP-4 pipeline.
+"""
 
 from __future__ import annotations
 

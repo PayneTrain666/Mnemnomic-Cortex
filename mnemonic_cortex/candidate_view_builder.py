@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Builds candidate memory 'views' for comparison or selection.
+How it fits in the system: Turns memory contents into comparable candidate packages.
+Status: ACTIVE / WORKING
+Important notes for non-coders: Used when the system must pick among memory candidates.
+"""
+
 from typing import Dict, Tuple
 
 import torch

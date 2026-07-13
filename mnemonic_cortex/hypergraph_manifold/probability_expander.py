@@ -1,4 +1,13 @@
-"""Hyperset Probability Expander runtime for HGM/HPME.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: probability expander.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Hyperset Probability Expander runtime for HGM/HPME.
 
 This module is the HGM-0B runtime spine. It converts typed mutation tokens or
 matrix-like inputs into validated probability payloads, applies explicit

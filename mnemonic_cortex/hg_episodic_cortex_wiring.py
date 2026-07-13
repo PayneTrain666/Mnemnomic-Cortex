@@ -1,4 +1,14 @@
-"""Cortex wiring for HG episodic LTM, triple-hybrid HG bank linkage, and WM lattice mirroring."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Wiring glue between HG episodic LTM and cortex / WM lattice.
+How it fits in the system: Connects episodic banks into the larger system.
+Status: ACTIVE
+Important notes for non-coders: Integration helpers for HG episodic doctrine.
+
+Technical notes (original):
+Cortex wiring for HG episodic LTM, triple-hybrid HG bank linkage, and WM lattice mirroring.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

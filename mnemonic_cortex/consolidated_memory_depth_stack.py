@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Multi-geometry depth stack on top of consolidated memory.
+How it fits in the system: Adds depth and hidden processing when advanced consolidation is on.
+Status: OPT-IN / ACTIVE in full-stack builds
+Important notes for non-coders: Large free-hidden settings cost many parameters.
+"""
+
 from __future__ import annotations
 
 import math

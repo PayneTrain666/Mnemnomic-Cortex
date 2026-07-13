@@ -1,4 +1,14 @@
-"""Final production-write blocker review for WRITE-PREP-7."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt final blocker review.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Final production-write blocker review for WRITE-PREP-7.
+"""
 
 from __future__ import annotations
 

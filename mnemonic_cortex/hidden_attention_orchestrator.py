@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Collects and routes hidden activations across many modules.
+How it fits in the system: Gives a global view of internal signals for attention / diagnostics.
+Status: ACTIVE in full stacks
+Important notes for non-coders: Important for hidden-attention training tasks.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

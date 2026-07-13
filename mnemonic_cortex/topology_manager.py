@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Older topology / manifold warping helpers.
+How it fits in the system: Geometry utilities historically used for memory topology.
+Status: LEGACY / still referenced
+Important notes for non-coders: Prefer topology_manager_v2 where cortex uses it.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

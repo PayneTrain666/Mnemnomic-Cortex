@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Helper long-term banks (consolidated LTM bank and neural field memory).
+How it fits in the system: Auxiliary stores beside the main triple-hybrid banks.
+Status: ACTIVE / LOW-USE depending on build
+Important notes for non-coders: Not always on the hottest path.
+"""
+
 from __future__ import annotations
 
 import torch

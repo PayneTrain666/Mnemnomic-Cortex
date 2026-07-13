@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Working-memory (QDT-WM) component: wm system commit gate.
+How it fits in the system: Part of the active scratchpad stack that sits between sensory input and long-term memory.
+Status: ACTIVE / OPT-IN depending on flags
+Important notes for non-coders: See qdt_working_memory.py for the main assembly; this file is one piece of that stack.
+"""
+
 from __future__ import annotations
 
 from .wm_commit_cortex_guards import ensure_commit_proposal_like, ensure_commit_decision_like, ensure_rollback_trace, ensure_compatibility_input, ensure_migration_template_safety, ensure_no_fake_real_source_patch_claim, commit_cortex_contract_trace, commit_cortex_trace

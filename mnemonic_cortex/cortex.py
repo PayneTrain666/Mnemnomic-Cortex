@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: The top-level brain controller: connects sensory buffer, working memory, long-term memory, consolidation, and safety features.
+How it fits in the system: Almost every training or inference path eventually goes through EnhancedMnemonicCortex here.
+Status: ACTIVE / WORKING
+Important notes for non-coders: Huge file — look for section banners (INIT / BUILD, FORWARD PATH, etc.). Optional stacks depend on feature flags.
+"""
+
 import torch
 import torch.nn as nn
 from typing import Any, Dict, List, Optional, Sequence
@@ -31,7 +40,15 @@ from .router_losses import router_regularizer
 from .candidate_view_builder import MemoryToViewAdapter
 from .hidden_attention_orchestrator import HiddenAttentionConfig, HiddenAttentionOrchestrator
 from .parameter_storage_loop_stack import ParameterStorageLoopConfig, ParameterStorageLoopStack
+from .trainable_parameter_cps import (
+    TrainableParameterCPS,
+    TrainableParameterCPSConfig,
+)
 
+# =============================================================================
+# SECTION: MAIN BRAIN CLASS
+# The EnhancedMnemonicCortex object is the control room for the whole model.
+# =============================================================================
 class EnhancedMnemonicCortex(nn.Module):
     """Top-level controller that routes inputs through buffer → WM → LTM with
     lightbulb-triggered 'explosive recall' (temperature modulation).
@@ -39,6 +56,7 @@ class EnhancedMnemonicCortex(nn.Module):
       • enable_energy_mode()
       • forgetting-style consolidation via consolidate_memories(threshold)
     """
+    # --- INIT / BUILD: construct buffer, WM, LTM, and optional feature switches ---
     def __init__(self, input_dim: int, output_dim: int,
                  sensory_buffer_size: int = 8,
                  wm_slots: int = 8, wm_slot_dim: int = 256, wm_transformer_layers: int = 2,
@@ -101,12 +119,20 @@ class EnhancedMnemonicCortex(nn.Module):
                  parameter_loop_consolidation_min_total_numel: int = 1024,
                  parameter_loop_consolidation_include: Optional[Sequence[str]] = None,
                  parameter_loop_consolidation_exclude: Optional[Sequence[str]] = None,
+                 enable_trainable_parameter_cps: bool = False,
+                 trainable_parameter_cps_include: Optional[Sequence[str]] = None,
+                 trainable_parameter_cps_exclude: Optional[Sequence[str]] = None,
+                 trainable_parameter_cps_enable_compression: bool = False,
+                 trainable_parameter_cps_max_rank: int = 8,
+                 trainable_parameter_cps_min_cohort_size: int = 2,
+                 trainable_parameter_cps_reconstruction_tolerance: float = 1e-4,
+                 trainable_parameter_cps_output_tolerance: float = 1e-5,
                  working_memory_fabric: str = "legacy",
                  qdt_hardware_profile: str = "single_gpu_8_12gb",
                  qdt_num_slots: int = 0,
                  qdt_transformer_layers: int = 0,
                  qdt_qspin_guarded_shadow: bool = True,
-                 qdt_qspin_live_activation: Optional[bool] = None,
+                 qdt_qspin_live_activation: Optional[bool] = False,
                  qdt_qspin_live_kill_switch_enabled: bool = True,
                  qdt_qspin_live_max_payload_tokens: int = 8,
                  hgm_enabled: bool = False):
@@ -158,6 +184,34 @@ class EnhancedMnemonicCortex(nn.Module):
         self.parameter_storage_loop_stack: Optional[ParameterStorageLoopStack] = None
         self.parameter_storage_loop_gate = nn.Parameter(torch.tensor(-2.0))
         self.last_parameter_storage_loop_stats: Dict[str, Any] = {}
+        self.enable_trainable_parameter_cps_flag = bool(enable_trainable_parameter_cps)
+        self.trainable_parameter_cps_include = tuple(
+            str(v) for v in (trainable_parameter_cps_include or ())
+        )
+        self.trainable_parameter_cps_exclude = tuple(
+            str(v)
+            for v in (
+                trainable_parameter_cps_exclude
+                or ("qspin", "trainable_parameter_cps")
+            )
+        )
+        self.trainable_parameter_cps_enable_compression = bool(
+            trainable_parameter_cps_enable_compression
+        )
+        self.trainable_parameter_cps_max_rank = int(
+            max(1, trainable_parameter_cps_max_rank)
+        )
+        self.trainable_parameter_cps_min_cohort_size = int(
+            max(2, trainable_parameter_cps_min_cohort_size)
+        )
+        self.trainable_parameter_cps_reconstruction_tolerance = float(
+            max(0.0, trainable_parameter_cps_reconstruction_tolerance)
+        )
+        self.trainable_parameter_cps_output_tolerance = float(
+            max(0.0, trainable_parameter_cps_output_tolerance)
+        )
+        self.trainable_parameter_cps = None
+        self.last_trainable_parameter_cps_trace: Dict[str, Any] = {}
         self.working_memory_fabric = str(working_memory_fabric).strip().lower()
         if self.working_memory_fabric not in {"legacy", "qdt"}:
             raise ValueError("working_memory_fabric must be 'legacy' or 'qdt'")
@@ -392,6 +446,10 @@ class EnhancedMnemonicCortex(nn.Module):
             self.enable_consolidated_lexicon(vocab_size=cms_vocab_size, senses=cms_senses)
         if self.hgm_enabled:
             self.enable_hypergraph_manifold_bridge(enabled=True)
+        if self.enable_trainable_parameter_cps_flag:
+            # Mount only. Structural consolidation remains an explicit,
+            # separately validated operation and normally runs before optimizer creation.
+            self.enable_trainable_parameter_cps()
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -465,6 +523,7 @@ class EnhancedMnemonicCortex(nn.Module):
             return getattr(wm, "qdt_working_memory")
         return None
 
+    # --- FEATURE SWITCHES: turn on bridges, shared memory, LTM extensions, CMS, guards ---
     def enable_qdt_working_memory_bridge(self, num_heads: Optional[int] = None):
         from .working_memory.wm_cortex_integration import (
             CortexWorkingMemoryIntegrationConfig,
@@ -1266,6 +1325,7 @@ class EnhancedMnemonicCortex(nn.Module):
         self.ahg = AntiHallucinationGuard(cfg or AHGConfig())
         return self
 
+    # --- ADVANCED CONSOLIDATION: CMS store + optional multi-geometry depth stack ---
     def enable_advanced_consolidation(
         self,
         cps_domains=None,
@@ -1785,6 +1845,135 @@ class EnhancedMnemonicCortex(nn.Module):
         """Allow callers to extend global hidden-attention coverage at runtime."""
         return self.global_hidden_orchestrator.register_source(module, source_name=source_name)
 
+    @staticmethod
+    def _trainable_cps_patterns(values: Sequence[str]) -> tuple[str, ...]:
+        """Turn friendly substring filters into explicit fnmatch patterns."""
+        out = []
+        for value in values:
+            text = str(value)
+            out.append(text if any(ch in text for ch in "*?[]") else f"*{text}*")
+        return tuple(out)
+
+    def enable_trainable_parameter_cps(
+        self,
+        config: Optional[TrainableParameterCPSConfig] = None,
+    ) -> TrainableParameterCPS:
+        """Mount the second CPS without changing live module weights."""
+        existing = getattr(self, "trainable_parameter_cps", None)
+        if existing is not None:
+            return existing
+        cfg = config or TrainableParameterCPSConfig(
+            include=self._trainable_cps_patterns(
+                self.trainable_parameter_cps_include or ("*",)
+            ),
+            exclude=self._trainable_cps_patterns(
+                self.trainable_parameter_cps_exclude
+            ),
+            max_rank=int(self.trainable_parameter_cps_max_rank),
+            min_cohort_size=int(self.trainable_parameter_cps_min_cohort_size),
+            reconstruction_tolerance=float(
+                self.trainable_parameter_cps_reconstruction_tolerance
+            ),
+            output_tolerance=float(self.trainable_parameter_cps_output_tolerance),
+            enable_compression=bool(
+                self.trainable_parameter_cps_enable_compression
+            ),
+        )
+        store = TrainableParameterCPS(cfg)
+        # Before commit there are no canonical tensors. Commit registers this
+        # same object once under the store's canonical attachment name.
+        object.__setattr__(self, "trainable_parameter_cps", store)
+        self.enable_trainable_parameter_cps_flag = True
+        return store
+
+    def stage_trainable_parameter_consolidation(self, *, probe=None):
+        store = self.enable_trainable_parameter_cps()
+        proposal = store.stage(self)
+        evaluation = (
+            store.evaluate_probe(probe)
+            if probe is not None
+            else store.evaluate(proposal)
+        )
+        self.last_trainable_parameter_cps_trace = {
+            "phase": "staged",
+            "proposal_id": proposal.proposal_id,
+            "replacement_count": len(proposal.replacements),
+            "rejected": dict(proposal.rejected),
+            "evaluation": evaluation,
+            "qspin_runtime_activation": False,
+            "shared_slot_write": False,
+            "qh_storage_write": False,
+        }
+        return proposal
+
+    def commit_trainable_parameter_consolidation(
+        self,
+        proposal=None,
+        *,
+        optimizer=None,
+    ):
+        store = self.enable_trainable_parameter_cps()
+        if proposal is None and store.proposal is None:
+            proposal = self.stage_trainable_parameter_consolidation()
+        commit = store.commit(proposal, optimizer=optimizer)
+        self.last_trainable_parameter_cps_trace = {
+            **dict(self.last_trainable_parameter_cps_trace),
+            "phase": "committed",
+            "transaction_id": commit.transaction_id,
+            "capacity": store.capacity_report(),
+        }
+        return commit
+
+    def compress_trainable_parameter_groups(self, *, probe=None):
+        """Compress already committed exact cohorts only after validation."""
+        store = self.enable_trainable_parameter_cps()
+        if not hasattr(store, "compress_committed"):
+            raise RuntimeError(
+                "this TrainableParameterCPS build does not support post-commit compression"
+            )
+        result = store.compress_committed(probe=probe)
+        self.last_trainable_parameter_cps_trace = {
+            **dict(self.last_trainable_parameter_cps_trace),
+            "compression": result,
+        }
+        return result
+
+    def rollback_trainable_parameter_consolidation(self, *, optimizer=None):
+        store = getattr(self, "trainable_parameter_cps", None)
+        if store is None:
+            return None
+        if optimizer is not None:
+            raise ValueError(
+                "rollback changes parameter ownership; rebuild the optimizer first"
+            )
+        result = store.rollback()
+        self.last_trainable_parameter_cps_trace = {
+            **dict(self.last_trainable_parameter_cps_trace),
+            "phase": "rolled_back",
+        }
+        return result
+
+    def describe_trainable_parameter_cps(self) -> Dict[str, Any]:
+        store = getattr(self, "trainable_parameter_cps", None)
+        if store is None:
+            return {"enabled": False}
+        commit = store.commit_metadata
+        return {
+            "enabled": True,
+            "committed": bool(
+                commit is not None and commit.committed and not commit.rolled_back
+            ),
+            "capacity": store.capacity_report(),
+            "manifest": store.to_manifest(),
+            "last_trace": dict(self.last_trainable_parameter_cps_trace),
+            "safety": {
+                "qspin_runtime_activation": False,
+                "shared_slot_write": False,
+                "qh_storage_write": False,
+                "wm_commit_execution": False,
+            },
+        }
+
     def enable_parameter_storage_loop(
         self,
         *,
@@ -1839,6 +2028,14 @@ class EnhancedMnemonicCortex(nn.Module):
         if self.qdt_qspin_live_activation is not None:
             cfg.qspin_live_activation = bool(self.qdt_qspin_live_activation)
             cfg.qspin_live_mode = "experimental_live" if cfg.qspin_live_activation else "disabled"
+        if not cfg.qspin_live_activation:
+            # QDT working memory is usable without authorizing the separate
+            # experimental QSPIN bridge or any of its write/commit boundaries.
+            cfg.qspin_live_allow_routing = False
+            cfg.qspin_live_allow_payload_transfer = False
+            cfg.qspin_live_allow_shared_slot_write = False
+            cfg.qspin_live_allow_qh_storage_write = False
+            cfg.qspin_live_allow_commit_execution = False
         cfg.qspin_live_kill_switch_enabled = bool(self.qdt_qspin_live_kill_switch_enabled)
         cfg.qspin_live_max_payload_tokens = int(self.qdt_qspin_live_max_payload_tokens)
         result = replace_cortex_working_memory(self, cfg)
@@ -2126,6 +2323,7 @@ class EnhancedMnemonicCortex(nn.Module):
             self.diagnostics.log(f"global_hidden_attention_{phase}", payload)
         return out
 
+    # --- SENSORY / PROCESS PATH: move fresh input through buffer toward WM/LTM ---
     def process_sensory_input(self, sensory_input):
         self.sensory_buffer.update(sensory_input)
         base = self.sensory_buffer.attention_filter(sensory_input)
@@ -2507,6 +2705,14 @@ class EnhancedMnemonicCortex(nn.Module):
                     else None
                 ),
                 'parameter_loop_consolidation_step': int(self.parameter_loop_consolidation_step),
+                'trainable_parameter_cps_enabled': bool(
+                    getattr(self, "trainable_parameter_cps", None) is not None
+                ),
+                'trainable_parameter_cps_manifest': (
+                    self.trainable_parameter_cps.to_manifest()
+                    if getattr(self, "trainable_parameter_cps", None) is not None
+                    else None
+                ),
             },
         }
         torch.save(checkpoint, path)
@@ -2516,6 +2722,20 @@ class EnhancedMnemonicCortex(nn.Module):
         import torch
         checkpoint = torch.load(path, map_location='cpu')
         optional = checkpoint.get('optional_subsystems', {}) or {}
+        trainable_cps_manifest = optional.get('trainable_parameter_cps_manifest')
+        if (
+            optional.get('trainable_parameter_cps_enabled', False)
+            and trainable_cps_manifest
+            and getattr(self, "trainable_parameter_cps", None) is None
+        ):
+            cfg_payload = dict(trainable_cps_manifest.get("config") or {})
+            cfg_payload["include"] = tuple(cfg_payload.get("include", ("*",)))
+            cfg_payload["exclude"] = tuple(cfg_payload.get("exclude", ()))
+            store = self.enable_trainable_parameter_cps(
+                TrainableParameterCPSConfig(**cfg_payload)
+            )
+            if trainable_cps_manifest.get("commit", {}).get("committed", False):
+                store.prepare_from_manifest(self, trainable_cps_manifest)
         if optional.get('shared_memory_enabled', False) and self.shared_memory_subsystem is None:
             store = optional.get('shared_memory_store', {}) or {}
             self.enable_shared_memory_subsystem(
@@ -2608,6 +2828,7 @@ class EnhancedMnemonicCortex(nn.Module):
         return loss
 
     # ---------------- Forward ----------------
+    # --- FORWARD PATH: full pass used in training/inference for a batch ---
     def forward(
         self,
         sensory_input,

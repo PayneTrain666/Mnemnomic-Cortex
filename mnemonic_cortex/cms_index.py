@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Index structures for looking up consolidated memory entries.
+How it fits in the system: Speeds or organizes CMS addressing.
+Status: ACTIVE when CMS path on
+Important notes for non-coders: Supporting structure, not the full store.
+"""
+
 from typing import List, Tuple
 
 import torch

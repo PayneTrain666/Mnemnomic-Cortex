@@ -1,4 +1,13 @@
-"""Non-mutating end-to-end HGM/QDT write simulation.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt end to end write simulation.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Non-mutating end-to-end HGM/QDT write simulation.
 
 The simulation uses WRITE-PREP-1 contracts to produce dry-run proposal previews,
 CommitGate-style preflight checks, and readiness reports. It does not stage,

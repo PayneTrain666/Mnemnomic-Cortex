@@ -1,4 +1,14 @@
-"""Active remediation register for QSPIN-PROD-5."""
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+Active remediation register for QSPIN-PROD-5.
+"""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

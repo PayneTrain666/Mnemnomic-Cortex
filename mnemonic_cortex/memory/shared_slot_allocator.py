@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Shared-slot memory subsystem module: shared slot allocator.
+How it fits in the system: Manages shared memory slots that multiple systems can read/write under rules.
+Status: OPT-IN
+Important notes for non-coders: Not always enabled in standard capacity profiles.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Sequence, Tuple

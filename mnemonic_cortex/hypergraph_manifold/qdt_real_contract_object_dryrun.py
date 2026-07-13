@@ -1,4 +1,13 @@
-"""Real QDT/WM contract-object construction dry-run for WRITE-PREP-4.
+"""
+Plain-language summary
+----------------------
+What this file is for: Dry-run or sandbox helper (qdt_real_contract_object_dryrun).
+How it fits in the system: Lets engineers rehearse a path safely without committing live side effects.
+Status: LOW-USE / SAFETY SCAFFOLD
+Important notes for non-coders: Not the everyday training path.
+
+Technical notes (original):
+Real QDT/WM contract-object construction dry-run for WRITE-PREP-4.
 
 This module may construct SystemWriteProposal objects locally for validation,
 but it never stages or commits them.  The returned records contain trace-safe

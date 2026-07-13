@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Operations for CMS logging, EMA consolidation, and shard dump/load.
+How it fits in the system: Practical tools that move consolidated knowledge in and out.
+Status: ACTIVE when CMS path on
+Important notes for non-coders: Includes safety clamps for geometry.
+"""
+
 import os
 import time
 from typing import Dict, List, Optional

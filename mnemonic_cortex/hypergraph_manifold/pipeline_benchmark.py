@@ -1,4 +1,13 @@
-"""End-to-end HGM pipeline benchmark harness for HGM-8.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: pipeline benchmark.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+End-to-end HGM pipeline benchmark harness for HGM-8.
 
 This benchmark is deterministic and evaluation-only. It measures whether HGM
 records can be embedded, replayed safely, traced, and scored without mutating

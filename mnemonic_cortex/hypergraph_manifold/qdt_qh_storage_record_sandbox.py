@@ -1,4 +1,13 @@
-"""QHStorageRecord sandbox construction for WRITE-PREP-6.
+"""
+Plain-language summary
+----------------------
+What this file is for: Dry-run or sandbox helper (qdt_qh_storage_record_sandbox).
+How it fits in the system: Lets engineers rehearse a path safely without committing live side effects.
+Status: LOW-USE / SAFETY SCAFFOLD
+Important notes for non-coders: Not the everyday training path.
+
+Technical notes (original):
+QHStorageRecord sandbox construction for WRITE-PREP-6.
 
 This module constructs QHStorageRecord-compatible objects in an isolated local
 sandbox for schema/shape validation. It never mutates live QuantumHolographicStorage.

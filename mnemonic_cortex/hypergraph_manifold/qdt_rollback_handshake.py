@@ -1,4 +1,14 @@
-"""Rollback snapshot handshake requirements for future QDT/WM writes."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt rollback handshake.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Rollback snapshot handshake requirements for future QDT/WM writes.
+"""
 
 from __future__ import annotations
 

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Logs parameter-space measurements during runs.
+How it fits in the system: Companion auditing for training or probes.
+Status: WORKING (utility)
+Important notes for non-coders: Developer-facing; safe to ignore for casual use.
+"""
+
 import json
 import os
 import time
@@ -82,6 +91,37 @@ class ParameterAuditLogger:
         self.dynamic_events += 1
         self._write({"event": "dynamic_parameter_creation", "index": self.dynamic_events, **payload})
 
+    def log_trainable_parameter_cps(self, model, tag: str = "trainable_cps"):
+        """Record literal ownership/compression metrics for the trainable CPS.
+
+        This intentionally does not reuse manifold scalar-equivalent accounting:
+        every value here is based on physically registered trainable tensors.
+        """
+        store = getattr(model, "trainable_parameter_cps", None)
+        if store is None and hasattr(model, "cortex"):
+            store = getattr(model.cortex, "trainable_parameter_cps", None)
+        if store is None:
+            report = {"enabled": False, "reason": "trainable_parameter_cps_disabled"}
+        elif hasattr(store, "capacity_report"):
+            report = store.capacity_report()
+        elif hasattr(store, "describe"):
+            report = store.describe()
+        else:
+            report = {
+                "enabled": True,
+                "literal_trainable_scalars": int(
+                    sum(p.numel() for p in store.parameters() if p.requires_grad)
+                ),
+            }
+        self._write(
+            {
+                "event": "trainable_parameter_cps_inventory",
+                "tag": str(tag),
+                "report": report,
+            }
+        )
+        return report
+
     def attach_to_cortex(self, cortex):
         # CPS dynamic creations
         if hasattr(cortex, "cps") and hasattr(cortex.cps, "register_creation_hook"):
@@ -93,4 +133,7 @@ class ParameterAuditLogger:
             for cps in cortex.multi_cps.cps.values():
                 if hasattr(cps, "register_creation_hook"):
                     cps.register_creation_hook(self.log_dynamic_creation)
+        trainable_cps = getattr(cortex, "trainable_parameter_cps", None)
+        if trainable_cps is not None and hasattr(trainable_cps, "register_creation_hook"):
+            trainable_cps.register_creation_hook(self.log_dynamic_creation)
 

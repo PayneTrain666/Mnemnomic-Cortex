@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Helper math and thresholds used by anti-hallucination checks.
+How it fits in the system: Supports AHG decisions with entropy/margin style signals.
+Status: OPT-IN / WORKING
+Important notes for non-coders: Companion to ahg.py.
+"""
+
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 import re

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Quantization-aware CPS fusion.
+How it fits in the system: Fuses CPS signals while respecting quantized formats.
+Status: OPT-IN
+Important notes for non-coders: Pairs with quantization.py.
+"""
+
 from typing import Dict, Optional, Tuple
 
 import torch

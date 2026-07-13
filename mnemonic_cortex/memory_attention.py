@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Multi-scale attention used when reading or writing memory.
+How it fits in the system: Shared attention building block for memory modules.
+Status: ACTIVE
+Important notes for non-coders: Helps the model focus on the most relevant memory pieces.
+"""
+
 from __future__ import annotations
 
 from typing import Sequence

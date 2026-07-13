@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Records when lightbulb / recall events fire.
+How it fits in the system: Diagnostics and analysis aid for recall behavior.
+Status: WORKING (utility)
+Important notes for non-coders: Does not change memory content by itself.
+"""
+
 from __future__ import annotations
 
 from collections import deque

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Reads YAML / unified config files into live settings objects.
+How it fits in the system: Bridges human-editable configs to cortex construction.
+Status: ACTIVE
+Important notes for non-coders: Prefer config files + this loader over hard-coding sizes elsewhere.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -82,12 +91,20 @@ class CortexBuildConfig:
     parameter_loop_consolidation_min_total_numel: int = 1024
     parameter_loop_consolidation_include: Tuple[str, ...] = ()
     parameter_loop_consolidation_exclude: Tuple[str, ...] = ("parameter_storage_loop_stack",)
+    enable_trainable_parameter_cps: bool = False
+    trainable_parameter_cps_include: Tuple[str, ...] = ()
+    trainable_parameter_cps_exclude: Tuple[str, ...] = ("qspin", "trainable_parameter_cps")
+    trainable_parameter_cps_enable_compression: bool = False
+    trainable_parameter_cps_max_rank: int = 8
+    trainable_parameter_cps_min_cohort_size: int = 2
+    trainable_parameter_cps_reconstruction_tolerance: float = 1e-4
+    trainable_parameter_cps_output_tolerance: float = 1e-5
     working_memory_fabric: str = "legacy"
     qdt_hardware_profile: str = "single_gpu_8_12gb"
     qdt_num_slots: int = 0
     qdt_transformer_layers: int = 0
     qdt_qspin_guarded_shadow: bool = True
-    qdt_qspin_live_activation: Optional[bool] = None
+    qdt_qspin_live_activation: Optional[bool] = False
     qdt_qspin_live_kill_switch_enabled: bool = True
     qdt_qspin_live_max_payload_tokens: int = 8
 
@@ -123,6 +140,22 @@ class CortexBuildConfig:
             "parameter_loop_consolidation_min_total_numel": int(self.parameter_loop_consolidation_min_total_numel),
             "parameter_loop_consolidation_include": tuple(self.parameter_loop_consolidation_include),
             "parameter_loop_consolidation_exclude": tuple(self.parameter_loop_consolidation_exclude),
+            "enable_trainable_parameter_cps": bool(self.enable_trainable_parameter_cps),
+            "trainable_parameter_cps_include": tuple(self.trainable_parameter_cps_include),
+            "trainable_parameter_cps_exclude": tuple(self.trainable_parameter_cps_exclude),
+            "trainable_parameter_cps_enable_compression": bool(
+                self.trainable_parameter_cps_enable_compression
+            ),
+            "trainable_parameter_cps_max_rank": int(self.trainable_parameter_cps_max_rank),
+            "trainable_parameter_cps_min_cohort_size": int(
+                self.trainable_parameter_cps_min_cohort_size
+            ),
+            "trainable_parameter_cps_reconstruction_tolerance": float(
+                self.trainable_parameter_cps_reconstruction_tolerance
+            ),
+            "trainable_parameter_cps_output_tolerance": float(
+                self.trainable_parameter_cps_output_tolerance
+            ),
             "working_memory_fabric": str(self.working_memory_fabric),
             "qdt_hardware_profile": str(self.qdt_hardware_profile),
             "qdt_num_slots": int(self.qdt_num_slots),
@@ -247,6 +280,33 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
         parameter_loop_consolidation_exclude=_as_str_list(
             cortex_obj.get("parameter_loop_consolidation_exclude", ["parameter_storage_loop_stack"])
         ),
+        enable_trainable_parameter_cps=_as_bool(
+            cortex_obj.get("enable_trainable_parameter_cps", False), False
+        ),
+        trainable_parameter_cps_include=_as_str_list(
+            cortex_obj.get("trainable_parameter_cps_include")
+        ),
+        trainable_parameter_cps_exclude=_as_str_list(
+            cortex_obj.get(
+                "trainable_parameter_cps_exclude",
+                ["qspin", "trainable_parameter_cps"],
+            )
+        ),
+        trainable_parameter_cps_enable_compression=_as_bool(
+            cortex_obj.get("trainable_parameter_cps_enable_compression", False), False
+        ),
+        trainable_parameter_cps_max_rank=int(
+            cortex_obj.get("trainable_parameter_cps_max_rank", 8)
+        ),
+        trainable_parameter_cps_min_cohort_size=int(
+            cortex_obj.get("trainable_parameter_cps_min_cohort_size", 2)
+        ),
+        trainable_parameter_cps_reconstruction_tolerance=float(
+            cortex_obj.get("trainable_parameter_cps_reconstruction_tolerance", 1e-4)
+        ),
+        trainable_parameter_cps_output_tolerance=float(
+            cortex_obj.get("trainable_parameter_cps_output_tolerance", 1e-5)
+        ),
         working_memory_fabric=str(cortex_obj.get("working_memory_fabric", "legacy")),
         qdt_hardware_profile=str(cortex_obj.get("qdt_hardware_profile", "single_gpu_8_12gb")),
         qdt_num_slots=int(cortex_obj.get("qdt_num_slots", 0)),
@@ -255,7 +315,7 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
         qdt_qspin_live_activation=(
             _as_bool(cortex_obj.get("qdt_qspin_live_activation"), False)
             if "qdt_qspin_live_activation" in cortex_obj
-            else None
+            else False
         ),
         qdt_qspin_live_kill_switch_enabled=_as_bool(cortex_obj.get("qdt_qspin_live_kill_switch_enabled", True), True),
         qdt_qspin_live_max_payload_tokens=int(cortex_obj.get("qdt_qspin_live_max_payload_tokens", 8)),

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Evaluates the Anti-Hallucination Guard on TruthfulQA / FEVER style sets.
+How it fits in the system: Measures whether the guard improves honesty / grounding.
+Status: WORKING
+Important notes for non-coders: Uses eval_adapters.py for model generate contracts.
+"""
+
 import argparse
 import os
 import random

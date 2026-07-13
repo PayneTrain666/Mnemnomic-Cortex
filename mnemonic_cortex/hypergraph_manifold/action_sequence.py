@@ -1,4 +1,14 @@
-"""HGM-3 action-sequence construction utilities."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: action sequence.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-3 action-sequence construction utilities.
+"""
 
 from __future__ import annotations
 

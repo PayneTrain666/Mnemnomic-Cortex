@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Stores memories as overlapping hologram patterns in slots, with codes for depth/bank/role.
+How it fits in the system: Used by LTM banks and consolidated memory to stack several memories in one address.
+Status: WORKING
+Important notes for non-coders: Codebook tensors move with the module via _apply when you call .to(device).
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -67,7 +76,13 @@ class QuantumHologramCodebook:
 
     def bank_code(self, bank_name: str) -> torch.Tensor:
         if bank_name not in self.bank_codes:
-            self.bank_codes[bank_name] = self._make_code("bank", bank_name)
+            code = self._make_code("bank", bank_name)
+            # Keep lazily created codes on the same device as the rest of the codebook.
+            for existing in self.bank_codes.values():
+                if isinstance(existing, torch.Tensor):
+                    code = code.to(device=existing.device, dtype=existing.dtype)
+                    break
+            self.bank_codes[bank_name] = code
         return self.bank_codes[bank_name]
 
 
@@ -136,6 +151,20 @@ class QuantumHologramSlotBank(nn.Module):
         self.register_buffer("holograms", torch.zeros(cfg.num_slots, cfg.hrr_dim, dtype=torch.float32))
         self.register_buffer("triplet_counts", torch.zeros(cfg.num_slots, dtype=torch.long))
         self.register_buffer("interference_flags", torch.zeros(cfg.num_slots, dtype=torch.bool))
+
+    def _apply(self, fn, recurse=True):
+        """Migrate registered buffers and plain-dict codebook tensors together."""
+        ret = super()._apply(fn, recurse=recurse)
+        codebook = getattr(self, "codebook", None)
+        if codebook is not None:
+            for attr in ("depth_codes", "bank_codes", "triplet_codes", "slot_codes"):
+                table = getattr(codebook, attr, None)
+                if not isinstance(table, dict):
+                    continue
+                for key, value in list(table.items()):
+                    if isinstance(value, torch.Tensor):
+                        table[key] = fn(value)
+        return ret
 
     def _project(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() == 1:

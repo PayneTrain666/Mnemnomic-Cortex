@@ -1,4 +1,13 @@
-"""Guarded write-execution adapter scaffold for HGM-7.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: write execution adapter.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Guarded write-execution adapter scaffold for HGM-7.
 
 Default behavior is simulation-mode only. No QDT/WM memory is mutated here.
 Optional test execution records are isolated and log-only unless a caller wraps

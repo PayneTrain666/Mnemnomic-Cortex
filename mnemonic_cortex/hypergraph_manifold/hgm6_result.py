@@ -1,4 +1,13 @@
-"""HGM-6 result dataclasses for write-permission gates and commit previews.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm6 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-6 result dataclasses for write-permission gates and commit previews.
 
 HGM-6 remains preview-only. It builds transactional operation previews,
 rollback manifests, and commit-readiness scores without writing into QDT/WM

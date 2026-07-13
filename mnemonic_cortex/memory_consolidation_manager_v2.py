@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Orchestrates consolidation across memory banks.
+How it fits in the system: Coordinates when short-term patterns become longer-term stores.
+Status: ACTIVE when consolidation path is on
+Important notes for non-coders: Works with brokers and CMS helpers.
+"""
+
 from __future__ import annotations
 
 from typing import Optional

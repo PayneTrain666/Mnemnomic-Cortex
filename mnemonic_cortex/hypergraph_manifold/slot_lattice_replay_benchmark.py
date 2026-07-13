@@ -1,4 +1,13 @@
-"""Slot-lattice replay benchmark for HGM-9.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: slot lattice replay benchmark.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Slot-lattice replay benchmark for HGM-9.
 
 The benchmark replays shared slot-lattice hook contracts as deterministic
 read-only records. It never mutates the lattice or QDT/WM runtime memory.

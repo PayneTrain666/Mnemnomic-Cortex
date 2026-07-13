@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Minimal training-loop sketch with CMS logging and consolidation EMA.
+How it fits in the system: Learning aid / sketch more than production trainer.
+Status: LOW-USE / sketch
+Important notes for non-coders: Prefer copy_task_gpu_train.py for serious GPU runs.
+"""
+
 import torch
 import torch.nn.functional as F
 

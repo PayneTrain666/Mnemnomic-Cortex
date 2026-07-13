@@ -1,4 +1,13 @@
-"""Permission-token contract builder for WRITE-PREP-7.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt permission token contract.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Permission-token contract builder for WRITE-PREP-7.
 
 This module defines what a future production write permission token must prove.
 It does not create a real token and does not authorize live writes.

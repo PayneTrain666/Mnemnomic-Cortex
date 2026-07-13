@@ -1,4 +1,14 @@
-"""Small transformer stack used by WM/reasoning fusion."""
+"""
+Plain-language summary
+----------------------
+What this file is for: Long-term memory package module: transformer utils.
+How it fits in the system: Supports LTM banks, MANN/geometry helpers, or package wiring used with cortex LTM.
+Status: ACTIVE / LEGACY depending on file
+Important notes for non-coders: Some files are local copies or aliases; prefer top-level cortex + triple_hybrid for product runtime.
+
+Technical notes (original):
+Small transformer stack used by WM/reasoning fusion.
+"""
 from __future__ import annotations
 
 from typing import List, Optional, Tuple

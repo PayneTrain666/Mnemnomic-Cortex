@@ -1,4 +1,13 @@
-"""HGM-1 result dataclasses for scenario hyperedge binding.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm1 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-1 result dataclasses for scenario hyperedge binding.
 
 This layer converts HGM-0B ``ScenarioCandidate`` atoms into bounded,
 traceable hyperedge structures. It remains dependency-light and avoids

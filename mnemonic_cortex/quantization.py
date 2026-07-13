@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Int8-style quantization helpers for CPS values.
+How it fits in the system: Compresses or discretizes parameters for efficiency experiments.
+Status: OPT-IN
+Important notes for non-coders: Some related tests have failed in recent full suites — triage if enabling.
+"""
+
 from typing import Dict, Optional, Tuple
 
 import torch

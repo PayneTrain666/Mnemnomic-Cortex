@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Compatibility wrapper so older cortex calls can use QDT-WM.
+How it fits in the system: Bridge between legacy call shapes and the new WM.
+Status: ACTIVE / LEGACY bridge
+Important notes for non-coders: Exists so migration does not break older paths.
+"""
+
 from __future__ import annotations
 
 from .wm_commit_cortex_guards import ensure_commit_proposal_like, ensure_commit_decision_like, ensure_rollback_trace, ensure_compatibility_input, ensure_migration_template_safety, ensure_no_fake_real_source_patch_claim, commit_cortex_contract_trace, commit_cortex_trace

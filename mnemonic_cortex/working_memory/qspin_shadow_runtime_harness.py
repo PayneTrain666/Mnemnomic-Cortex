@@ -1,4 +1,13 @@
-"""QSPIN-PROD-5 guarded live-adjacent shadow runtime harness.
+"""
+Plain-language summary
+----------------------
+What this file is for: QSPIN bridge contract, gate, sandbox, or observability helper.
+How it fits in the system: Documents and guards a future optional bridge; not part of normal live memory routing today.
+Status: INERT
+Important notes for non-coders: Project policy keeps QSPIN disabled unless a later stage explicitly authorizes guarded activation.
+
+Technical notes (original):
+QSPIN-PROD-5 guarded live-adjacent shadow runtime harness.
 
 This harness is deliberately synthetic-only. It mirrors production-shaped envelopes
 but blocks every path that would perform live routing, topology execution, payload

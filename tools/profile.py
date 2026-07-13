@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Benchmarks forward/backward step timing for benchmark models.
+How it fits in the system: Performance measurement utility.
+Status: WORKING
+Important notes for non-coders: Does not train to convergence.
+"""
+
 import argparse, time
 import torch, contextlib
 from benchmark.models import get_model

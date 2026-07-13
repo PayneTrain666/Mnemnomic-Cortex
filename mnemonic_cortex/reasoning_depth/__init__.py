@@ -1,4 +1,13 @@
-"""Reasoning-depth lattice for Mnemonic Cortex.
+"""
+Plain-language summary
+----------------------
+What this file is for: Reasoning-depth component:   init  .
+How it fits in the system: Supports multi-layer deeper routing across memory depths when enabled.
+Status: OPT-IN
+Important notes for non-coders: Many adapters stay off until a controller explicitly enables them.
+
+Technical notes (original):
+Reasoning-depth lattice for Mnemonic Cortex.
 REASON-1A implements additive slots × 8 depth capacity primitives.
 """
 from .depth_lattice_config import DepthLatticeConfig, DepthLatticeConfigError

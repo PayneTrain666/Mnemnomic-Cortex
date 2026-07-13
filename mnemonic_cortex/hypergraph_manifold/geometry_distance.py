@@ -1,4 +1,13 @@
-"""Dependency-light geometry distance wrappers for HGM-2.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: geometry distance.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Dependency-light geometry distance wrappers for HGM-2.
 
 The wrappers intentionally favor validation and deterministic behavior over
 high-performance kernels. Learned embeddings, Torch adapters, and optimized

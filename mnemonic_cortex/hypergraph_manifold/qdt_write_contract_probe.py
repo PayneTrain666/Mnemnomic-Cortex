@@ -1,4 +1,13 @@
-"""Signature-level QDT/WM contract probes for HGM write-prep.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt write contract probe.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Signature-level QDT/WM contract probes for HGM write-prep.
 
 The probe inspects class/function signatures only.  It does not instantiate
 commit gates, create proposals, stage writes, or mutate QDT/WM state.

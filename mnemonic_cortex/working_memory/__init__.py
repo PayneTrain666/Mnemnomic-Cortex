@@ -1,4 +1,13 @@
-"""QDT-WM-MAAE working-memory package.
+"""
+Plain-language summary
+----------------------
+What this file is for: Working-memory (QDT-WM) component:   init  .
+How it fits in the system: Part of the active scratchpad stack that sits between sensory input and long-term memory.
+Status: ACTIVE / OPT-IN depending on flags
+Important notes for non-coders: See qdt_working_memory.py for the main assembly; this file is one piece of that stack.
+
+Technical notes (original):
+QDT-WM-MAAE working-memory package.
 
 Exports are intentionally explicit for preservation tests. Optional modules are
 imported independently so one later-stage import issue cannot hide core WM

@@ -1,3 +1,12 @@
+"""
+Plain-language summary
+----------------------
+What this file is for: Merges geometry / manifold representations.
+How it fits in the system: Combines geometric views when multiple spaces are active.
+Status: ACTIVE / OPT-IN
+Important notes for non-coders: Used where multi-geometry fusion is required.
+"""
+
 import math
 
 import torch

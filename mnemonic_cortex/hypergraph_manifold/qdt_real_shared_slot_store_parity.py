@@ -1,4 +1,13 @@
-"""Isolated real SharedSlotStore parity harness for WRITE-PREP-6.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: qdt real shared slot store parity.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Isolated real SharedSlotStore parity harness for WRITE-PREP-6.
 
 The harness may instantiate a brand-new in-memory SharedSlotStore and call its
 write_slot method for parity checking only. It never receives or mutates a live

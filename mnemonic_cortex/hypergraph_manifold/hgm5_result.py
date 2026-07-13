@@ -1,4 +1,13 @@
-"""HGM-5 result dataclasses for embedding/evaluation scaffolding.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: hgm5 result.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+HGM-5 result dataclasses for embedding/evaluation scaffolding.
 
 HGM-5 is evaluation-first: it builds deterministic dependency-light
 embeddings and quality scores for HGM bridge records without mutating QDT/WM

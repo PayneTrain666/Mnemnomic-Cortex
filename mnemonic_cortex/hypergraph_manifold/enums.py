@@ -1,4 +1,13 @@
-"""Enumerations for HGM/HPME foundation types.
+"""
+Plain-language summary
+----------------------
+What this file is for: Hypergraph / HGM manifold module: enums.
+How it fits in the system: Scaffolding for hypergraph probability / procedural manifold routing and write preparation.
+Status: LOW-USE / SCAFFOLD (varies)
+Important notes for non-coders: Many modules are stage artifacts or guarded write-prep rather than the default forward path.
+
+Technical notes (original):
+Enumerations for HGM/HPME foundation types.
 
 HGM-0A is intentionally dependency-light. These enums use ``str`` values
 to keep serialized traces, JSON manifests, and future config files stable.
