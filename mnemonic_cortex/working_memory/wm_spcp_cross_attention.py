@@ -16,9 +16,11 @@ from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+from geometry.chart_native import majority_chart, project_with_residual
 
 from .wm_external_memory_interfaces import ExternalMemoryQuery, ExternalMemoryResponse, SyntheticExternalMemoryBank
+from .wm_native_chart_geometry import charts_for_context_map
 
 
 @dataclass
@@ -69,13 +71,37 @@ class WMSPCPCrossAttention(nn.Module):
         self.context_proj = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, config.dim))
         self.last_output: Optional[WMSPCPCrossAttentionOutput] = None
 
-    def forward(self, tokens: torch.Tensor, depth_state: Optional[torch.Tensor] = None, context: Optional[torch.Tensor] = None, return_trace: bool = False):
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        depth_state: Optional[torch.Tensor] = None,
+        context: Optional[torch.Tensor] = None,
+        return_trace: bool = False,
+        context_map_name: Optional[str] = None,
+        native_chart_mix: Optional[float] = None,
+    ):
         if tokens.dim() != 3 or tokens.size(-1) != self.config.dim:
             raise ValueError(f"Expected tokens [B,T,{self.config.dim}], got {tuple(tokens.shape)}")
         if not torch.isfinite(tokens).all():
             tokens = torch.nan_to_num(tokens, nan=0.0, posinf=0.0, neginf=0.0)
         query_state = self.query_proj(tokens.mean(dim=1))
-        request = ExternalMemoryQuery("spcp", query_state=query_state, depth_state=depth_state, context=context, metadata={"source": "WMSPCPCrossAttention"})
+        chart_mix = 0.0 if native_chart_mix is None else float(max(0.0, min(1.0, native_chart_mix)))
+        map_name = context_map_name or "procedural"
+        charts = charts_for_context_map(map_name, 8)
+        if chart_mix > 0.0:
+            query_state, _ = project_with_residual(query_state, majority_chart(charts), mix=chart_mix)
+        request = ExternalMemoryQuery(
+            "spcp",
+            query_state=query_state,
+            depth_state=depth_state,
+            context=context,
+            metadata={
+                "source": "WMSPCPCrossAttention",
+                "geometry_map": map_name,
+                "geometry_by_depth": charts,
+                "native_chart_mix": chart_mix,
+            },
+        )
         response = self.external_bank.query(request, top_k=self.config.top_k)
         weights = torch.softmax(response.scores, dim=-1)
         memory_context = torch.einsum("bk,bkd->bd", weights, response.memory_state)

@@ -18,6 +18,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from geometry.chart_native import mix_chart_affinity
+
 from .curved_slot_state import CurvedSlotStateBank
 from .curvature_metric_policy import CurvatureMetricPolicy, CurvatureMetricPolicyOutput
 from .context_geometry_maps import build_default_context_geometry_maps, ContextGeometryMap
@@ -43,6 +45,7 @@ class DepthSpecificAddressingConfig:
     importance_weight: float = 0.15
     confidence_weight: float = 0.15
     temperature: float = 1.0
+    native_chart_residual_mix: float = 0.0
     eps: float = 1e-8
 
     def validate(self) -> None:
@@ -58,6 +61,8 @@ class DepthSpecificAddressingConfig:
             raise ValueError("top_k must be positive")
         if self.temperature <= 0:
             raise ValueError("temperature must be positive")
+        if not 0.0 <= float(self.native_chart_residual_mix) <= 1.0:
+            raise ValueError("native_chart_residual_mix must be in [0,1]")
 
 
 @dataclass
@@ -221,9 +226,26 @@ class DepthSpecificAddressing(nn.Module):
         curvature_bias = self._curvature_bias(b, context, curvature_output, depth_state.device, depth_state.dtype)
         geometry_by_depth = self._geometry_by_depth(context_map_name)
         geometry_bias = self._geometry_bias(geometry_by_depth, depth_state.device, depth_state.dtype)
+        chart_mix = float(self.config.native_chart_residual_mix)
+        if chart_mix > 0.0:
+            content_term = torch.stack(
+                [
+                    mix_chart_affinity(
+                        content_scores[:, depth_idx],
+                        depth_query[:, depth_idx],
+                        content,
+                        chart,
+                        chart_mix,
+                    )
+                    for depth_idx, chart in enumerate(geometry_by_depth)
+                ],
+                dim=1,
+            )
+        else:
+            content_term = content_scores
 
         scores = (
-            self.config.content_weight * content_scores
+            self.config.content_weight * content_term
             + self.config.curvature_weight * curvature_bias
             + self.config.geometry_bias_weight * geometry_bias
             + self.config.importance_weight * importance.view(1, 1, -1)
@@ -258,6 +280,7 @@ class DepthSpecificAddressing(nn.Module):
                 "context_map_name": context_map_name or self.default_context_map,
                 "confidence": 1.0 if finite else 0.0,
                 "depth_count": z,
+                "native_chart_residual_mix": float(self.config.native_chart_residual_mix),
             },
         )
         self.last_trace = trace

@@ -35,6 +35,7 @@ from .curved_shadow_write import CurvedShadowWriteBuffer, CurvedShadowWriteConfi
 from .wm_memory_augmented_attention import WMMemoryAugmentedAttention, WMMemoryAugmentedAttentionConfig
 from .wm_dual_fusion import WMDualFusionController, WMDualFusionConfig
 from .wm_inter_manifold_attention import WMInterManifoldAttention, WMInterManifoldAttentionConfig
+from .wm_native_chart_geometry import charts_for_context_map, project_depth_replicas
 from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 from .wm_quantum_holographic_storage import QuantumHolographicStorage, QuantumHolographicStorageConfig
 from .wm_system_commit_gate import SystemCommitGate, SystemWriteProposal
@@ -127,6 +128,11 @@ class QDTWorkingMemory(nn.Module):
                 dim=config.input_dim,
                 num_slots=config.num_slots,
                 num_depths=config.num_depths,
+                native_chart_residual_mix=(
+                    float(getattr(config, "native_chart_residual_mix", 0.20))
+                    if bool(getattr(config, "enable_native_chart_geometry", True))
+                    else 0.0
+                ),
             ),
             slot_bank=self.slot_bank,
             curvature_policy=self.curvature_policy,
@@ -174,6 +180,7 @@ class QDTWorkingMemory(nn.Module):
                 geometry_linker=getattr(self.memory_augmented_attention, "geometry_linker", None),
             )
         self.last_inter_manifold_stats = {}
+        self.last_native_chart_stats = {}
         self.last_depth_state = None
         self.last_geometry_by_depth = None
         self.last_trace = None
@@ -438,6 +445,23 @@ class QDTWorkingMemory(nn.Module):
         depth_state, adapter_trace = self.depth_adapters(depth_state, return_trace=True)
         trace.merge_dict("depth_adapters", adapter_trace)
 
+        native_mix = (
+            float(getattr(self.config, "native_chart_residual_mix", 0.20))
+            if bool(getattr(self.config, "enable_native_chart_geometry", True))
+            else 0.0
+        )
+        geometry_by_depth = charts_for_context_map(context_map_name, self.config.num_depths)
+        if native_mix > 0.0:
+            depth_state, native_trace = project_depth_replicas(depth_state, geometry_by_depth, native_mix)
+            trace.merge_dict("native_chart_geometry", native_trace)
+            self.last_native_chart_stats = {
+                "enabled": 1.0,
+                "mix": native_mix,
+                "depths": float(len(geometry_by_depth)),
+            }
+        else:
+            self.last_native_chart_stats = {"enabled": 0.0, "mix": 0.0, "depths": float(self.config.num_depths)}
+
         addressing_output, addressing_trace = self.depth_addressing(
             depth_state,
             context=context,
@@ -491,6 +515,8 @@ class QDTWorkingMemory(nn.Module):
             maae_tokens,
             depth_state=depth_state,
             context=effective_context,
+            context_map_name=context_map_name,
+            native_chart_mix=native_mix,
             return_trace=True,
         )
         if self.external_attention_context is not None:
@@ -597,6 +623,9 @@ class QDTWorkingMemory(nn.Module):
     def get_metrics(self) -> Dict[str, Any]:
         metrics: Dict[str, Any] = {
             "ima_enabled": 1.0 if self.inter_manifold_attention is not None else 0.0,
+            "ncg_enabled": float(self.last_native_chart_stats.get("enabled", 0.0)),
+            "ncg_mix": float(self.last_native_chart_stats.get("mix", 0.0)),
+            "ncg_depths": float(self.last_native_chart_stats.get("depths", 0.0)),
         }
         for key, value in self.last_inter_manifold_stats.items():
             if isinstance(value, (int, float)):

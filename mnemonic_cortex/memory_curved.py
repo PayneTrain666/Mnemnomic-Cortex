@@ -19,6 +19,7 @@ from .lightbulb_controller import LightbulbController
 from .memory.conformal import ConformalMLP, warp_knn_with_stats
 from .quantum_holographic import QuantumHologramConfig, QuantumHologramSlotBank
 from geometry.blend import GeometryBlender
+from geometry.chart_native import mix_bank_chart_distance
 from geometry.manifold_utils import product_et_distance, symplectic_leapfrog, wrap_angles
 from topology.manager_v3 import DynamicTopologyManagerV2
 
@@ -107,6 +108,8 @@ class EnhancedCurvedMemory(nn.Module):
         self.topology = self.topology_v3
         self.last_geom_weights = None
         self.geom_gamma = 0.30
+        self.native_chart_list = []
+        self.native_chart_mix = 0.0
         self.use_product_manifold = True
         self.torus_k = max(2, min(8, self.H // 4))
         self.alpha_torus_base = 0.5
@@ -260,6 +263,7 @@ class EnhancedCurvedMemory(nn.Module):
                 if k in self.last_geom_weights:
                     out[f"curved_geom_w_{k}"] = float(self.last_geom_weights[k])
         out["curved_transformer_layers"] = float(self.transformer_layers)
+        out["curved_native_chart_mix"] = float(getattr(self, "native_chart_mix", 0.0) or 0.0)
         return out
 
     # Core ops
@@ -427,6 +431,7 @@ class EnhancedCurvedMemory(nn.Module):
             k_t = wrap_angles(self.split_proj_t(topk_keys))
             d_geo = product_et_distance(q_e, q_t, k_e, k_t, alpha=alpha_torus)
             dist_top = (1.0 - self.geom_gamma) * dist_top + self.geom_gamma * d_geo
+        dist_top = mix_bank_chart_distance(self, query, read_slots[idx], dist_top)
         pre_probs = torch.softmax(-dist_top.detach(), dim=-1)
         pre_entropy = float((-(pre_probs * pre_probs.clamp_min(1e-9).log()).sum(dim=-1).mean()).item())
         self.conformal_b = self.topology_v3.schedule_conformal_b(

@@ -581,6 +581,8 @@ class EnhancedTripleHybridMemory(nn.Module):
             "spatial": list(DEFAULT_MEMORY_GEOMETRY_MAPS["spatial_topological"]),
             "curved": list(DEFAULT_MEMORY_GEOMETRY_MAPS["curved_associative"]),
         }
+        self.native_chart_mix = 0.15
+        self._sync_native_chart_geometry()
 
     @staticmethod
     def _pick_num_heads(dim: int) -> int:
@@ -1646,10 +1648,33 @@ class EnhancedTripleHybridMemory(nn.Module):
         if len(chart) != 8:
             raise ValueError("geometry_by_depth must contain exactly 8 depth entries")
         self.bank_geometry_maps[n] = chart
+        self._configure_bank_native_charts(n, chart)
 
     def mount_geometry_maps(self, mapping: Dict[str, Sequence[str]]) -> None:
         for bank_name, chart in dict(mapping).items():
             self.mount_geometry_map(bank_name, chart)
+
+    def _configure_bank_native_charts(self, bank_key: str, chart: Sequence[str]) -> None:
+        from geometry.chart_native import configure_memory_bank_charts
+
+        bank = {
+            "hg": self.hg,
+            "cgmn": self.cgmn,
+            "curved": self.curved,
+            "spcp": self.procedural_spcp,
+            "spatial": self.spatial_ltm,
+        }.get(str(bank_key))
+        if bank is None:
+            return
+        configure_memory_bank_charts(bank, chart, mix=float(getattr(self, "native_chart_mix", 0.15)))
+
+    def _sync_native_chart_geometry(self) -> None:
+        for key, chart in dict(self.bank_geometry_maps).items():
+            self._configure_bank_native_charts(key, chart)
+
+    def configure_native_chart_geometry(self, mix: float = 0.15) -> None:
+        self.native_chart_mix = float(max(0.0, min(1.0, mix)))
+        self._sync_native_chart_geometry()
 
     def describe_memory_structure(self) -> Dict[str, object]:
         banks = {

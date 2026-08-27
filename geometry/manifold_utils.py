@@ -249,6 +249,7 @@ GEOMETRY_NAME_TO_GEOM: dict[str, Geom] = {
     "cp_kahler": "cp",
     "cp": "cp",
     "grassmann": "grassmann",
+    "grassmannian": "grassmann",
     "subspace": "grassmann",
     "product": "torus",
     "holographic_phase": "cp",

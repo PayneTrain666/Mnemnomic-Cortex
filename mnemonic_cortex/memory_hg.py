@@ -20,6 +20,7 @@ from .holo_head import HoloHead
 from .lightbulb_controller import LightbulbController
 from .memory.conformal import ConformalMLP, warp_knn_with_stats
 from geometry.blend import GeometryBlender
+from geometry.chart_native import mix_bank_chart_distance
 from geometry.metric_heads import GeometryMetric
 from topology.manager_v3 import DynamicTopologyManagerV2
 
@@ -137,6 +138,8 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.geom_metric = GeometryMetric(d_query=self.D, d_key=self.metric_dim, d_metric=self.metric_dim)
         self.metric_keys = nn.Parameter(torch.randn(self.M, self.metric_dim) * 0.02)
         self.geom_gamma = 0.30
+        self.native_chart_list = []
+        self.native_chart_mix = 0.0
 
         # Projections
         self.input_projection  = nn.Sequential(nn.Linear(input_dim, self.D * 3), nn.LayerNorm(self.D * 3), nn.GELU())
@@ -361,6 +364,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
                 if k in self.last_geom_weights:
                     m[f"hg_geom_w_{k}"] = float(self.last_geom_weights[k])
         m["hg_transformer_layers"] = float(self.transformer_layers)
+        m["hg_native_chart_mix"] = float(getattr(self, "native_chart_mix", 0.0) or 0.0)
         return m
 
     # -------------------- Core ops --------------------
@@ -648,6 +652,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
         self.last_geom_weights = mode_wext
         topk_keys = self.metric_keys[:M][itop_flat]
         d_geo = self.geom_metric.distances(q_feat, topk_keys, mode_w4)
+        d_geo = mix_bank_chart_distance(self, q_feat, self.keys[:M][itop_flat], d_geo)
         dtop_mix = (1.0 - self.geom_gamma) * dtop_flat + self.geom_gamma * d_geo
         pre_probs = torch.softmax(-dtop_mix.detach(), dim=-1)
         pre_entropy = float((-(pre_probs * pre_probs.clamp_min(1e-9).log()).sum(dim=-1).mean()).item())

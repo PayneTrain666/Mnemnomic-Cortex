@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import torch
 import torch.nn.functional as F
 
+from geometry.chart_native import majority_chart, mix_chart_affinity
+
 from .wm_external_memory_interfaces import (
     ExternalMemoryQuery,
     ExternalMemoryResponse,
@@ -125,10 +127,46 @@ class TripleHybridLTMExternalMemoryBank:
             return query.context
         return query.query_state.unsqueeze(1)
 
-    def _score_candidates(self, query_state: torch.Tensor, candidates: torch.Tensor) -> torch.Tensor:
+    def _score_candidates(
+        self,
+        query_state: torch.Tensor,
+        candidates: torch.Tensor,
+        query: Optional[ExternalMemoryQuery] = None,
+    ) -> torch.Tensor:
         qn = F.normalize(query_state, dim=-1)
         cn = F.normalize(candidates, dim=-1)
-        return torch.einsum("bd,bkd->bk", qn, cn)
+        cosine = torch.einsum("bd,bkd->bk", qn, cn)
+        mix = 0.0
+        meta = {}
+        if query is not None:
+            meta = query.metadata or {}
+            mix = float(meta.get("native_chart_mix", 0.0) or 0.0)
+        if mix <= 0.0:
+            return cosine
+        ltm = self.triple_hybrid
+        maps = getattr(ltm, "bank_geometry_maps", {}) if ltm is not None else {}
+        bank_keys = {
+            "hg_episodic": "hg",
+            "cgmn_semantic": "cgmn",
+            "curved_associative": "curved",
+            "procedural_spcp": "spcp",
+            "spatial_topological": "spatial",
+            "fused": "cgmn",
+        }
+        parts = []
+        for i, name in enumerate(self._BANK_KEYS):
+            chart_list = maps.get(bank_keys.get(name, "cgmn")) if isinstance(maps, dict) else None
+            geometry = majority_chart(chart_list, default="euclidean")
+            parts.append(
+                mix_chart_affinity(
+                    cosine[:, i],
+                    query_state,
+                    candidates[:, i : i + 1, :],
+                    geometry,
+                    mix,
+                )
+            )
+        return torch.stack(parts, dim=1)
 
     def _read_kwargs_from_query(self, query: ExternalMemoryQuery) -> Dict[str, Any]:
         meta = query.metadata or {}
@@ -182,7 +220,7 @@ class TripleHybridLTMExternalMemoryBank:
             ]
 
         pooled = torch.stack([r.mean(dim=1) for r in reads], dim=1)
-        scores = self._score_candidates(query.query_state, pooled)
+        scores = self._score_candidates(query.query_state, pooled, query)
         slot_ids = [
             [f"ltm_{name}_{batch_i:04d}" for name in names]
             for batch_i in range(pooled.size(0))

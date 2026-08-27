@@ -16,7 +16,6 @@ import hashlib
 import torch
 
 from geometry.manifold_utils import (
-    chart_transform,
     conformal_scale,
     distance,
     gather_curvature,
@@ -27,6 +26,7 @@ from geometry.manifold_utils import (
     warp_distances,
     wrap_angles,
 )
+from geometry.chart_native import project_with_residual, resolve_chart_geom
 
 from .ltm_depth_adapter import LTMDepthAdapter
 from .mann_depth_adapter import MANNDepthAdapter
@@ -94,6 +94,7 @@ class SharedGeometrySlotConfig:
     conformal_b: float = 0.1
     alpha_torus: float = 1.0
     symplectic_step: float = 1e-2
+    native_chart_residual_mix: float = 0.25
 
     @classmethod
     def disabled(cls, key_dim: int = 256, value_dim: Optional[int] = None) -> "SharedGeometrySlotConfig":
@@ -117,6 +118,7 @@ class SharedGeometrySlotConfig:
             "conformal_b": self.conformal_b,
             "alpha_torus": self.alpha_torus,
             "symplectic_step": self.symplectic_step,
+            "native_chart_residual_mix": self.native_chart_residual_mix,
         }
 
 
@@ -324,21 +326,19 @@ class MANNLTMSharedSlotGeometry:
     def _chart_transform(self, tensor: torch.Tensor, *, geometry_map_name: str, depth_index: int):
         geometry = self._geometry_for_depth(geometry_map_name, depth_index)
         gain = GEOMETRY_CHART_GAIN.get(geometry, 1.0)
+        mix = float(getattr(self.config, "native_chart_residual_mix", 0.25))
         if self.config.use_manifold_chart:
-            transformed, chart_meta = chart_transform(
-                tensor,
-                geometry=geometry,
-                depth_index=depth_index,
-                gain=gain,
-            )
+            transformed, chart_meta = project_with_residual(tensor, geometry, mix=mix)
             meta = {
                 "geometry_map": geometry_map_name,
                 "depth_index": int(depth_index),
                 "geometry": geometry,
                 "gain": float(gain),
-                "depth_scale": chart_meta["depth_scale"],
-                "geom": chart_meta["geom"],
+                "depth_scale": 1.0 + 0.04 * float(depth_index + 1),
+                "geom": chart_meta.get("geom") or resolve_chart_geom(geometry, tensor),
                 "manifold_chart": True,
+                "native_chart": True,
+                "residual_mix": mix,
             }
         else:
             depth_scale = 1.0 + 0.04 * float(depth_index + 1)
@@ -350,6 +350,7 @@ class MANNLTMSharedSlotGeometry:
                 "gain": float(gain),
                 "depth_scale": float(depth_scale),
                 "manifold_chart": False,
+                "native_chart": False,
             }
         if self.config.finite_checks and not torch.isfinite(transformed).all():
             raise MANNLTMSharedSlotGeometryError("chart transform generated NaN/Inf")
@@ -377,10 +378,13 @@ class MANNLTMSharedSlotGeometry:
         mann_x, _ = self._chart_transform(mann_vec, geometry_map_name="procedural", depth_index=0)
         ltm_x, _ = self._chart_transform(ltm_vec, geometry_map_name="hierarchical", depth_index=0)
 
-        mann_geom = geometry_name_to_geom(mann_geometry)
-        ltm_geom = geometry_name_to_geom(ltm_geometry)
-        d_mann = distance(mann_geom, q, mann_x.expand_as(q)).squeeze(-1)
-        d_ltm = distance(ltm_geom, q, ltm_x.expand_as(q)).squeeze(-1)
+        mix = float(getattr(self.config, "native_chart_residual_mix", 0.25))
+        q_mann, _ = project_with_residual(q, mann_geometry, mix=mix)
+        q_ltm, _ = project_with_residual(q, ltm_geometry, mix=mix)
+        mann_geom = resolve_chart_geom(mann_geometry, q)
+        ltm_geom = resolve_chart_geom(ltm_geometry, q)
+        d_mann = distance(mann_geom, q_mann, mann_x.expand_as(q_mann)).squeeze(-1)
+        d_ltm = distance(ltm_geom, q_ltm, ltm_x.expand_as(q_ltm)).squeeze(-1)
         d_base = 0.5 * (d_mann + d_ltm)
 
         if q.size(-1) >= 4 and q.size(0) == mann_x.size(0):

@@ -10,6 +10,13 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
 
 ### Added
 
+- Native chart geometry from QDT/LTM/MANN maps (`geometry/chart_native.py`).
+  Residual projection onto each depth's named manifold plus chart-metric
+  scoring. Euclidean projection is identity; mix `0` is a no-op.
+  QDT-WM projects `[B,Z,T,3,D]` after adapters (`ncg_*` metrics). LTM banks
+  take blender priors and mixed chart distance from their 8-depth maps.
+  MANN hops and shared-slot transforms use clean project+residual instead of
+  tanh/sin warp. Grassmann vector charts fall back to the sphere.
 - Inter-manifold attention for QDT-WM and cortex (`wm_inter_manifold_attention.py`).
   Monitors communications among geometry-map depths, LTM banks, MANN hops, SPCP,
   and optional PSLS views, then mixes them back with a residual gate.
@@ -24,6 +31,8 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
 
 ### Changed
 
+- Depth-specific addressing blends cosine with `tanh(-chart_distance)` on
+  non-Euclidean map depths when native chart mix is nonzero.
 - Copy-task GPU trainer: QDT default fabric, capacity/metrics flags, PSLS wiring,
   and more durable checkpoint/eval behavior.
 - WM attention modules sanitize nonfinite tokens instead of hard-failing the step.
@@ -43,6 +52,9 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
 ### Notes
 
 - Branch: `development-prototype`
-- Commit record: `docs/commits/2026-08-27-development-prototype.md`
+- Commit records:
+  - `docs/commits/2026-08-27-native-chart-geometry.md`
+  - `docs/commits/2026-08-27-development-prototype.md`
+- Local `pytorch_new/` checkout is ignored and no longer tracked as a gitlink.
 
 [Unreleased]: https://github.com/PayneTrain666/Mnemnomic-Cortex/compare/f2e610b...development-prototype

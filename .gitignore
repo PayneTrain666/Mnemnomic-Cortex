@@ -30,3 +30,6 @@ Thumbs.db
 
 # Runtime artifacts
 logs/
+
+# Nested local PyTorch checkout (broken gitlink; not part of this repo)
+pytorch_new/

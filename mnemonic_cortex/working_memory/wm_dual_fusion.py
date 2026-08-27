@@ -37,6 +37,7 @@ class WMDualFusionConfig:
     mann_weight: float = 0.18
     spcp_weight: float = 0.09
     residual_mix: float = 0.35
+    native_chart_mix: float = 0.0
     eps: float = 1e-8
 
     def validate(self) -> None:
@@ -50,9 +51,12 @@ class WMDualFusionConfig:
             "mann_weight": self.mann_weight,
             "spcp_weight": self.spcp_weight,
             "residual_mix": self.residual_mix,
+            "native_chart_mix": self.native_chart_mix,
         }.items():
             if value < 0:
                 raise ValueError(f"{name} must be non-negative")
+        if not 0.0 <= float(self.native_chart_mix) <= 1.0:
+            raise ValueError("native_chart_mix must be in [0,1]")
 
 
 @dataclass
@@ -107,15 +111,39 @@ class WMDualFusionController(nn.Module):
         depth_state: Optional[torch.Tensor] = None,
         context: Optional[torch.Tensor] = None,
         return_trace: bool = False,
+        context_map_name: Optional[str] = None,
+        native_chart_mix: Optional[float] = None,
     ):
         if tokens.dim() != 3 or tokens.size(-1) != self.config.dim:
             raise ValueError(f"Expected tokens [B,T,{self.config.dim}], got {tuple(tokens.shape)}")
         if not torch.isfinite(tokens).all():
             tokens = torch.nan_to_num(tokens, nan=0.0, posinf=0.0, neginf=0.0)
 
-        ltm_out, ltm_trace = self.ltm(tokens, depth_state=depth_state, context=context, return_trace=True)
-        mann_out, mann_trace = self.mann(tokens, depth_state=depth_state, context=context, return_trace=True)
-        spcp_out, spcp_trace = self.spcp(tokens, depth_state=depth_state, context=context, return_trace=True)
+        chart_mix = self.config.native_chart_mix if native_chart_mix is None else float(native_chart_mix)
+        ltm_out, ltm_trace = self.ltm(
+            tokens,
+            depth_state=depth_state,
+            context=context,
+            context_map_name=context_map_name,
+            native_chart_mix=chart_mix,
+            return_trace=True,
+        )
+        mann_out, mann_trace = self.mann(
+            tokens,
+            depth_state=depth_state,
+            context=context,
+            context_map_name=context_map_name,
+            native_chart_mix=chart_mix,
+            return_trace=True,
+        )
+        spcp_out, spcp_trace = self.spcp(
+            tokens,
+            depth_state=depth_state,
+            context=context,
+            context_map_name=context_map_name,
+            native_chart_mix=chart_mix,
+            return_trace=True,
+        )
 
         wm_context = tokens.mean(dim=1)
         ltm_context = self.ltm.last_output.memory_context
@@ -154,6 +182,8 @@ class WMDualFusionController(nn.Module):
             "confidence": confidence.detach().cpu().tolist(),
             "disagreement": disagreement.detach().cpu().tolist(),
             "finite": finite,
+            "context_map_name": context_map_name,
+            "native_chart_mix": float(chart_mix),
             "paamax_metadata": {
                 "trace_type": "wm_dual_fusion_controller",
                 "confidence": float(confidence.mean().detach().cpu()) if finite else 0.0,

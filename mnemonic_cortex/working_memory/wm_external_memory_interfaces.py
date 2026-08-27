@@ -18,6 +18,8 @@ import uuid
 
 import torch
 
+from geometry.chart_native import majority_chart, mix_chart_affinity
+
 from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 
 
@@ -179,6 +181,12 @@ class SyntheticExternalMemoryBank:
         qn = torch.nn.functional.normalize(q, dim=-1)
         pn = torch.nn.functional.normalize(proto, dim=-1)
         scores_full = torch.matmul(qn, pn.t())
+        meta = query.metadata or {}
+        chart_mix = float(meta.get("native_chart_mix", 0.0) or 0.0)
+        if chart_mix > 0.0:
+            charts = meta.get("geometry_by_depth")
+            geometry = str(meta.get("geometry") or majority_chart(charts, default="euclidean"))
+            scores_full = mix_chart_affinity(scores_full, q, proto, geometry, chart_mix)
         k = min(top_k, self.slots)
         scores, idx = torch.topk(scores_full, k=k, dim=-1)
         memory = proto.index_select(0, idx.reshape(-1)).reshape(q.size(0), k, self.dim)
