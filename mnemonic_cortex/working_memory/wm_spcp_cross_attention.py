@@ -21,6 +21,7 @@ from geometry.chart_native import majority_chart, project_with_residual
 
 from .wm_external_memory_interfaces import ExternalMemoryQuery, ExternalMemoryResponse, SyntheticExternalMemoryBank
 from .wm_native_chart_geometry import charts_for_context_map, score_and_mix_memory_on_charts
+from .wm_prefusion_handoff import PreFusionHandoff, maybe_build_handoff
 
 
 @dataclass
@@ -31,6 +32,7 @@ class WMSPCPCrossAttentionConfig:
     enable_native_chart_attention: bool = True
     native_chart_attention_mix: float = 1.0
     native_chart_score_temperature: float = 0.35
+    enable_prefusion_handoff: bool = False
     eps: float = 1e-8
 
     def validate(self) -> None:
@@ -52,14 +54,18 @@ class WMSPCPCrossAttentionOutput:
     memory_context: torch.Tensor
     response: ExternalMemoryResponse
     trace: Dict[str, Any] = field(default_factory=dict)
+    handoff: Optional[PreFusionHandoff] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        packed = {
             "output_shape": list(self.output.shape),
             "memory_context_shape": list(self.memory_context.shape),
             "response": self.response.to_dict(),
             "trace": self.trace,
         }
+        if self.handoff is not None:
+            packed["handoff"] = self.handoff.to_dict()
+        return packed
 
 
 class WMSPCPCrossAttention(nn.Module):
@@ -110,8 +116,11 @@ class WMSPCPCrossAttention(nn.Module):
             },
         )
         response = self.external_bank.query(request, top_k=self.config.top_k)
-        native_on = bool(self.config.enable_native_chart_attention)
-        _, memory_context, native_stats = score_and_mix_memory_on_charts(
+        native_on = bool(self.config.enable_native_chart_attention) or bool(
+            getattr(self.config, "enable_prefusion_handoff", False)
+        )
+        handoff_on = bool(getattr(self.config, "enable_prefusion_handoff", False))
+        attn_w, memory_context, native_stats = score_and_mix_memory_on_charts(
             query_state,
             response.memory_state,
             response.scores,
@@ -120,6 +129,14 @@ class WMSPCPCrossAttention(nn.Module):
             attention_mix=float(self.config.native_chart_attention_mix),
             temperature=float(self.config.native_chart_score_temperature),
             eps=self.config.eps,
+        )
+        handoff = maybe_build_handoff(
+            handoff_on,
+            "spcp",
+            memory_context,
+            native_stats,
+            map_name,
+            weights=attn_w,
         )
         delta = self.context_proj(memory_context).unsqueeze(1)
         output = tokens + self.config.residual_mix * delta
@@ -135,6 +152,8 @@ class WMSPCPCrossAttention(nn.Module):
             "native_chart_attention": bool(native_stats["native_chart_attention"]),
             "native_chart_attention_mix": float(native_stats["native_chart_attention_mix"]),
             "query_chart": native_stats.get("query_chart"),
+            "key_charts": list(native_stats.get("key_charts") or []),
+            "prefusion_handoff": None if handoff is None else handoff.to_dict(),
             "paamax_metadata": {
                 "trace_type": "wm_spcp_cross_attention",
                 "confidence": float(response.confidence.mean().detach().cpu()) if finite else 0.0,
@@ -142,7 +161,13 @@ class WMSPCPCrossAttention(nn.Module):
                 "native_chart_score_and_mix": bool(native_on),
             },
         }
-        out = WMSPCPCrossAttentionOutput(output=output, memory_context=memory_context, response=response, trace=trace)
+        out = WMSPCPCrossAttentionOutput(
+            output=output,
+            memory_context=memory_context,
+            response=response,
+            trace=trace,
+            handoff=handoff,
+        )
         self.last_output = out
         if return_trace:
             return output, out.to_dict()

@@ -20,6 +20,16 @@ import torch.nn as nn
 from .wm_ltm_cross_attention import WMLTMCrossAttention, WMLTMCrossAttentionConfig
 from .wm_mann_cross_attention import WMMANNCrossAttention, WMMANNCrossAttentionConfig
 from .wm_spcp_cross_attention import WMSPCPCrossAttention, WMSPCPCrossAttentionConfig
+from .wm_chart_fusion_policy import (
+    WMChartFusionPolicy,
+    WMChartFusionPolicyConfig,
+)
+from .wm_prefusion_handoff import (
+    FUSION_SPACE,
+    charts_from_handoffs,
+    tangent_from_output,
+    wm_token_handoff,
+)
 
 
 @dataclass
@@ -41,6 +51,10 @@ class WMDualFusionConfig:
     enable_native_chart_attention: bool = True
     native_chart_attention_mix: float = 1.0
     native_chart_score_temperature: float = 0.35
+    enable_chart_fusion_policy: bool = False
+    chart_fusion_gate_init: float = 0.0
+    chart_fusion_condition_mix: float = 0.15
+    enable_prefusion_handoff: bool = False
     eps: float = 1e-8
 
     def validate(self) -> None:
@@ -56,6 +70,8 @@ class WMDualFusionConfig:
             "residual_mix": self.residual_mix,
             "native_chart_mix": self.native_chart_mix,
             "native_chart_attention_mix": self.native_chart_attention_mix,
+            "chart_fusion_gate_init": self.chart_fusion_gate_init,
+            "chart_fusion_condition_mix": self.chart_fusion_condition_mix,
         }.items():
             if value < 0:
                 raise ValueError(f"{name} must be non-negative")
@@ -65,6 +81,10 @@ class WMDualFusionConfig:
             raise ValueError("native_chart_attention_mix must be in [0,1]")
         if float(self.native_chart_score_temperature) <= 0:
             raise ValueError("native_chart_score_temperature must be positive")
+        if not 0.0 <= float(self.chart_fusion_gate_init) <= 1.0:
+            raise ValueError("chart_fusion_gate_init must be in [0,1]")
+        if not 0.0 <= float(self.chart_fusion_condition_mix) <= 1.0:
+            raise ValueError("chart_fusion_condition_mix must be in [0,1]")
 
 
 @dataclass
@@ -99,10 +119,13 @@ class WMDualFusionController(nn.Module):
         super().__init__()
         config.validate()
         self.config = config
+        handoff_on = bool(config.enable_prefusion_handoff or config.enable_chart_fusion_policy)
+        native_on = bool(config.enable_native_chart_attention or handoff_on)
         native_attn = {
-            "enable_native_chart_attention": bool(config.enable_native_chart_attention),
+            "enable_native_chart_attention": native_on,
             "native_chart_attention_mix": float(config.native_chart_attention_mix),
             "native_chart_score_temperature": float(config.native_chart_score_temperature),
+            "enable_prefusion_handoff": handoff_on,
         }
         self.ltm = WMLTMCrossAttention(
             WMLTMCrossAttentionConfig(dim=config.dim, top_k=config.top_k, **native_attn)
@@ -114,6 +137,22 @@ class WMDualFusionController(nn.Module):
             WMSPCPCrossAttentionConfig(dim=config.dim, top_k=config.top_k, **native_attn)
         )
         self.fusion_proj = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, config.dim))
+        self.fusion_policy: Optional[WMChartFusionPolicy] = None
+        if bool(config.enable_chart_fusion_policy):
+            self.fusion_policy = WMChartFusionPolicy(
+                WMChartFusionPolicyConfig(
+                    enable=True,
+                    gate_init=float(config.chart_fusion_gate_init),
+                    condition_mix=float(config.chart_fusion_condition_mix),
+                    legacy_weights=(
+                        float(config.wm_weight),
+                        float(config.ltm_weight),
+                        float(config.mann_weight),
+                        float(config.spcp_weight),
+                    ),
+                    eps=float(config.eps),
+                )
+            )
         self.last_output: Optional[WMDualFusionOutput] = None
 
     def _weights(self, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
@@ -164,22 +203,21 @@ class WMDualFusionController(nn.Module):
             return_trace=True,
         )
 
-        wm_context = tokens.mean(dim=1)
-        ltm_context = self.ltm.last_output.memory_context
-        mann_context = self.mann.last_output.memory_context
-        spcp_context = self.spcp.last_output.memory_context
+        wm_handoff = None
+        handoff_on = self.fusion_policy is not None or bool(self.config.enable_prefusion_handoff)
+        if handoff_on:
+            wm_handoff = wm_token_handoff(tokens, map_name=context_map_name)
+            wm_context = wm_handoff.tangent
+            ltm_context, ltm_handoff = tangent_from_output(self.ltm.last_output, self.ltm.last_output.memory_context)
+            mann_context, mann_handoff = tangent_from_output(self.mann.last_output, self.mann.last_output.memory_context)
+            spcp_context, spcp_handoff = tangent_from_output(self.spcp.last_output, self.spcp.last_output.memory_context)
+        else:
+            wm_context = tokens.mean(dim=1)
+            ltm_context = self.ltm.last_output.memory_context
+            mann_context = self.mann.last_output.memory_context
+            spcp_context = self.spcp.last_output.memory_context
+            ltm_handoff = mann_handoff = spcp_handoff = None
 
-        w = self._weights(tokens.device, tokens.dtype)
-        fused_context = (
-            w[0] * wm_context
-            + w[1] * ltm_context
-            + w[2] * mann_context
-            + w[3] * spcp_context
-        )
-        delta = self.fusion_proj(fused_context).unsqueeze(1)
-        output = tokens + self.config.residual_mix * delta
-
-        # Confidence/disagreement
         confidence_parts = torch.stack([
             self.ltm.last_output.response.confidence,
             self.mann.last_output.response.confidence,
@@ -187,11 +225,70 @@ class WMDualFusionController(nn.Module):
         ], dim=0)
         confidence = confidence_parts.mean(dim=0)
         disagreement = torch.stack([ltm_context, mann_context, spcp_context], dim=1).var(dim=1).mean(dim=-1)
+
+        policy_trace: Dict[str, Any] = {"enabled": False, "testbed": False}
+        if self.fusion_policy is not None:
+            charts = charts_from_handoffs([wm_handoff, ltm_handoff, mann_handoff, spcp_handoff])
+            if not charts:
+                charts = []
+                for packed in (ltm_trace, mann_trace, spcp_trace):
+                    inner = packed.get("trace") if isinstance(packed, dict) else None
+                    inner = inner or packed
+                    query_chart = inner.get("query_chart") if isinstance(inner, dict) else None
+                    if query_chart:
+                        charts.append(query_chart)
+                    key_charts = inner.get("key_charts") if isinstance(inner, dict) else None
+                    if key_charts:
+                        charts.extend(list(key_charts))
+            policy_out = self.fusion_policy(
+                batch=int(tokens.size(0)),
+                device=tokens.device,
+                dtype=tokens.dtype,
+                map_name=context_map_name,
+                charts=charts,
+                confidence=confidence,
+                disagreement=disagreement,
+            )
+            w = policy_out.weights
+            fused_context = self.fusion_policy.mix_sources(
+                w, wm_context, ltm_context, mann_context, spcp_context
+            )
+            policy_trace = dict(policy_out.trace)
+            weight_list = w.mean(dim=0).detach().cpu().tolist() if w.dim() == 2 else w.detach().cpu().tolist()
+        else:
+            w = self._weights(tokens.device, tokens.dtype)
+            fused_context = (
+                w[0] * wm_context
+                + w[1] * ltm_context
+                + w[2] * mann_context
+                + w[3] * spcp_context
+            )
+            weight_list = w.detach().cpu().tolist()
+        delta = self.fusion_proj(fused_context).unsqueeze(1)
+        output = tokens + self.config.residual_mix * delta
+
         finite = bool(torch.isfinite(output).all().item())
 
         trace = {
             "trace_type": "wm_dual_fusion_controller",
-            "fusion_weights": w.detach().cpu().tolist(),
+            "fusion_weights": weight_list,
+            "chart_fusion_policy": policy_trace,
+            "prefusion_handoff": {
+                "enabled": bool(handoff_on),
+                "space": FUSION_SPACE if handoff_on else None,
+                "complete": bool(
+                    handoff_on
+                    and ltm_handoff is not None
+                    and mann_handoff is not None
+                    and spcp_handoff is not None
+                ),
+                "systems": {
+                    "wm": None if wm_handoff is None else wm_handoff.to_dict(),
+                    "ltm": None if ltm_handoff is None else ltm_handoff.to_dict(),
+                    "mann": None if mann_handoff is None else mann_handoff.to_dict(),
+                    "spcp": None if spcp_handoff is None else spcp_handoff.to_dict(),
+                },
+            },
             "pre_fusion_outputs": {
                 "ltm": ltm_trace["output_shape"],
                 "mann": mann_trace["output_shape"],
@@ -211,6 +308,7 @@ class WMDualFusionController(nn.Module):
                 "disagreement": float(disagreement.mean().detach().cpu()),
                 "mann_trace_visible": True,
                 "native_chart_score_and_mix": bool(self.config.enable_native_chart_attention),
+                "chart_fusion_policy": bool(self.fusion_policy is not None),
                 "shared_slot_doctrine_deferred_to": "WM-4B",
                 "qh_storage_deferred_to": "WM-4C",
             },

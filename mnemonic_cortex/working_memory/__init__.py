@@ -267,6 +267,14 @@ __all__ = [
     "WMSPCPCrossAttention",
     "WMDualFusionConfig",
     "WMDualFusionOutput",
+    "WMChartFusionPolicyConfig",
+    "WMChartFusionPolicyOutput",
+    "WMChartFusionPolicy",
+    "scenario_prior",
+    "SCENARIO_ROLE_PRIORS",
+    "FUSION_SPACE",
+    "PreFusionHandoff",
+    "prefusion_handoff_contract",
     "WMInterManifoldAttentionConfig",
     "WMInterManifoldAttentionOutput",
     "WMInterManifoldAttention",
@@ -336,6 +344,18 @@ from .wm_ltm_cross_attention import WMLTMCrossAttentionConfig, WMLTMCrossAttenti
 from .wm_mann_cross_attention import WMMANNCrossAttentionConfig, WMMANNTraceVisibility, WMMANNCrossAttentionOutput, WMMANNCrossAttention
 from .wm_spcp_cross_attention import WMSPCPCrossAttentionConfig, WMSPCPCrossAttentionOutput, WMSPCPCrossAttention
 from .wm_dual_fusion import WMDualFusionConfig, WMDualFusionOutput, WMDualFusionController
+from .wm_chart_fusion_policy import (
+    WMChartFusionPolicyConfig,
+    WMChartFusionPolicyOutput,
+    WMChartFusionPolicy,
+    scenario_prior,
+    SCENARIO_ROLE_PRIORS,
+)
+from .wm_prefusion_handoff import (
+    FUSION_SPACE,
+    PreFusionHandoff,
+    prefusion_handoff_contract,
+)
 from .wm_inter_manifold_attention import (
     WMInterManifoldAttentionConfig,
     WMInterManifoldAttentionOutput,

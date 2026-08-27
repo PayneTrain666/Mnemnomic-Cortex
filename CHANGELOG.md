@@ -17,6 +17,13 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
   take blender priors and mixed chart distance from their 8-depth maps.
   MANN hops and shared-slot transforms use clean project+residual instead of
   tanh/sin warp. Grassmann vector charts fall back to the sphere.
+- Opt-in dual-fusion chart policy testbed (`wm_chart_fusion_policy.py`).
+  Scenario/chart priors plus residual trainable logits and runtime
+  confidence/disagreement overlays. Off keeps the historical four-weight mix.
+  Gate `0` is the hardcoded recipe. Metrics: `cfp_*`.
+- Opt-in pre-fusion tangent handoff (`wm_prefusion_handoff.py`). LTM/MANN/SPCP
+  emit labeled `tangent_at_origin` payloads for dual fusion. Linked: chart-fusion
+  policy on implies handoff on. Metrics: `pfh_*`.
 - Pre-fusion LTM/MANN/SPCP cross-attention scores retrieved keys with geodesic
   / log-at-origin affinities and mixes them in the shared tangent, matching
   inter-manifold attention. Residual mix `0` stays identity. Metrics: `pfa_*`.
@@ -45,7 +52,8 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
   and mix on native charts (geodesic / log-exp) instead of ambient Euclidean
   add. Residual mix `0` remains identity.
 - Cortex metrics now expose inter-manifold (`ima_*`), pre-fusion native-chart
-  (`pfa_*`), and PSLS gate diagnostics.
+  (`pfa_*`), chart-fusion policy (`cfp_*`), pre-fusion handoff (`pfh_*`), and
+  PSLS gate diagnostics.
 
 ### Fixed
 

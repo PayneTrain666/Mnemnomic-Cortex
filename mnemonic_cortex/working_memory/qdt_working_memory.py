@@ -164,6 +164,19 @@ class QDTWorkingMemory(nn.Module):
                 native_chart_attention_mix=float(
                     getattr(config, "prefusion_native_chart_attention_mix", 1.0)
                 ),
+                enable_chart_fusion_policy=bool(
+                    getattr(config, "enable_chart_fusion_policy", False)
+                ),
+                chart_fusion_gate_init=float(
+                    getattr(config, "chart_fusion_gate_init", 0.0)
+                ),
+                chart_fusion_condition_mix=float(
+                    getattr(config, "chart_fusion_condition_mix", 0.15)
+                ),
+                enable_prefusion_handoff=bool(
+                    getattr(config, "enable_prefusion_handoff", False)
+                    or getattr(config, "enable_chart_fusion_policy", False)
+                ),
             )
         )
         self.dual_fusion.ltm.external_bank.shared_slot_store = self.shared_slot_store
@@ -636,6 +649,8 @@ class QDTWorkingMemory(nn.Module):
         return views
 
     def get_metrics(self) -> Dict[str, Any]:
+        policy = getattr(self.dual_fusion, "fusion_policy", None)
+        policy_on = policy is not None
         metrics: Dict[str, Any] = {
             "ima_enabled": 1.0 if self.inter_manifold_attention is not None else 0.0,
             "ncg_enabled": float(self.last_native_chart_stats.get("enabled", 0.0)),
@@ -651,7 +666,29 @@ class QDTWorkingMemory(nn.Module):
                 if bool(getattr(self.dual_fusion.config, "enable_native_chart_attention", True))
                 else 0.0
             ),
+            "cfp_enabled": 1.0 if policy_on else 0.0,
+            "cfp_gate": (
+                float(policy.gate.detach().clamp(0.0, 1.0).cpu()) if policy_on else 0.0
+            ),
+            "cfp_condition_mix": (
+                float(getattr(self.dual_fusion.config, "chart_fusion_condition_mix", 0.0))
+                if policy_on
+                else 0.0
+            ),
+            "pfh_enabled": (
+                1.0
+                if bool(
+                    getattr(self.dual_fusion.ltm.config, "enable_prefusion_handoff", False)
+                    or getattr(self.dual_fusion.config, "enable_prefusion_handoff", False)
+                    or policy_on
+                )
+                else 0.0
+            ),
         }
+        if policy_on:
+            for key, value in getattr(policy, "last_stats", {}).items():
+                if isinstance(value, (int, float)):
+                    metrics[f"cfp_{key}"] = float(value)
         for key, value in self.last_inter_manifold_stats.items():
             if isinstance(value, (int, float)):
                 metrics[f"ima_{key}"] = float(value)

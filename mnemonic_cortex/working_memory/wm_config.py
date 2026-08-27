@@ -79,6 +79,10 @@ class QDTWorkingMemoryConfig:
     prefusion_native_chart_attention_mix: float = 1.0
     enable_native_chart_geometry: bool = True
     native_chart_residual_mix: float = 0.20
+    enable_chart_fusion_policy: bool = False
+    chart_fusion_gate_init: float = 0.0
+    chart_fusion_condition_mix: float = 0.15
+    enable_prefusion_handoff: bool = False
     hardware_profile: str = "custom"
     qspin_guarded_shadow: bool = False
     qspin_source_matrix_complete: bool = True
@@ -210,6 +214,10 @@ class QDTWorkingMemoryConfig:
             raise ValueError("prefusion_native_chart_attention_mix must be in [0,1]")
         if not 0.0 <= float(self.native_chart_residual_mix) <= 1.0:
             raise ValueError("native_chart_residual_mix must be in [0,1]")
+        if not 0.0 <= float(self.chart_fusion_gate_init) <= 1.0:
+            raise ValueError("chart_fusion_gate_init must be in [0,1]")
+        if not 0.0 <= float(self.chart_fusion_condition_mix) <= 1.0:
+            raise ValueError("chart_fusion_condition_mix must be in [0,1]")
         if self.eps <= 0:
             raise ValueError("eps must be positive")
 
