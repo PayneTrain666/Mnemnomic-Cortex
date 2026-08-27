@@ -14,7 +14,14 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import torch
 
-from geometry.chart_native import fit_chart_list, project_with_residual
+from geometry.chart_native import (
+    clamp_mix,
+    fit_chart_list,
+    majority_chart,
+    project_with_residual,
+    query_key_manifold_affinity,
+    transport_query_key_messages,
+)
 
 from .context_geometry_maps import build_default_context_geometry_maps
 from .wm_depth_guards import depth_contract_trace
@@ -74,6 +81,66 @@ def project_token_chart(
 ) -> torch.Tensor:
     projected, _ = project_with_residual(tokens, geometry, mix=mix)
     return projected
+
+
+def score_and_mix_memory_on_charts(
+    query: torch.Tensor,
+    memory_state: torch.Tensor,
+    bank_scores: torch.Tensor,
+    charts: Sequence[str],
+    *,
+    enable: bool = True,
+    attention_mix: float = 1.0,
+    temperature: float = 0.35,
+    eps: float = 1e-8,
+    kappa: float = -0.1,
+) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
+    """Pre-fusion query-key score and mix on native charts.
+
+    Disabled path: softmax(bank scores) and ambient weighted sum.
+    Enabled path: geodesic / log-at-origin scores, blend with bank weights by
+    attention_mix, then combine keys in the shared tangent. The returned
+    memory context is that tangent message so Euclidean tokens are not mixed
+    by adding Poincaré and spherical vectors. Mix 0 still transports bank
+    weights in the tangent when enable is True.
+    """
+    bank_weights = torch.softmax(bank_scores, dim=-1)
+    mix_v = clamp_mix(attention_mix) if enable else 0.0
+    query_chart = majority_chart(charts)
+    key_charts = fit_chart_list(charts, int(memory_state.size(1)))
+    stats: Dict[str, Any] = {
+        "native_chart_attention": bool(enable),
+        "native_chart_attention_mix": float(mix_v),
+        "query_chart": query_chart,
+        "key_charts": list(key_charts),
+        "qspin_live_routing": False,
+        "shared_slot_writes": False,
+    }
+    if not enable:
+        context = torch.einsum("bk,bkd->bd", bank_weights, memory_state)
+        return bank_weights, context, stats
+    affinity, _, key_tangents = query_key_manifold_affinity(
+        query,
+        memory_state,
+        query_chart,
+        key_charts,
+        kappa=kappa,
+    )
+    chart_weights = torch.softmax(affinity / max(float(temperature), float(eps)), dim=-1)
+    if mix_v >= 1.0:
+        weights = chart_weights
+    elif mix_v <= 0.0:
+        weights = bank_weights
+    else:
+        weights = (1.0 - mix_v) * bank_weights + mix_v * chart_weights
+        weights = weights / weights.sum(dim=-1, keepdim=True).clamp_min(eps)
+    message, _retracted = transport_query_key_messages(
+        weights,
+        key_tangents,
+        query_chart,
+        kappa=kappa,
+    )
+    return weights, message, stats
 
 
 def wm_qd2a_depth_contract() -> dict:

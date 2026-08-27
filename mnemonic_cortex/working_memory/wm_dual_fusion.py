@@ -38,6 +38,9 @@ class WMDualFusionConfig:
     spcp_weight: float = 0.09
     residual_mix: float = 0.35
     native_chart_mix: float = 0.0
+    enable_native_chart_attention: bool = True
+    native_chart_attention_mix: float = 1.0
+    native_chart_score_temperature: float = 0.35
     eps: float = 1e-8
 
     def validate(self) -> None:
@@ -52,11 +55,16 @@ class WMDualFusionConfig:
             "spcp_weight": self.spcp_weight,
             "residual_mix": self.residual_mix,
             "native_chart_mix": self.native_chart_mix,
+            "native_chart_attention_mix": self.native_chart_attention_mix,
         }.items():
             if value < 0:
                 raise ValueError(f"{name} must be non-negative")
         if not 0.0 <= float(self.native_chart_mix) <= 1.0:
             raise ValueError("native_chart_mix must be in [0,1]")
+        if not 0.0 <= float(self.native_chart_attention_mix) <= 1.0:
+            raise ValueError("native_chart_attention_mix must be in [0,1]")
+        if float(self.native_chart_score_temperature) <= 0:
+            raise ValueError("native_chart_score_temperature must be positive")
 
 
 @dataclass
@@ -91,9 +99,20 @@ class WMDualFusionController(nn.Module):
         super().__init__()
         config.validate()
         self.config = config
-        self.ltm = WMLTMCrossAttention(WMLTMCrossAttentionConfig(dim=config.dim, top_k=config.top_k))
-        self.mann = WMMANNCrossAttention(WMMANNCrossAttentionConfig(dim=config.dim, top_k=config.top_k))
-        self.spcp = WMSPCPCrossAttention(WMSPCPCrossAttentionConfig(dim=config.dim, top_k=config.top_k))
+        native_attn = {
+            "enable_native_chart_attention": bool(config.enable_native_chart_attention),
+            "native_chart_attention_mix": float(config.native_chart_attention_mix),
+            "native_chart_score_temperature": float(config.native_chart_score_temperature),
+        }
+        self.ltm = WMLTMCrossAttention(
+            WMLTMCrossAttentionConfig(dim=config.dim, top_k=config.top_k, **native_attn)
+        )
+        self.mann = WMMANNCrossAttention(
+            WMMANNCrossAttentionConfig(dim=config.dim, top_k=config.top_k, **native_attn)
+        )
+        self.spcp = WMSPCPCrossAttention(
+            WMSPCPCrossAttentionConfig(dim=config.dim, top_k=config.top_k, **native_attn)
+        )
         self.fusion_proj = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, config.dim))
         self.last_output: Optional[WMDualFusionOutput] = None
 
@@ -184,11 +203,14 @@ class WMDualFusionController(nn.Module):
             "finite": finite,
             "context_map_name": context_map_name,
             "native_chart_mix": float(chart_mix),
+            "native_chart_attention": bool(self.config.enable_native_chart_attention),
+            "native_chart_attention_mix": float(self.config.native_chart_attention_mix),
             "paamax_metadata": {
                 "trace_type": "wm_dual_fusion_controller",
                 "confidence": float(confidence.mean().detach().cpu()) if finite else 0.0,
                 "disagreement": float(disagreement.mean().detach().cpu()),
                 "mann_trace_visible": True,
+                "native_chart_score_and_mix": bool(self.config.enable_native_chart_attention),
                 "shared_slot_doctrine_deferred_to": "WM-4B",
                 "qh_storage_deferred_to": "WM-4C",
             },

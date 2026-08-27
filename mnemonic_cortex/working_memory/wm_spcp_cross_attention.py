@@ -20,7 +20,7 @@ import torch.nn as nn
 from geometry.chart_native import majority_chart, project_with_residual
 
 from .wm_external_memory_interfaces import ExternalMemoryQuery, ExternalMemoryResponse, SyntheticExternalMemoryBank
-from .wm_native_chart_geometry import charts_for_context_map
+from .wm_native_chart_geometry import charts_for_context_map, score_and_mix_memory_on_charts
 
 
 @dataclass
@@ -28,6 +28,9 @@ class WMSPCPCrossAttentionConfig:
     dim: int
     top_k: int = 4
     residual_mix: float = 0.18
+    enable_native_chart_attention: bool = True
+    native_chart_attention_mix: float = 1.0
+    native_chart_score_temperature: float = 0.35
     eps: float = 1e-8
 
     def validate(self) -> None:
@@ -37,6 +40,10 @@ class WMSPCPCrossAttentionConfig:
             raise ValueError("top_k must be positive")
         if not 0.0 <= self.residual_mix <= 1.0:
             raise ValueError("residual_mix must be in [0,1]")
+        if not 0.0 <= float(self.native_chart_attention_mix) <= 1.0:
+            raise ValueError("native_chart_attention_mix must be in [0,1]")
+        if float(self.native_chart_score_temperature) <= 0:
+            raise ValueError("native_chart_score_temperature must be positive")
 
 
 @dataclass
@@ -103,8 +110,17 @@ class WMSPCPCrossAttention(nn.Module):
             },
         )
         response = self.external_bank.query(request, top_k=self.config.top_k)
-        weights = torch.softmax(response.scores, dim=-1)
-        memory_context = torch.einsum("bk,bkd->bd", weights, response.memory_state)
+        native_on = bool(self.config.enable_native_chart_attention)
+        _, memory_context, native_stats = score_and_mix_memory_on_charts(
+            query_state,
+            response.memory_state,
+            response.scores,
+            charts,
+            enable=native_on,
+            attention_mix=float(self.config.native_chart_attention_mix),
+            temperature=float(self.config.native_chart_score_temperature),
+            eps=self.config.eps,
+        )
         delta = self.context_proj(memory_context).unsqueeze(1)
         output = tokens + self.config.residual_mix * delta
         finite = bool(torch.isfinite(output).all().item())
@@ -114,10 +130,16 @@ class WMSPCPCrossAttention(nn.Module):
             "pre_fusion_output_shape": list(output.shape),
             "confidence": response.confidence.detach().cpu().tolist(),
             "finite": finite,
+            "geometry_map": map_name,
+            "native_chart_mix": chart_mix,
+            "native_chart_attention": bool(native_stats["native_chart_attention"]),
+            "native_chart_attention_mix": float(native_stats["native_chart_attention_mix"]),
+            "query_chart": native_stats.get("query_chart"),
             "paamax_metadata": {
                 "trace_type": "wm_spcp_cross_attention",
                 "confidence": float(response.confidence.mean().detach().cpu()) if finite else 0.0,
                 "procedural_memory": True,
+                "native_chart_score_and_mix": bool(native_on),
             },
         }
         out = WMSPCPCrossAttentionOutput(output=output, memory_context=memory_context, response=response, trace=trace)

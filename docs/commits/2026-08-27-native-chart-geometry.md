@@ -90,3 +90,10 @@ geometry, with mix `0` as the identity rollback.
 
 QSPIN stays inert. Native chart projection does not write shared slots, LTM,
 MANN, SPCP, or QH storage.
+
+## Follow-up
+
+Scoring and mixing on the charts (IMA + pre-fusion LTM/MANN/SPCP) landed in
+`docs/commits/2026-08-27-native-chart-attention.md`. Projection-only maps were
+not enough: attention still added Poincaré/spherical vectors in ambient space
+until that drop.

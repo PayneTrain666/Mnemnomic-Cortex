@@ -155,7 +155,16 @@ class QDTWorkingMemory(nn.Module):
         self.maae_stack_norm = nn.LayerNorm(config.input_dim)
 
         self.dual_fusion = WMDualFusionController(
-            WMDualFusionConfig(dim=config.input_dim, top_k=min(4, config.num_slots))
+            WMDualFusionConfig(
+                dim=config.input_dim,
+                top_k=min(4, config.num_slots),
+                enable_native_chart_attention=bool(
+                    getattr(config, "enable_prefusion_native_chart_attention", True)
+                ),
+                native_chart_attention_mix=float(
+                    getattr(config, "prefusion_native_chart_attention_mix", 1.0)
+                ),
+            )
         )
         self.dual_fusion.ltm.external_bank.shared_slot_store = self.shared_slot_store
         self.dual_fusion.mann.external_bank.shared_slot_store = self.shared_slot_store
@@ -176,6 +185,12 @@ class QDTWorkingMemory(nn.Module):
                     dim=config.input_dim,
                     num_heads=config.num_heads,
                     residual_mix=float(getattr(config, "inter_manifold_residual_mix", 0.15)),
+                    enable_native_chart_attention=bool(
+                        getattr(config, "enable_ima_native_chart_attention", True)
+                    ),
+                    native_chart_attention_mix=float(
+                        getattr(config, "ima_native_chart_attention_mix", 1.0)
+                    ),
                 ),
                 geometry_linker=getattr(self.memory_augmented_attention, "geometry_linker", None),
             )
@@ -626,6 +641,16 @@ class QDTWorkingMemory(nn.Module):
             "ncg_enabled": float(self.last_native_chart_stats.get("enabled", 0.0)),
             "ncg_mix": float(self.last_native_chart_stats.get("mix", 0.0)),
             "ncg_depths": float(self.last_native_chart_stats.get("depths", 0.0)),
+            "pfa_enabled": (
+                1.0
+                if bool(getattr(self.dual_fusion.config, "enable_native_chart_attention", True))
+                else 0.0
+            ),
+            "pfa_mix": (
+                float(getattr(self.dual_fusion.config, "native_chart_attention_mix", 1.0))
+                if bool(getattr(self.dual_fusion.config, "enable_native_chart_attention", True))
+                else 0.0
+            ),
         }
         for key, value in self.last_inter_manifold_stats.items():
             if isinstance(value, (int, float)):

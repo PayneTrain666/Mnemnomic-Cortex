@@ -4,7 +4,9 @@ from geometry.chart_native import (
     blender_priors_from_charts,
     majority_chart,
     project_with_residual,
+    query_key_manifold_affinity,
     resolve_chart_geom,
+    transport_query_key_messages,
 )
 from geometry.manifold_utils import geometry_name_to_geom
 from mnemonic_cortex.reasoning_depth import (
@@ -196,3 +198,33 @@ def test_mann_shared_slot_native_chart_is_finite():
     assert out.shape == (2, 16)
     assert torch.isfinite(out).all()
     assert trace["mann_chart_transform"]["native_chart"] is True
+
+
+def test_query_key_euclidean_tangent_mix_matches_weighted_sum():
+    query = torch.randn(2, 16)
+    keys = torch.randn(2, 4, 16)
+    scores, q_tan, k_tan = query_key_manifold_affinity(query, keys, "euclidean", ["euclidean"] * 4)
+    assert torch.allclose(q_tan, query)
+    assert torch.allclose(k_tan, keys)
+    weights = torch.softmax(scores, dim=-1)
+    message, retracted = transport_query_key_messages(weights, k_tan, "euclidean")
+    ambient = torch.einsum("bk,bkd->bd", weights, keys)
+    assert torch.allclose(message, ambient)
+    assert torch.allclose(retracted, ambient)
+    assert torch.allclose(weights.sum(dim=-1), torch.ones(2), atol=1e-5)
+
+
+def test_qdt_prefusion_native_chart_metrics():
+    cfg = QDTWorkingMemoryConfig(
+        input_dim=32,
+        hidden_dim=64,
+        num_depths=8,
+        num_slots=8,
+        num_heads=4,
+        enable_prefusion_native_chart_attention=True,
+        prefusion_native_chart_attention_mix=1.0,
+    )
+    wm = QDTWorkingMemory(cfg)
+    metrics = wm.get_metrics()
+    assert metrics["pfa_enabled"] == 1.0
+    assert metrics["pfa_mix"] == 1.0

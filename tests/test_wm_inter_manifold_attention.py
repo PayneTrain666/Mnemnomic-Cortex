@@ -6,6 +6,58 @@ from mnemonic_cortex.working_memory import (
     WMInterManifoldAttention,
     WMInterManifoldAttentionConfig,
 )
+from geometry.chart_native import retract_from_origin, tangent_at_origin
+
+
+def test_inter_manifold_native_chart_identity_at_zero_mix():
+    module = WMInterManifoldAttention(
+        WMInterManifoldAttentionConfig(dim=32, num_heads=4, residual_mix=0.2, enable_native_chart_attention=True)
+    )
+    tokens = torch.randn(2, 5, 32)
+    depth_state = torch.randn(2, 8, 5, 3, 32)
+    y = module(tokens, depth_state=depth_state, context_map_name="hierarchical", residual_mix=0.0)
+    assert torch.allclose(y, tokens)
+
+
+def test_inter_manifold_native_chart_scores_and_transports():
+    native = WMInterManifoldAttention(
+        WMInterManifoldAttentionConfig(dim=32, num_heads=4, residual_mix=0.2, enable_native_chart_attention=True)
+    )
+    ambient = WMInterManifoldAttention(
+        WMInterManifoldAttentionConfig(dim=32, num_heads=4, residual_mix=0.2, enable_native_chart_attention=False)
+    )
+    ambient.load_state_dict(native.state_dict())
+    tokens = torch.randn(2, 5, 32)
+    depth_state = torch.randn(2, 8, 5, 3, 32)
+    views = {"hg": torch.randn(2, 5, 32), "mann": torch.randn(2, 3, 32)}
+    y_native, packed = native(
+        tokens,
+        depth_state=depth_state,
+        context_map_name="hierarchical",
+        system_views=views,
+        return_trace=True,
+    )
+    y_ambient = ambient(
+        tokens,
+        depth_state=depth_state,
+        context_map_name="hierarchical",
+        system_views=views,
+    )
+    assert y_native.shape == tokens.shape
+    assert torch.isfinite(y_native).all()
+    assert packed["trace"]["payload"]["native_chart_attention"] is True
+    assert native.last_stats["native_chart_attention"] == 1.0
+    assert not torch.allclose(y_native, y_ambient)
+    weights = native.last_output.attention_weights
+    assert torch.allclose(weights.sum(dim=-1), torch.ones(weights.size(0), weights.size(1)), atol=1e-4)
+
+
+def test_inter_manifold_euclidean_tangent_is_identity():
+    x = torch.randn(4, 16)
+    t = tangent_at_origin(x, "euclidean")
+    y = retract_from_origin(t, "euclidean")
+    assert torch.allclose(t, x)
+    assert torch.allclose(y, x)
 
 
 def test_inter_manifold_attention_identity_at_zero_mix():
@@ -43,6 +95,7 @@ def test_inter_manifold_attention_monitors_geometry_and_mann_views():
     assert payload["ltm_writes"] is False
     assert payload["mann_writes"] is False
     assert payload["qh_writes"] is False
+    assert payload["native_chart_attention"] is True
     assert payload["token_count"] >= 8
     assert payload["top_edges"]
     assert any(label.startswith("wm:") for label in packed["labels"])

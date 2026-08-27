@@ -17,10 +17,15 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
   take blender priors and mixed chart distance from their 8-depth maps.
   MANN hops and shared-slot transforms use clean project+residual instead of
   tanh/sin warp. Grassmann vector charts fall back to the sphere.
+- Pre-fusion LTM/MANN/SPCP cross-attention scores retrieved keys with geodesic
+  / log-at-origin affinities and mixes them in the shared tangent, matching
+  inter-manifold attention. Residual mix `0` stays identity. Metrics: `pfa_*`.
 - Inter-manifold attention for QDT-WM and cortex (`wm_inter_manifold_attention.py`).
   Monitors communications among geometry-map depths, LTM banks, MANN hops, SPCP,
   and optional PSLS views, then mixes them back with a residual gate.
   Mix `0` is identity. Does not write LTM/MANN/shared slots/QH or activate QSPIN.
+  Native-chart mode scores communications with geodesic / log-at-origin
+  affinities and mixes messages in the shared tangent (`ima_*` mix flags).
 - Parameter storage loop (PSLS) training path: post-optimizer consolidation,
   identity-safe residual gate, CPS-preserving resume.
 - Trainable parameter CPS consolidation controls and capacity reporting helpers.
@@ -36,7 +41,11 @@ where a tag exists. Prototype branch work is recorded under **Unreleased**.
 - Copy-task GPU trainer: QDT default fabric, capacity/metrics flags, PSLS wiring,
   and more durable checkpoint/eval behavior.
 - WM attention modules sanitize nonfinite tokens instead of hard-failing the step.
-- Cortex metrics now expose inter-manifold (`ima_*`) and PSLS gate diagnostics.
+- Inter-manifold attention and pre-fusion LTM/MANN/SPCP cross-attention score
+  and mix on native charts (geodesic / log-exp) instead of ambient Euclidean
+  add. Residual mix `0` remains identity.
+- Cortex metrics now expose inter-manifold (`ima_*`), pre-fusion native-chart
+  (`pfa_*`), and PSLS gate diagnostics.
 
 ### Fixed
 

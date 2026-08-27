@@ -25,6 +25,12 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 import torch
 import torch.nn as nn
 
+from geometry.chart_native import (
+    batched_retract_from_origin,
+    manifold_pairwise_affinity,
+    project_with_residual,
+)
+
 from .context_geometry_maps import GEOMETRY_SET, build_default_context_geometry_maps
 from .wm_geometry_linker import WMGeometryLinker
 
@@ -106,7 +112,8 @@ class WMInterManifoldAttentionConfig:
     """Cross-manifold communication monitor and residual mixer.
 
     Tokens stay [B,T,D]. Manifold communications are pooled into a compact
-    token set, attended, then mixed back. residual_mix=0 is identity.
+    token set, scored with chart metrics, transported in a shared tangent,
+    then mixed back. residual_mix=0 is identity.
     """
 
     dim: int
@@ -115,6 +122,9 @@ class WMInterManifoldAttentionConfig:
     max_manifold_tokens: int = 48
     eps: float = 1e-8
     top_edges: int = 6
+    enable_native_chart_attention: bool = True
+    native_chart_attention_mix: float = 1.0
+    native_chart_score_temperature: float = 0.35
 
     def validate(self) -> None:
         if self.dim <= 0:
@@ -134,6 +144,10 @@ class WMInterManifoldAttentionConfig:
             raise ValueError("max_manifold_tokens must be > 1")
         if self.eps <= 0:
             raise ValueError("eps must be positive")
+        if not 0.0 <= float(self.native_chart_attention_mix) <= 1.0:
+            raise ValueError("native_chart_attention_mix must be in [0,1]")
+        if float(self.native_chart_score_temperature) <= 0:
+            raise ValueError("native_chart_score_temperature must be positive")
         self.top_edges = int(max(1, self.top_edges))
 
 
@@ -162,8 +176,8 @@ class WMInterManifoldAttention(nn.Module):
 
     This module:
     - builds one token per (system, manifold) view
-    - cross-attends those views so inter-manifold messages are visible
-    - mixes the attended communication back into the sequence
+    - scores those views with native chart metrics (geodesic / log-at-origin)
+    - mixes messages in a shared tangent, then exp-maps back
     - never writes LTM, MANN, shared slots, or QH storage
     """
 
@@ -390,15 +404,65 @@ class WMInterManifoldAttention(nn.Module):
             "global_mean": float(mean_w.detach().mean().cpu()),
         }
 
+    def _project_views_to_charts(
+        self,
+        manifold_tokens: torch.Tensor,
+        pairs: Sequence[Tuple[str, str]],
+    ) -> Tuple[torch.Tensor, List[str]]:
+        charts = [manifold for _, manifold in pairs]
+        parts = []
+        for idx, chart in enumerate(charts):
+            projected, _ = project_with_residual(manifold_tokens[:, idx], chart, mix=1.0)
+            parts.append(projected)
+        return torch.stack(parts, dim=1), charts
+
+    def score_manifold_communications(
+        self,
+        charted_tokens: torch.Tensor,
+        charts: Sequence[str],
+        *,
+        pairs: Sequence[Tuple[str, str]],
+        geometry_weights: Optional[Mapping[str, Mapping[str, Any]]] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Native chart affinities plus shared-origin tangents. Mix 0 is unused here."""
+        affinity, tangents = manifold_pairwise_affinity(charted_tokens, charts)
+        temp = float(self.config.native_chart_score_temperature)
+        logits = affinity / max(temp, self.config.eps)
+        logits = logits + self._link_bias(pairs, charted_tokens.device, charted_tokens.dtype)
+        key_bias = self._geometry_key_bias(
+            pairs, geometry_weights, charted_tokens.device, charted_tokens.dtype
+        )
+        logits = logits + key_bias.view(1, 1, -1)
+        return logits, tangents
+
+    def transport_manifold_messages(
+        self,
+        weights: torch.Tensor,
+        tangents: torch.Tensor,
+        charts: Sequence[str],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Weighted tangent combination, then retract onto each query chart."""
+        messages = torch.einsum("bmj,bjd->bmd", weights, tangents)
+        if not torch.isfinite(messages).all():
+            messages = torch.nan_to_num(messages, nan=0.0, posinf=0.0, neginf=0.0)
+        retracted = batched_retract_from_origin(messages, charts)
+        return messages, retracted
+
     def mix_manifold_communications(
         self,
         tokens: torch.Tensor,
         manifold_tokens: torch.Tensor,
         attended: torch.Tensor,
         residual_mix: Optional[float] = None,
+        tangent_messages: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         mix = self.config.residual_mix if residual_mix is None else float(residual_mix)
-        pooled = attended.mean(dim=1)
+        if mix <= 0.0:
+            return tokens
+        if tangent_messages is not None:
+            pooled = tangent_messages.mean(dim=1)
+        else:
+            pooled = attended.mean(dim=1)
         delta = self.mix_proj(pooled).unsqueeze(1)
         return tokens + mix * delta
 
@@ -420,6 +484,8 @@ class WMInterManifoldAttention(nn.Module):
 
         mix = self.config.residual_mix if residual_mix is None else float(residual_mix)
         mix = max(0.0, min(1.0, mix))
+        native_on = bool(self.config.enable_native_chart_attention)
+        chart_mix = float(self.config.native_chart_attention_mix) if native_on else 0.0
 
         manifold_tokens, labels, pairs = self.build_manifold_tokens(
             tokens,
@@ -442,24 +508,58 @@ class WMInterManifoldAttention(nn.Module):
         tagged = self.view_norm(tagged)
 
         n = int(tagged.size(1))
+        tangent_messages: Optional[torch.Tensor] = None
         if n <= 1 or mix <= 0.0:
             attn_w = torch.ones(tokens.size(0), n, n, device=tokens.device, dtype=tokens.dtype) / float(max(1, n))
             attended = tagged
-            output = tokens if mix <= 0.0 else self.mix_manifold_communications(tokens, manifold_tokens, attended, mix)
-        else:
-            link_bias = self._link_bias(pairs, tokens.device, tokens.dtype)
-            key_bias = self._geometry_key_bias(pairs, geometry_weights, tokens.device, tokens.dtype)
-            attn_mask = link_bias + key_bias.unsqueeze(0)
-            attended, attn_w = self.comm_attn(
-                tagged,
-                tagged,
-                tagged,
-                attn_mask=attn_mask,
-                need_weights=True,
-                average_attn_weights=True,
+            output = tokens if mix <= 0.0 else self.mix_manifold_communications(
+                tokens, manifold_tokens, attended, mix, tangent_messages=tangent_messages
             )
-            attended = self.comm_norm(tagged + attended)
-            output = self.mix_manifold_communications(tokens, manifold_tokens, attended, mix)
+        else:
+            attn_w = None
+            if chart_mix < 1.0:
+                link_bias = self._link_bias(pairs, tokens.device, tokens.dtype)
+                key_bias = self._geometry_key_bias(pairs, geometry_weights, tokens.device, tokens.dtype)
+                attn_mask = link_bias + key_bias.unsqueeze(0)
+                _, attn_w = self.comm_attn(
+                    tagged,
+                    tagged,
+                    tagged,
+                    attn_mask=attn_mask,
+                    need_weights=True,
+                    average_attn_weights=True,
+                )
+            if native_on:
+                charted, charts = self._project_views_to_charts(manifold_tokens, pairs)
+                logits, tangents = self.score_manifold_communications(
+                    charted, charts, pairs=pairs, geometry_weights=geometry_weights
+                )
+                chart_w = torch.softmax(logits, dim=-1)
+                if attn_w is None or chart_mix >= 1.0:
+                    attn_w = chart_w
+                else:
+                    attn_w = (1.0 - chart_mix) * attn_w + chart_mix * chart_w
+                    attn_w = attn_w / attn_w.sum(dim=-1, keepdim=True).clamp_min(self.config.eps)
+                tangent_messages, attended = self.transport_manifold_messages(attn_w, tangents, charts)
+            else:
+                if attn_w is None:
+                    link_bias = self._link_bias(pairs, tokens.device, tokens.dtype)
+                    key_bias = self._geometry_key_bias(pairs, geometry_weights, tokens.device, tokens.dtype)
+                    attn_mask = link_bias + key_bias.unsqueeze(0)
+                    attended, attn_w = self.comm_attn(
+                        tagged,
+                        tagged,
+                        tagged,
+                        attn_mask=attn_mask,
+                        need_weights=True,
+                        average_attn_weights=True,
+                    )
+                else:
+                    attended = torch.matmul(attn_w, tagged)
+                attended = self.comm_norm(tagged + attended)
+            output = self.mix_manifold_communications(
+                tokens, manifold_tokens, attended, mix, tangent_messages=tangent_messages
+            )
 
         if not torch.isfinite(output).all():
             output = torch.nan_to_num(output, nan=0.0, posinf=0.0, neginf=0.0)
@@ -482,6 +582,8 @@ class WMInterManifoldAttention(nn.Module):
                 "mann_writes": False,
                 "qh_writes": False,
                 "monitor_only_writes": True,
+                "native_chart_attention": bool(native_on),
+                "native_chart_attention_mix": float(chart_mix),
             },
             confidence=1.0 if finite else 0.0,
             write_permission_required=False,
@@ -494,6 +596,8 @@ class WMInterManifoldAttention(nn.Module):
             "token_count": float(n),
             "global_mean": float(monitor["global_mean"]),
             "finite": 1.0 if finite else 0.0,
+            "native_chart_attention": 1.0 if native_on else 0.0,
+            "native_chart_attention_mix": float(chart_mix),
         }
         if monitor["top_edges"]:
             stats["top_edge_score"] = float(monitor["top_edges"][0]["score"])
@@ -534,6 +638,7 @@ def wm_qd3a_attention_contract() -> dict:
             "candidate_shapes": ["[B,M,D]", "[B,Z,T,3,D]", "[B,D]"],
             "score_shapes": ["[B,M,M]"],
             "inter_manifold_monitor_required": True,
+            "native_chart_score_and_mix": True,
             "candidate_schema_required": True,
             "qspin_live_routing": False,
             "shared_slot_writes": False,

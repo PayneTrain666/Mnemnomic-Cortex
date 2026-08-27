@@ -15,7 +15,9 @@ import torch
 from geometry.manifold_utils import (
     Geom,
     distance,
+    exp_map,
     geometry_name_to_geom,
+    log_map,
     project_to_manifold,
 )
 
@@ -243,3 +245,169 @@ def mix_bank_chart_distance(
     if mix_v <= 0.0 or not charts:
         return base_distance
     return mix_chart_distance(query, keys, majority_chart(charts), base_distance, mix_v)
+
+
+def chart_origin(geom: Geom, like: torch.Tensor) -> torch.Tensor:
+    """Canonical basepoint used to identify each chart's tangent space with R^D."""
+    origin = torch.zeros_like(like)
+    if geom == "sphere":
+        origin[..., 0] = 1.0
+    return origin
+
+
+def tangent_at_origin(
+    x: torch.Tensor,
+    geometry: str,
+    *,
+    kappa: float = -0.1,
+) -> torch.Tensor:
+    """Log-map x to the tangent space at the chart origin. Euclidean is identity."""
+    projected, geom = project_to_chart(x, geometry, kappa=kappa)
+    origin = chart_origin(geom, projected)
+    mapped = log_map(geom, origin, projected, kappa=kappa)
+    if mapped is NotImplemented:
+        projected, geom = project_to_chart(x, "spherical", kappa=kappa)
+        origin = chart_origin(geom, projected)
+        mapped = log_map(geom, origin, projected, kappa=kappa)
+    if not torch.is_tensor(mapped):
+        mapped = projected
+    if not torch.isfinite(mapped).all():
+        mapped = torch.nan_to_num(mapped, nan=0.0, posinf=0.0, neginf=0.0)
+    return mapped
+
+
+def retract_from_origin(
+    tangent: torch.Tensor,
+    geometry: str,
+    *,
+    kappa: float = -0.1,
+) -> torch.Tensor:
+    """Exp-map a tangent vector at the chart origin back onto the manifold."""
+    geom = resolve_chart_geom(geometry, tangent)
+    origin = chart_origin(geom, tangent)
+    out = exp_map(geom, origin, tangent, kappa=kappa)
+    if out is NotImplemented:
+        geom = "sphere"
+        origin = chart_origin(geom, tangent)
+        out = exp_map(geom, origin, tangent, kappa=kappa)
+    if not torch.is_tensor(out):
+        out = tangent
+    if not torch.isfinite(out).all():
+        out = torch.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
+    return out
+
+
+def batched_tangent_at_origin(
+    tokens: torch.Tensor,
+    charts: Sequence[str],
+    *,
+    kappa: float = -0.1,
+) -> torch.Tensor:
+    """tokens [B, M, D] -> tangents [B, M, D]."""
+    if tokens.dim() != 3:
+        raise ValueError(f"expected tokens [B,M,D], got {tuple(tokens.shape)}")
+    names = fit_chart_list(charts, int(tokens.size(1)))
+    parts = [tangent_at_origin(tokens[:, idx], names[idx], kappa=kappa) for idx in range(int(tokens.size(1)))]
+    return torch.stack(parts, dim=1)
+
+
+def batched_retract_from_origin(
+    tangents: torch.Tensor,
+    charts: Sequence[str],
+    *,
+    kappa: float = -0.1,
+) -> torch.Tensor:
+    """tangents [B, M, D] -> manifold points [B, M, D]."""
+    if tangents.dim() != 3:
+        raise ValueError(f"expected tangents [B,M,D], got {tuple(tangents.shape)}")
+    names = fit_chart_list(charts, int(tangents.size(1)))
+    parts = [retract_from_origin(tangents[:, idx], names[idx], kappa=kappa) for idx in range(int(tangents.size(1)))]
+    return torch.stack(parts, dim=1)
+
+
+def manifold_pairwise_affinity(
+    tokens: torch.Tensor,
+    charts: Sequence[str],
+    *,
+    kappa: float = -0.1,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Chart-aware affinity [B,M,M] plus shared-origin tangents [B,M,D].
+
+    Same resolved chart uses geodesic tanh(-distance). Different charts compare
+    log-maps at the origin so Poincaré/spherical points are not added in ambient space.
+    """
+    if tokens.dim() != 3:
+        raise ValueError(f"expected tokens [B,M,D], got {tuple(tokens.shape)}")
+    names = fit_chart_list(charts, int(tokens.size(1)))
+    tangents = batched_tangent_at_origin(tokens, names, kappa=kappa)
+    diff = tangents.unsqueeze(2) - tangents.unsqueeze(1)
+    scores = torch.tanh(-diff.norm(dim=-1).clamp_min(1e-6))
+    geoms = [resolve_chart_geom(name, tokens[:, 0]) for name in names]
+    for geom in set(geoms):
+        idx = [i for i, g in enumerate(geoms) if g == geom]
+        if len(idx) < 2:
+            continue
+        idx_t = torch.tensor(idx, device=tokens.device, dtype=torch.long)
+        sub = tokens.index_select(1, idx_t)
+        dist = distance(geom, sub.unsqueeze(2), sub.unsqueeze(1), kappa=kappa)
+        if dist.dim() > 0 and dist.size(-1) == 1:
+            dist = dist.squeeze(-1)
+        aff = torch.tanh(-torch.nan_to_num(dist, nan=0.0, posinf=0.0, neginf=0.0))
+        scores[:, idx_t.unsqueeze(1), idx_t.unsqueeze(0)] = aff
+    return torch.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0), tangents
+
+
+def query_key_manifold_affinity(
+    query: torch.Tensor,
+    keys: torch.Tensor,
+    query_chart: str,
+    key_charts: Optional[Sequence[str]] = None,
+    *,
+    kappa: float = -0.1,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Cross-attention chart scores [B,K] plus query/key tangents at each origin.
+
+    Same resolved chart uses geodesic tanh(-distance). Different charts compare
+    log-maps at the origin so Poincaré/spherical keys are not dotted in ambient space.
+    """
+    if query.dim() != 2 or keys.dim() != 3:
+        raise ValueError(
+            f"expected query [B,D] and keys [B,K,D], got {tuple(query.shape)} and {tuple(keys.shape)}"
+        )
+    if query.size(0) != keys.size(0) or query.size(-1) != keys.size(-1):
+        raise ValueError("query/keys batch and last dim must match")
+    names = fit_chart_list(key_charts or [query_chart], int(keys.size(1)))
+    q_tan = tangent_at_origin(query, query_chart, kappa=kappa)
+    k_tan = batched_tangent_at_origin(keys, names, kappa=kappa)
+    diff = q_tan.unsqueeze(1) - k_tan
+    scores = torch.tanh(-diff.norm(dim=-1).clamp_min(1e-6))
+    q_geom = resolve_chart_geom(query_chart, query)
+    key_geoms = [resolve_chart_geom(name, keys[:, 0]) for name in names]
+    same_idx = [i for i, geom in enumerate(key_geoms) if geom == q_geom]
+    if same_idx:
+        idx_t = torch.tensor(same_idx, device=query.device, dtype=torch.long)
+        sub = keys.index_select(1, idx_t)
+        aff = pairwise_chart_affinity(query, sub, query_chart, kappa=kappa)
+        scores[:, idx_t] = aff
+    return torch.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0), q_tan, k_tan
+
+
+def transport_query_key_messages(
+    weights: torch.Tensor,
+    key_tangents: torch.Tensor,
+    query_chart: str,
+    *,
+    kappa: float = -0.1,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Weighted tangent combination of keys, then exp-map onto the query chart."""
+    if weights.dim() != 2 or key_tangents.dim() != 3:
+        raise ValueError(
+            f"expected weights [B,K] and key_tangents [B,K,D], got {tuple(weights.shape)} and {tuple(key_tangents.shape)}"
+        )
+    if weights.shape[:2] != key_tangents.shape[:2]:
+        raise ValueError("weights [B,K] must match key_tangents [B,K]")
+    message = torch.einsum("bk,bkd->bd", weights, key_tangents)
+    if not torch.isfinite(message).all():
+        message = torch.nan_to_num(message, nan=0.0, posinf=0.0, neginf=0.0)
+    retracted = retract_from_origin(message, query_chart, kappa=kappa)
+    return message, retracted

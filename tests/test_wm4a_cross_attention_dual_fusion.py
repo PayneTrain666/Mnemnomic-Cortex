@@ -75,3 +75,44 @@ def test_dual_fusion_stability_report():
     assert report["finite"] is True
     assert report["shape_ok"] is True
     assert report["mann_trace_visible"] is True
+
+
+def test_prefusion_native_chart_identity_at_zero_residual():
+    module = WMLTMCrossAttention(
+        WMLTMCrossAttentionConfig(dim=32, top_k=3, residual_mix=0.0, enable_native_chart_attention=True)
+    )
+    tokens = torch.randn(2, 5, 32)
+    y = module(tokens, context_map_name="hierarchical")
+    assert torch.allclose(y, tokens)
+
+
+def test_prefusion_native_chart_scores_and_transports():
+    native = WMLTMCrossAttention(
+        WMLTMCrossAttentionConfig(dim=32, top_k=3, residual_mix=0.2, enable_native_chart_attention=True)
+    )
+    ambient = WMLTMCrossAttention(
+        WMLTMCrossAttentionConfig(dim=32, top_k=3, residual_mix=0.2, enable_native_chart_attention=False)
+    )
+    ambient.load_state_dict(native.state_dict())
+    tokens = torch.randn(2, 5, 32)
+    y_native, packed = native(tokens, context_map_name="hierarchical", return_trace=True)
+    y_ambient = ambient(tokens, context_map_name="hierarchical")
+    assert y_native.shape == tokens.shape
+    assert torch.isfinite(y_native).all()
+    assert packed["trace"]["native_chart_attention"] is True
+    assert packed["trace"]["paamax_metadata"]["native_chart_score_and_mix"] is True
+    assert not torch.allclose(y_native, y_ambient)
+
+
+def test_dual_fusion_native_chart_attention_trace():
+    module = WMDualFusionController(
+        WMDualFusionConfig(dim=32, top_k=3, enable_native_chart_attention=True)
+    )
+    tokens = torch.randn(2, 5, 32)
+    y, packed = module(tokens, context_map_name="hierarchical", return_trace=True)
+    assert y.shape == tokens.shape
+    assert torch.isfinite(y).all()
+    assert packed["trace"]["native_chart_attention"] is True
+    assert packed["ltm_trace"]["trace"]["native_chart_attention"] is True
+    assert packed["mann_trace"]["trace"]["native_chart_attention"] is True
+    assert packed["spcp_trace"]["trace"]["native_chart_attention"] is True

@@ -73,6 +73,10 @@ class QDTWorkingMemoryConfig:
     residual_fusion_weight: float = 0.50
     enable_inter_manifold_attention: bool = True
     inter_manifold_residual_mix: float = 0.15
+    enable_ima_native_chart_attention: bool = True
+    ima_native_chart_attention_mix: float = 1.0
+    enable_prefusion_native_chart_attention: bool = True
+    prefusion_native_chart_attention_mix: float = 1.0
     enable_native_chart_geometry: bool = True
     native_chart_residual_mix: float = 0.20
     hardware_profile: str = "custom"
@@ -200,6 +204,10 @@ class QDTWorkingMemoryConfig:
             raise ValueError("residual_fusion_weight must be in [0,1]")
         if not 0.0 <= float(self.inter_manifold_residual_mix) <= 1.0:
             raise ValueError("inter_manifold_residual_mix must be in [0,1]")
+        if not 0.0 <= float(self.ima_native_chart_attention_mix) <= 1.0:
+            raise ValueError("ima_native_chart_attention_mix must be in [0,1]")
+        if not 0.0 <= float(self.prefusion_native_chart_attention_mix) <= 1.0:
+            raise ValueError("prefusion_native_chart_attention_mix must be in [0,1]")
         if not 0.0 <= float(self.native_chart_residual_mix) <= 1.0:
             raise ValueError("native_chart_residual_mix must be in [0,1]")
         if self.eps <= 0:
