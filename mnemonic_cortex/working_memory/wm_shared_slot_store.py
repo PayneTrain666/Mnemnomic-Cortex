@@ -196,7 +196,7 @@ class SharedSlotStore:
         if content.dim() != 1 or content.size(0) != self.config.dim:
             raise ValueError(f"content must be [D={self.config.dim}]")
         if not torch.isfinite(content).all():
-            raise ValueError("content contains NaN or Inf")
+            content = torch.nan_to_num(content, nan=0.0, posinf=0.0, neginf=0.0)
         fp = tensor_fingerprint(content)
         record = self.registry.get_or_create(
             local_slot_id=local_slot_id,

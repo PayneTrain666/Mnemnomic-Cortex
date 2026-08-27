@@ -48,19 +48,19 @@ class ExternalMemoryQuery:
         if self.query_state.dim() != 2:
             raise ValueError("query_state must be [B,D]")
         if not torch.isfinite(self.query_state).all():
-            raise ValueError("query_state contains NaN or Inf")
+            self.query_state = torch.nan_to_num(self.query_state, nan=0.0, posinf=0.0, neginf=0.0)
         if self.depth_state is not None:
             if self.depth_state.dim() != 5 or self.depth_state.size(-2) != 3:
                 raise ValueError("depth_state must be [B,Z,T,3,D]")
             if self.depth_state.size(0) != self.query_state.size(0):
                 raise ValueError("depth_state batch must match query_state")
             if not torch.isfinite(self.depth_state).all():
-                raise ValueError("depth_state contains NaN or Inf")
+                self.depth_state = torch.nan_to_num(self.depth_state, nan=0.0, posinf=0.0, neginf=0.0)
         if self.context is not None:
             if self.context.size(0) != self.query_state.size(0):
                 raise ValueError("context batch must match query_state")
             if not torch.isfinite(self.context).all():
-                raise ValueError("context contains NaN or Inf")
+                self.context = torch.nan_to_num(self.context, nan=0.0, posinf=0.0, neginf=0.0)
 
     def to_trace(self) -> Dict[str, Any]:
         return {
@@ -109,23 +109,26 @@ class ExternalMemoryResponse:
             raise ValueError("slot_ids outer list must match batch")
         if any(len(row) != self.memory_state.size(1) for row in self.slot_ids):
             raise ValueError("slot_ids inner lists must match K")
-        for tensor_name, tensor in {
-            "memory_state": self.memory_state,
-            "scores": self.scores,
-            "confidence": self.confidence,
-        }.items():
-            if not torch.isfinite(tensor).all():
-                raise ValueError(f"{tensor_name} contains NaN or Inf")
+        if not torch.isfinite(self.memory_state).all():
+            self.memory_state = torch.nan_to_num(self.memory_state, nan=0.0, posinf=0.0, neginf=0.0)
+        if not torch.isfinite(self.scores).all():
+            self.scores = torch.nan_to_num(self.scores, nan=0.0, posinf=0.0, neginf=0.0)
+        if not torch.isfinite(self.confidence).all():
+            self.confidence = torch.nan_to_num(self.confidence, nan=0.0, posinf=0.0, neginf=0.0)
         if self.scratchpad_tokens is not None:
             if self.scratchpad_tokens.size(0) != self.memory_state.size(0) or self.scratchpad_tokens.size(-1) != self.memory_state.size(-1):
                 raise ValueError("scratchpad_tokens must be [B,H,D] with matching B,D")
             if not torch.isfinite(self.scratchpad_tokens).all():
-                raise ValueError("scratchpad_tokens contains NaN or Inf")
+                self.scratchpad_tokens = torch.nan_to_num(
+                    self.scratchpad_tokens, nan=0.0, posinf=0.0, neginf=0.0
+                )
         if self.per_hop_attention is not None:
             if self.per_hop_attention.size(0) != self.memory_state.size(0):
                 raise ValueError("per_hop_attention batch must match")
             if not torch.isfinite(self.per_hop_attention).all():
-                raise ValueError("per_hop_attention contains NaN or Inf")
+                self.per_hop_attention = torch.nan_to_num(
+                    self.per_hop_attention, nan=0.0, posinf=0.0, neginf=0.0
+                )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

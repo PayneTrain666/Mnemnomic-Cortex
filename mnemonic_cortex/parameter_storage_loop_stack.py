@@ -12,7 +12,7 @@ from __future__ import annotations
 import math
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -58,6 +58,7 @@ class ParameterBundleRef:
     dtype: str
     requires_grad: bool
     group_key: str
+    cps_handle: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -67,6 +68,7 @@ class ParameterBundleRef:
             "dtype": self.dtype,
             "requires_grad": bool(self.requires_grad),
             "group_key": self.group_key,
+            "cps_handle": self.cps_handle,
         }
 
 
@@ -84,6 +86,8 @@ class ParameterBundleRecord:
     summary_norm: float
     trigger_step: int
     factors: Tuple[str, ...]
+    literal_numel: int = 0
+    referenced_cps_numel: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -97,6 +101,8 @@ class ParameterBundleRecord:
             "summary_norm": float(self.summary_norm),
             "trigger_step": int(self.trigger_step),
             "factors": list(self.factors),
+            "literal_numel": int(self.literal_numel),
+            "referenced_cps_numel": int(self.referenced_cps_numel),
         }
 
 
@@ -380,6 +386,8 @@ class ParameterStorageLoopStack(nn.Module):
         self,
         named_parameters: Iterable[Tuple[str, nn.Parameter]],
         *,
+        cps_registry: Optional[Mapping[str, Any]] = None,
+        cps_resolver: Optional[Callable[[str], torch.Tensor]] = None,
         trigger_state: Optional[Dict[str, Any]] = None,
         max_bundles: int = 4,
         min_params_per_bundle: int = 1,
@@ -388,15 +396,20 @@ class ParameterStorageLoopStack(nn.Module):
         exclude_filters: Optional[Sequence[str]] = None,
         write_scale: float = 1.0,
     ) -> Dict[str, Any]:
-        """Copy grouped parameter summaries into loop slots and retain refs.
+        """Write grouped parameter summaries into loop slots and retain refs.
 
         This is a referenced-shadow transplant: original nn.Parameter objects
         remain owned by their modules and optimizers, while bounded summaries are
         stored in the loop's manifold slot space with stable provenance refs.
+        Committed TrainableParameterCPS entries are addressed by stable handles;
+        their materialized views are only reduced to summaries and are never
+        copied into this module.
         """
 
         groups = self._group_named_parameters(
             named_parameters,
+            cps_registry=cps_registry,
+            cps_resolver=cps_resolver,
             include_filters=include_filters,
             exclude_filters=exclude_filters,
         )
@@ -404,7 +417,7 @@ class ParameterStorageLoopStack(nn.Module):
         trigger_step = int(trigger_state.get("step", 0))
         candidates = []
         for group_key, items in groups.items():
-            total_numel = int(sum(param.numel() for _name, param in items))
+            total_numel = int(sum(param.numel() for _name, param, _handle in items))
             if len(items) < int(max(1, min_params_per_bundle)):
                 continue
             if total_numel < int(max(1, min_total_numel)):
@@ -435,9 +448,14 @@ class ParameterStorageLoopStack(nn.Module):
                     dtype=str(param.dtype).replace("torch.", ""),
                     requires_grad=bool(param.requires_grad),
                     group_key=group_key,
+                    cps_handle=cps_handle,
                 )
-                for name, param in items
+                for name, param, cps_handle in items
             )
+            literal_numel = int(
+                sum(param.numel() for _name, param, handle in items if handle is None)
+            )
+            referenced_cps_numel = int(total_numel - literal_numel)
             bundle_id = self._bundle_id(group_key, refs, trigger_step)
             record = ParameterBundleRecord(
                 bundle_id=bundle_id,
@@ -450,6 +468,8 @@ class ParameterStorageLoopStack(nn.Module):
                 summary_norm=float(summary.norm().detach().item()),
                 trigger_step=int(trigger_step),
                 factors=tuple(str(v) for v in trigger_state.get("factors", ("training_threshold",))),
+                literal_numel=literal_numel,
+                referenced_cps_numel=referenced_cps_numel,
             )
             self.parameter_bundle_registry[bundle_id] = record
             created.append(record)
@@ -467,6 +487,12 @@ class ParameterStorageLoopStack(nn.Module):
             "original_parameters_frozen": False,
             "write_scale": float(write_scale),
             "slot_lr": float(lr),
+            "accounting": {
+                "literal_named_parameter_numel": int(sum(record.literal_numel for record in created)),
+                "referenced_cps_numel": int(sum(record.referenced_cps_numel for record in created)),
+                "cps_weights_copied": False,
+                "loop_capacity_is_nonliteral": True,
+            },
         }
         self.last_parameter_consolidation_trace = trace
         return trace
@@ -493,6 +519,11 @@ class ParameterStorageLoopStack(nn.Module):
                     dtype=str(ref.get("dtype", "unknown")),
                     requires_grad=bool(ref.get("requires_grad", True)),
                     group_key=str(ref.get("group_key", payload.get("group_key", "unknown"))),
+                    cps_handle=(
+                        None
+                        if ref.get("cps_handle") is None
+                        else str(ref.get("cps_handle"))
+                    ),
                 )
                 for ref in payload.get("refs", [])
             )
@@ -507,6 +538,18 @@ class ParameterStorageLoopStack(nn.Module):
                 summary_norm=float(payload.get("summary_norm", 0.0)),
                 trigger_step=int(payload.get("trigger_step", 0)),
                 factors=tuple(str(v) for v in payload.get("factors", [])),
+                literal_numel=int(
+                    payload.get(
+                        "literal_numel",
+                        sum(ref.numel for ref in refs if ref.cps_handle is None),
+                    )
+                ),
+                referenced_cps_numel=int(
+                    payload.get(
+                        "referenced_cps_numel",
+                        sum(ref.numel for ref in refs if ref.cps_handle is not None),
+                    )
+                ),
             )
 
     def detect_lightbulb_moment(self, hidden_state: torch.Tensor, product_token: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -633,29 +676,73 @@ class ParameterStorageLoopStack(nn.Module):
         self,
         named_parameters: Iterable[Tuple[str, nn.Parameter]],
         *,
+        cps_registry: Optional[Mapping[str, Any]] = None,
+        cps_resolver: Optional[Callable[[str], torch.Tensor]] = None,
         include_filters: Optional[Sequence[str]] = None,
         exclude_filters: Optional[Sequence[str]] = None,
-    ) -> Dict[str, List[Tuple[str, nn.Parameter]]]:
+    ) -> Dict[str, List[Tuple[str, torch.Tensor, Optional[str]]]]:
         include = tuple(str(v) for v in (include_filters or ()))
         exclude = tuple(str(v) for v in (exclude_filters or ()))
-        groups: Dict[str, List[Tuple[str, nn.Parameter]]] = {}
+        groups: Dict[str, List[Tuple[str, torch.Tensor, Optional[str]]]] = {}
         for name, param in named_parameters:
             if not isinstance(param, nn.Parameter):
                 continue
             if not bool(param.requires_grad):
                 continue
-            if "parameter_storage_loop_stack" in str(name):
+            if (
+                "parameter_storage_loop_stack" in str(name)
+                or "_trainable_parameter_cps" in str(name).split(".")
+            ):
                 continue
             if include and not any(token in name for token in include):
                 continue
             if exclude and any(token in name for token in exclude):
                 continue
             key = self._parameter_group_key(name, param)
-            groups.setdefault(key, []).append((name, param))
+            groups.setdefault(key, []).append((name, param, None))
+
+        registry = cps_registry or {}
+        if registry and cps_resolver is None:
+            raise ValueError("cps_resolver is required when cps_registry is provided")
+        for handle, metadata in sorted(registry.items(), key=lambda item: str(item[0])):
+            handle = str(handle)
+            aliases = self._cps_metadata_value(metadata, "aliases", ())
+            module_path = str(self._cps_metadata_value(metadata, "module_path", ""))
+            parameter_name = str(
+                self._cps_metadata_value(metadata, "parameter_name", "parameter")
+            )
+            fallback = (
+                f"{module_path}.{parameter_name}" if module_path else parameter_name
+            )
+            public_aliases = tuple(
+                str(alias)
+                for alias in aliases
+                if "_trainable_parameter_cps" not in str(alias).split(".")
+            ) or (fallback,)
+            if include and not any(
+                token in alias for token in include for alias in public_aliases
+            ):
+                continue
+            if exclude and any(
+                token in alias for token in exclude for alias in public_aliases
+            ):
+                continue
+            tensor = cps_resolver(handle)  # type: ignore[misc]
+            if not isinstance(tensor, torch.Tensor):
+                raise TypeError(f"CPS resolver returned a non-tensor for {handle}")
+            name = public_aliases[0]
+            key = self._parameter_group_key(name, tensor)
+            groups.setdefault(key, []).append((name, tensor, handle))
         return groups
 
     @staticmethod
-    def _parameter_group_key(name: str, param: nn.Parameter) -> str:
+    def _cps_metadata_value(metadata: Any, name: str, default: Any) -> Any:
+        if isinstance(metadata, Mapping):
+            return metadata.get(name, default)
+        return getattr(metadata, name, default)
+
+    @staticmethod
+    def _parameter_group_key(name: str, param: torch.Tensor) -> str:
         parts = str(name).split(".")
         family = parts[0] if parts else "root"
         role = parts[-1] if parts else "param"
@@ -677,13 +764,20 @@ class ParameterStorageLoopStack(nn.Module):
             bucket = "small"
         return f"{family}:{role}:rank{rank}:{bucket}"
 
-    def _bundle_summary_vector(self, items: Sequence[Tuple[str, nn.Parameter]]) -> torch.Tensor:
+    def _bundle_summary_vector(
+        self,
+        items: Sequence[Tuple[str, torch.Tensor, Optional[str]]],
+    ) -> torch.Tensor:
         features: List[float] = []
-        for name, param in items:
+        for name, param, cps_handle in items:
             data = param.detach().float().reshape(-1)
             if data.numel() == 0:
                 continue
-            grad = param.grad.detach().float().reshape(-1) if param.grad is not None else None
+            grad = (
+                param.grad.detach().float().reshape(-1)
+                if cps_handle is None and isinstance(param, nn.Parameter) and param.grad is not None
+                else None
+            )
             features.extend(
                 [
                     float(data.mean().item()),
@@ -707,7 +801,10 @@ class ParameterStorageLoopStack(nn.Module):
 
     @staticmethod
     def _bundle_id(group_key: str, refs: Sequence[ParameterBundleRef], trigger_step: int) -> str:
-        payload = "|".join([group_key, str(trigger_step)] + [ref.name for ref in refs])
+        payload = "|".join(
+            [group_key, str(trigger_step)]
+            + [ref.cps_handle or ref.name for ref in refs]
+        )
         return "pbl-" + hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
     @staticmethod

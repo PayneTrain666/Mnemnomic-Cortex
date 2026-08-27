@@ -86,6 +86,7 @@ try:
     from .wm_evidence_attention import WMEvidenceAttention
     from .wm_trace_attention import WMTraceAttention
     from .wm_dual_fusion import WMDualFusionController
+    from .wm_inter_manifold_attention import WMInterManifoldAttention
     from .wm_counterfactual_attention import WMCounterfactualAttentionProbe
     from .wm_conflict_attention import WMConflictAttention
     from .wm_novelty_attention import WMNoveltyAttention
@@ -102,6 +103,7 @@ except Exception:
     WMEvidenceAttention = None
     WMTraceAttention = None
     WMDualFusionController = None
+    WMInterManifoldAttention = None
     WMCounterfactualAttentionProbe = None
     WMConflictAttention = None
     WMNoveltyAttention = None
@@ -177,6 +179,7 @@ __all__ = [
     "WMEvidenceAttention",
     "WMTraceAttention",
     "WMDualFusionController",
+    "WMInterManifoldAttention",
     "WMCounterfactualAttentionProbe",
     "WMConflictAttention",
     "WMNoveltyAttention",
@@ -264,6 +267,9 @@ __all__ = [
     "WMSPCPCrossAttention",
     "WMDualFusionConfig",
     "WMDualFusionOutput",
+    "WMInterManifoldAttentionConfig",
+    "WMInterManifoldAttentionOutput",
+    "WMInterManifoldAttention",
     "canonical_slot_id",
     "SharedSlotMirrorRef",
     "SharedSlotRecord",
@@ -330,6 +336,11 @@ from .wm_ltm_cross_attention import WMLTMCrossAttentionConfig, WMLTMCrossAttenti
 from .wm_mann_cross_attention import WMMANNCrossAttentionConfig, WMMANNTraceVisibility, WMMANNCrossAttentionOutput, WMMANNCrossAttention
 from .wm_spcp_cross_attention import WMSPCPCrossAttentionConfig, WMSPCPCrossAttentionOutput, WMSPCPCrossAttention
 from .wm_dual_fusion import WMDualFusionConfig, WMDualFusionOutput, WMDualFusionController
+from .wm_inter_manifold_attention import (
+    WMInterManifoldAttentionConfig,
+    WMInterManifoldAttentionOutput,
+    WMInterManifoldAttention,
+)
 from .wm_shared_slot_registry import canonical_slot_id, SharedSlotMirrorRef, SharedSlotRecord, SharedSlotRegistry
 from .wm_shared_slot_store import tensor_fingerprint, MirroredContentRule, SharedSlotStoreConfig, SharedSlotWriteResult, SharedSlotStore
 from .wm_quantum_holographic_storage import GEOMETRY_CODEBOOK, MEMORY_TYPE_CODEBOOK, TASK_MODE_CODEBOOK, QHCodeSchema, build_qh_code_schema, QHInterferenceReport, QHStorageRecord, QuantumHolographicStorageConfig, QuantumHolographicStorage

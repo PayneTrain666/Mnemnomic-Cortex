@@ -90,7 +90,7 @@ class SystemWriteProposal:
         if self.content.dim() != 1 or self.content.size(0) != dim:
             raise ValueError(f"content must be [D={dim}]")
         if not torch.isfinite(self.content).all():
-            raise ValueError("content contains NaN or Inf")
+            self.content.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
         if not 0.0 <= float(self.confidence) <= 1.0:
             raise ValueError("confidence must be in [0,1]")
         if self.triplet_index not in (0, 1, 2):

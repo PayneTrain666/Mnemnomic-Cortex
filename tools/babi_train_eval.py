@@ -37,9 +37,12 @@ from mnemonic_cortex.optimizer import (
     OptimizerConfig,
     build_optimizer,
     build_warmup_cosine_scheduler,
+    load_optimizer_state_dict_checked,
+    optimizer_parameter_layout,
 )
 from mnemonic_cortex.trainable_parameter_cps import TrainableParameterCPSConfig
 from mnemonic_cortex.parameter_audit import ParameterAuditLogger
+from tools.count_model_params import print_literal_training_bytes
 
 
 def seed_all(seed: int = 42):
@@ -173,10 +176,28 @@ def _answer_logits(logits: torch.Tensor, src: torch.Tensor, pad_id: int) -> torc
     return logits[row, lengths - 1]
 
 
-def _autocast(device: torch.device, enabled: bool):
+def _resolve_amp_dtype(
+    device: torch.device, enabled: bool, requested: str
+) -> Tuple[bool, torch.dtype, str]:
+    if not bool(enabled) or device.type != "cuda":
+        return False, torch.float16, "disabled"
+    choice = str(requested).strip().lower()
+    bf16_supported = bool(
+        torch.cuda.is_available()
+        and hasattr(torch.cuda, "is_bf16_supported")
+        and torch.cuda.is_bf16_supported()
+    )
+    if choice == "bf16" and not bf16_supported:
+        return True, torch.float16, "fp16_fallback"
+    if choice == "bf16" or (choice == "auto" and bf16_supported):
+        return True, torch.bfloat16, "bf16"
+    return True, torch.float16, "fp16"
+
+
+def _autocast(device: torch.device, enabled: bool, dtype: torch.dtype):
     return torch.autocast(
         device_type=device.type,
-        dtype=torch.float16,
+        dtype=dtype,
         enabled=bool(enabled and device.type == "cuda"),
     )
 
@@ -188,7 +209,52 @@ def _grad_scaler(enabled: bool):
         return torch.cuda.amp.GradScaler(enabled=enabled)
 
 
-def evaluate(model, loader, device, *, pad_id: int = 0, use_amp: bool = False):
+def _configure_sdpa_backends(device: torch.device) -> Dict[str, Any]:
+    """Prefer fused SDPA when available; leave standard MHA behavior intact."""
+    report: Dict[str, Any] = {
+        "requested": True,
+        "device": str(device),
+        "flash": None,
+        "mem_efficient": None,
+        "math": None,
+        "status": "unavailable",
+    }
+    if device.type != "cuda" or not hasattr(torch.backends, "cuda"):
+        report["status"] = "skipped_non_cuda"
+        return report
+    cuda_backends = torch.backends.cuda
+    try:
+        if hasattr(cuda_backends, "enable_flash_sdp"):
+            cuda_backends.enable_flash_sdp(True)
+            report["flash"] = True
+        if hasattr(cuda_backends, "enable_mem_efficient_sdp"):
+            cuda_backends.enable_mem_efficient_sdp(True)
+            report["mem_efficient"] = True
+        if hasattr(cuda_backends, "enable_math_sdp"):
+            cuda_backends.enable_math_sdp(True)
+            report["math"] = True
+        report["status"] = "configured"
+    except Exception as exc:  # pragma: no cover - backend availability varies
+        report["status"] = f"error:{type(exc).__name__}"
+    return report
+
+
+def _clear_complex_grads(params) -> None:
+    """GradScaler cannot safely unscale complex parameter gradients."""
+    for parameter in params:
+        if parameter.grad is not None and parameter.grad.is_complex():
+            parameter.grad = None
+
+
+def evaluate(
+    model,
+    loader,
+    device,
+    *,
+    pad_id: int = 0,
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.float16,
+):
     model.eval()
     total_loss = 0.0
     n = 0
@@ -197,7 +263,7 @@ def evaluate(model, loader, device, *, pad_id: int = 0, use_amp: bool = False):
         for src, y in loader:
             src = src.to(device)
             y = y.to(device)
-            with _autocast(torch.device(device), use_amp):
+            with _autocast(torch.device(device), use_amp, amp_dtype):
                 logits = model(src)  # [B,T,V]
                 last_logits = _answer_logits(logits, src, pad_id)
                 loss = F.cross_entropy(last_logits, y)
@@ -252,6 +318,7 @@ def _checkpoint_payload(
         "best_val_acc": float(best_val_acc),
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
+        "optimizer_parameter_layout": optimizer_parameter_layout(optimizer),
         "scheduler_state_dict": scheduler.state_dict(),
         "scaler_state_dict": scaler.state_dict(),
         "trainable_parameter_cps_manifest": manifest,
@@ -442,6 +509,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--ltm_curved_hidden_mult", type=float, default=1.5)
     p.add_argument("--use_amp", action="store_true")
     p.add_argument("--no_amp", dest="use_amp", action="store_false")
+    p.add_argument(
+        "--amp_dtype",
+        choices=["auto", "fp16", "bf16"],
+        default="auto",
+        help="CUDA autocast dtype; unsupported bf16 safely falls back to fp16.",
+    )
+    p.add_argument(
+        "--report_capacity",
+        action="store_true",
+        help="Report literal parameter, gradient, optimizer, CPS rollback, and CUDA peak bytes.",
+    )
     p.add_argument("--metrics_jsonl", default="logs/babi_metrics.jsonl")
     p.add_argument("--checkpoint_dir", default="logs/babi_checkpoints")
     p.add_argument("--checkpoint_every_epochs", type=int, default=1)
@@ -467,7 +545,13 @@ def main():
 
     seed_all(args.seed)
     device = torch.device(args.device)
-    use_amp = bool(args.use_amp and device.type == "cuda")
+    use_amp, amp_dtype, amp_dtype_name = _resolve_amp_dtype(
+        device, bool(args.use_amp), str(args.amp_dtype)
+    )
+    sdpa_report = _configure_sdpa_backends(device)
+    print(f"[babi] sdpa={sdpa_report}", flush=True)
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     try:
         from datasets import load_dataset
     except ImportError as exc:
@@ -582,6 +666,7 @@ def main():
         if manifest and hasattr(model, "prepare_trainable_parameter_cps_from_manifest"):
             model.prepare_trainable_parameter_cps_from_manifest(manifest)
             model.to(device)
+    store = None
     if args.enable_trainable_parameter_cps:
         store = getattr(model, "trainable_parameter_cps", None)
         if store is None:
@@ -597,7 +682,26 @@ def main():
             )
             store.commit(store.stage(model))
             if args.trainable_cps_compress:
-                store.compress_committed()
+                probe_tokens = (
+                    torch.arange(8, device=device, dtype=torch.long)
+                    .remainder(max(1, len(vocab)))
+                    .view(1, -1)
+                )
+                was_training = model.training
+                model.eval()
+
+                def compression_probe(root):
+                    with torch.no_grad():
+                        return root(probe_tokens)
+
+                evaluation = store.compress_committed(probe=compression_probe)
+                model.train(was_training)
+                print(
+                    "[babi] trainable_cps_compression_probe="
+                    f"applied={evaluation.compression_applied} "
+                    f"max_output_error={evaluation.max_output_error}",
+                    flush=True,
+                )
         model.to(device)
         print(f"[babi] trainable_cps={store.capacity_report()}", flush=True)
     audit = None
@@ -655,14 +759,32 @@ def main():
         warmup_ratio=args.warmup_ratio,
         min_lr_ratio=args.min_lr_ratio,
     )
-    scaler = _grad_scaler(use_amp)
+    scaler = _grad_scaler(bool(use_amp and amp_dtype == torch.float16))
+    if args.report_capacity:
+        print_literal_training_bytes(
+            "startup",
+            model,
+            optimizer=opt,
+            cps_store=store,
+            cuda_device=device,
+        )
     start_epoch = 1
     global_step = 0
     best_acc = -1.0
     if resume is not None:
         if not args.evaluate_only:
             if resume.get("optimizer_state_dict"):
-                opt.load_state_dict(resume["optimizer_state_dict"])
+                try:
+                    load_optimizer_state_dict_checked(
+                        opt,
+                        resume["optimizer_state_dict"],
+                        saved_layout=resume.get("optimizer_parameter_layout"),
+                    )
+                except RuntimeError as exc:
+                    print(
+                        f"[babi][warn] refusing stale optimizer state after CPS/layout change: {exc}",
+                        flush=True,
+                    )
             if resume.get("scheduler_state_dict"):
                 scheduler.load_state_dict(resume["scheduler_state_dict"])
             if resume.get("scaler_state_dict"):
@@ -676,6 +798,7 @@ def main():
         f"lr={args.lr} wd={args.weight_decay} device={device} "
         f"warmup={args.warmup_ratio} min_lr_ratio={args.min_lr_ratio} "
         f"label_smoothing={args.label_smoothing} amp={use_amp} "
+        f"amp_dtype={amp_dtype_name} "
         f"grad_accum={grad_accum_steps} task_decoder={args.enable_task_decoder}"
     )
     _print_metric_legend()
@@ -686,6 +809,7 @@ def main():
             device,
             pad_id=vocab["<pad>"],
             use_amp=use_amp,
+            amp_dtype=amp_dtype,
         )
         print(
             f"[babi] evaluate_only test_loss={test_loss:.4f} "
@@ -713,7 +837,7 @@ def main():
         for step, (src, y) in enumerate(train_loader, start=1):
             src = src.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
-            with _autocast(device, use_amp):
+            with _autocast(device, use_amp, amp_dtype):
                 logits, aux = model(src, return_aux_losses=True)
                 last_logits = _answer_logits(logits, src, vocab["<pad>"])
                 loss = F.cross_entropy(
@@ -735,6 +859,8 @@ def main():
                 step % grad_accum_steps == 0 or step == len(train_loader)
             )
             if should_update:
+                if use_amp:
+                    _clear_complex_grads(model.parameters())
                 scaler.unscale_(opt)
                 pre_norm = torch.nn.utils.clip_grad_norm_(
                     model.parameters(),
@@ -751,6 +877,14 @@ def main():
                     float(args.grad_clip),
                 )
                 grad_norm_v = float(grad_norm)
+                if args.report_capacity and global_step == 0:
+                    print_literal_training_bytes(
+                        "first_backward",
+                        model,
+                        optimizer=opt,
+                        cps_store=store,
+                        cuda_device=device,
+                    )
                 scaler.step(opt)
                 scaler.update()
                 opt.zero_grad(set_to_none=True)
@@ -806,6 +940,7 @@ def main():
             device,
             pad_id=vocab["<pad>"],
             use_amp=use_amp,
+            amp_dtype=amp_dtype,
         )
         m_epoch = model.cortex.get_metrics() if hasattr(model, "cortex") else {}
         router_epoch_line = _format_router_snapshot(m_epoch)
@@ -902,6 +1037,7 @@ def main():
         device,
         pad_id=vocab["<pad>"],
         use_amp=use_amp,
+        amp_dtype=amp_dtype,
     )
     print(
         f"[babi] final_test loss={test_loss:.4f} acc={test_acc:.4f}",
@@ -921,6 +1057,14 @@ def main():
         model.flush_cms_logger()
     if hasattr(model.cortex, "flush_diagnostics"):
         model.cortex.flush_diagnostics()
+    if args.report_capacity:
+        print_literal_training_bytes(
+            "final",
+            model,
+            optimizer=opt,
+            cps_store=store,
+            cuda_device=device,
+        )
 
 
 if __name__ == "__main__":

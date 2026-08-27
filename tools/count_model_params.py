@@ -11,13 +11,13 @@ Count parameter space for copy-task model configurations.
 """
 import os
 import sys
+from typing import Any, Dict, Iterable, Optional
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import torch
-from benchmark.models import CortexSeqModel
 from benchmark.tasks import VOCAB_SIZE
 from data.copy_task_dataloader import CopyTaskDataConfig, CopyTaskMasteryModel
 
@@ -30,6 +30,89 @@ def count_params(module, trainable_only=False):
     if trainable_only:
         return trainable, trainable
     return total, trainable
+
+
+def _tensor_bytes(values: Iterable[Any]) -> int:
+    """Count each live tensor once, including nested optimizer state."""
+    seen = set()
+    total = 0
+
+    def visit(value: Any) -> None:
+        nonlocal total
+        if isinstance(value, torch.Tensor):
+            ident = id(value)
+            if ident not in seen:
+                seen.add(ident)
+                total += int(value.numel()) * int(value.element_size())
+        elif isinstance(value, dict):
+            for nested in value.values():
+                visit(nested)
+        elif isinstance(value, (list, tuple)):
+            for nested in value:
+                visit(nested)
+
+    for item in values:
+        visit(item)
+    return total
+
+
+def literal_training_bytes(
+    module,
+    *,
+    optimizer=None,
+    cps_store=None,
+    cuda_device: Optional[torch.device] = None,
+) -> Dict[str, Optional[int]]:
+    """Return literal, non-overlapping runtime memory categories.
+
+    CPS rollback storage is deliberately not inferred from private store fields.
+    It is reported only when the public capacity report exposes that byte count.
+    """
+    parameters = list(module.parameters()) if module is not None else []
+    capacity = (
+        cps_store.capacity_report()
+        if cps_store is not None and hasattr(cps_store, "capacity_report")
+        else {}
+    )
+    rollback_bytes = capacity.get("rollback_bytes")
+    cuda_peak = None
+    if cuda_device is not None and torch.device(cuda_device).type == "cuda":
+        cuda_peak = int(torch.cuda.max_memory_allocated(torch.device(cuda_device)))
+    return {
+        "parameter_bytes": _tensor_bytes(parameters),
+        "gradient_bytes": _tensor_bytes(
+            parameter.grad for parameter in parameters if parameter.grad is not None
+        ),
+        "optimizer_bytes": _tensor_bytes(
+            optimizer.state.values() if optimizer is not None else ()
+        ),
+        "cps_rollback_bytes": (
+            int(rollback_bytes) if rollback_bytes is not None else None
+        ),
+        "cuda_peak_allocated_bytes": cuda_peak,
+    }
+
+
+def print_literal_training_bytes(
+    label: str,
+    module,
+    *,
+    optimizer=None,
+    cps_store=None,
+    cuda_device: Optional[torch.device] = None,
+) -> Dict[str, Optional[int]]:
+    report = literal_training_bytes(
+        module,
+        optimizer=optimizer,
+        cps_store=cps_store,
+        cuda_device=cuda_device,
+    )
+    rendered = " ".join(
+        f"{key}={'unavailable' if value is None else value}"
+        for key, value in report.items()
+    )
+    print(f"[capacity] {label} {rendered}", flush=True)
+    return report
 
 
 def fmt(n):
@@ -65,6 +148,9 @@ def breakdown_cortex(model):
 
 
 def build_model(d_model=160, task_decoder=True, full_stack=False):
+    # Keep accounting helpers importable without constructing the benchmark model.
+    from benchmark.models import CortexSeqModel
+
     m = CortexSeqModel(
         vocab_size=VOCAB_SIZE,
         d_model=d_model,

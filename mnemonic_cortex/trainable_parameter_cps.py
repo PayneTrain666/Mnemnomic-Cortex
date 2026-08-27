@@ -39,6 +39,7 @@ class TrainableParameterCPSConfig:
     output_tolerance: float = 1.0e-6
     min_cohort_size: int = 2
     enable_compression: bool = False
+    enable_sparse_exceptions: bool = False
     default_commit_policy: str = "manual"
 
     def __post_init__(self) -> None:
@@ -95,6 +96,10 @@ class EvaluationMetadata:
     max_reconstruction_error: float = 0.0
     max_output_error: float = 0.0
     compression_applied: bool = False
+    original_bytes: int = 0
+    proposed_bytes: int = 0
+    byte_savings: int = 0
+    sparse_exception_scalars: int = 0
 
 
 @dataclass(frozen=True)
@@ -105,6 +110,7 @@ class CommitMetadata:
     parameter_handles: Tuple[str, ...]
     committed: bool = True
     rolled_back: bool = False
+    finalized: bool = False
 
 
 @dataclass(frozen=True)
@@ -121,10 +127,14 @@ class ParameterCohort:
 
 @dataclass(frozen=True)
 class RollbackRecord:
-    """Audit record for a completed reversible ownership transaction."""
+    """Audit record for rollback availability or completion."""
 
     transaction_id: str
-    restored_paths: Tuple[str, ...]
+    available: bool
+    retained_paths: Tuple[str, ...] = ()
+    restored_paths: Tuple[str, ...] = ()
+    finalized: bool = False
+    reason: str = ""
     optimizer_rebuild_required: bool = True
 
 
@@ -167,6 +177,9 @@ class _Representation:
     right_slab: int = -1
     right_offset: int = -1
     rank: int = 0
+    exception_slab: int = -1
+    exception_index_buffer: str = ""
+    exception_count: int = 0
 
 
 class _CPSConsumer:
@@ -412,6 +425,9 @@ class TrainableParameterCPS(nn.Module):
         self._staged: Optional[_StagedPlan] = None
         self._evaluation: Optional[EvaluationMetadata] = None
         self._commit: Optional[CommitMetadata] = None
+        self._proposal_snapshot: Optional[ProposalMetadata] = None
+        self._rollback_record: Optional[RollbackRecord] = None
+        self._sparse_index_names: List[str] = []
         object.__setattr__(self, "_original_modules", {})
         object.__setattr__(self, "_root_ref", None)
         object.__setattr__(self, "_lock", threading.RLock())
@@ -427,7 +443,7 @@ class TrainableParameterCPS(nn.Module):
 
     @property
     def proposal(self) -> Optional[ProposalMetadata]:
-        return None if self._staged is None else self._staged.proposal
+        return self._proposal_snapshot
 
     @property
     def evaluation(self) -> Optional[EvaluationMetadata]:
@@ -436,6 +452,10 @@ class TrainableParameterCPS(nn.Module):
     @property
     def commit_metadata(self) -> Optional[CommitMetadata]:
         return self._commit
+
+    @property
+    def rollback_metadata(self) -> Optional[RollbackRecord]:
+        return self._rollback_record
 
     def _matches_policy(self, path: str, parameter_names: Iterable[str]) -> bool:
         names = [path] + [f"{path}.{name}" if path else name for name in parameter_names]
@@ -590,6 +610,7 @@ class TrainableParameterCPS(nn.Module):
                 handle_by_parameter_id=handle_by_parameter_id,
                 parameter_by_handle=parameter_by_handle,
             )
+            self._proposal_snapshot = proposal
             self._evaluation = self._analyze_plan(self._staged)
             return proposal
 
@@ -634,19 +655,24 @@ class TrainableParameterCPS(nn.Module):
 
     def _factor_residual(
         self, residual: torch.Tensor
-    ) -> Optional[Tuple[torch.Tensor, torch.Tensor, int, float]]:
+    ) -> Optional[
+        Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor, torch.Tensor, float]
+    ]:
         rows, cols = residual.shape
         maximum = min(self.config.max_rank, rows, cols)
-        if maximum == 0:
-            error = float(residual.abs().max().item()) if residual.numel() else 0.0
-            return (residual.new_empty((rows, 0)), residual.new_empty((0, cols)), 0, error)
         work = residual.detach()
-        try:
-            u, s, vh = torch.linalg.svd(work, full_matrices=False)
-        except RuntimeError:
-            return None
+        if maximum:
+            try:
+                u, s, vh = torch.linalg.svd(work, full_matrices=False)
+            except RuntimeError:
+                return None
         ranks = range(0, maximum + 1) if self.config.adaptive_rank else (maximum,)
-        best: Optional[Tuple[torch.Tensor, torch.Tensor, int, float]] = None
+        tolerance = min(
+            self.config.reconstruction_tolerance,
+            self.config.output_tolerance,
+        )
+        best = None
+        best_cost: Optional[Tuple[int, int, int]] = None
         for rank in ranks:
             if rank == 0:
                 left = work.new_empty((rows, 0))
@@ -656,25 +682,44 @@ class TrainableParameterCPS(nn.Module):
                 left = u[:, :rank] * s[:rank]
                 right = vh[:rank, :]
                 reconstructed = left @ right
-            error = float((work - reconstructed).abs().max().item())
-            best = (left, right, rank, error)
-            # The parameter max-error is a conservative bounded-input output proxy.
-            tolerance = min(
-                self.config.reconstruction_tolerance,
-                self.config.output_tolerance,
+            remainder = work - reconstructed
+            indices = work.new_empty((0,), dtype=torch.int64)
+            values = work.new_empty((0,))
+            error = float(remainder.abs().max().item()) if remainder.numel() else 0.0
+            if error > tolerance and self.config.enable_sparse_exceptions:
+                flat = remainder.reshape(-1)
+                indices = torch.nonzero(flat.abs() > tolerance, as_tuple=False).reshape(-1)
+                values = flat.index_select(0, indices)
+                retained = flat.clone()
+                retained.index_fill_(0, indices, 0)
+                error = float(retained.abs().max().item()) if retained.numel() else 0.0
+            if error > tolerance:
+                continue
+            scalar_cost = rank * (rows + cols) + values.numel() + indices.numel()
+            byte_cost = (
+                (rank * (rows + cols) + values.numel()) * work.element_size()
+                + indices.numel() * indices.element_size()
             )
-            if error <= tolerance:
-                return best
+            cost = (scalar_cost, byte_cost, rank)
+            if best_cost is None or cost < best_cost:
+                best_cost = cost
+                best = (left, right, rank, indices, values, error)
         return best
 
     def _compression_groups(
         self, plan: _StagedPlan
     ) -> Tuple[
-        Dict[str, Tuple[torch.Tensor, torch.Tensor, int]],
+        Dict[
+            str,
+            Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor, torch.Tensor],
+        ],
         Dict[str, torch.Tensor],
         float,
     ]:
-        factors: Dict[str, Tuple[torch.Tensor, torch.Tensor, int]] = {}
+        factors: Dict[
+            str,
+            Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor, torch.Tensor],
+        ] = {}
         templates: Dict[str, torch.Tensor] = {}
         max_error = 0.0
         if not self.config.enable_compression:
@@ -691,34 +736,48 @@ class TrainableParameterCPS(nn.Module):
                 continue
             tensors = [plan.parameter_by_handle[handle].detach() for handle in handles]
             template = torch.stack(tensors).mean(dim=0)
-            group_factors: Dict[str, Tuple[torch.Tensor, torch.Tensor, int]] = {}
+            group_factors: Dict[
+                str,
+                Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor, torch.Tensor],
+            ] = {}
             group_error = 0.0
             valid = True
             residual_scalars = 0
+            residual_bytes = 0
             for handle, tensor in zip(handles, tensors):
                 result = self._factor_residual(tensor - template)
                 if result is None:
                     valid = False
                     break
-                left, right, rank, error = result
+                left, right, rank, indices, values, error = result
                 group_error = max(group_error, error)
-                if error > min(
-                    self.config.reconstruction_tolerance,
-                    self.config.output_tolerance,
-                ):
-                    valid = False
-                    break
-                residual_scalars += rank * (tensor.shape[0] + tensor.shape[1])
-                group_factors[handle] = (left, right, rank)
+                residual_scalars += (
+                    rank * (tensor.shape[0] + tensor.shape[1])
+                    + values.numel()
+                    + indices.numel()
+                )
+                residual_bytes += (
+                    (left.numel() + right.numel() + values.numel())
+                    * tensor.element_size()
+                    + indices.numel() * indices.element_size()
+                )
+                group_factors[handle] = (left, right, rank, indices, values)
             original_scalars = sum(tensor.numel() for tensor in tensors)
             proposed_scalars = template.numel() + residual_scalars
-            if not valid or proposed_scalars >= original_scalars:
+            original_bytes = sum(
+                tensor.numel() * tensor.element_size() for tensor in tensors
+            )
+            proposed_bytes = template.numel() * template.element_size() + residual_bytes
+            if (
+                not valid
+                or proposed_scalars >= original_scalars
+                or proposed_bytes >= original_bytes
+            ):
                 continue
             template_key = min(handles)
             templates[template_key] = template
             for handle in handles:
-                left, right, rank = group_factors[handle]
-                factors[handle] = (left, right, rank)
+                factors[handle] = group_factors[handle]
                 templates[handle] = template
             max_error = max(max_error, group_error)
         return factors, templates, max_error
@@ -728,13 +787,30 @@ class TrainableParameterCPS(nn.Module):
         original = sum(parameter.numel() for parameter in plan.parameter_by_handle.values())
         exact_handles = [handle for handle in plan.parameter_by_handle if handle not in factors]
         proposed = sum(plan.parameter_by_handle[handle].numel() for handle in exact_handles)
+        original_bytes = sum(
+            parameter.numel() * parameter.element_size()
+            for parameter in plan.parameter_by_handle.values()
+        )
+        proposed_bytes = sum(
+            plan.parameter_by_handle[handle].numel()
+            * plan.parameter_by_handle[handle].element_size()
+            for handle in exact_handles
+        )
+        sparse_scalars = 0
         seen_templates: set[int] = set()
-        for handle, (left, right, _rank) in factors.items():
+        for handle, (left, right, _rank, indices, values) in factors.items():
             template = templates[handle]
             if id(template) not in seen_templates:
                 proposed += template.numel()
+                proposed_bytes += template.numel() * template.element_size()
                 seen_templates.add(id(template))
-            proposed += left.numel() + right.numel()
+            proposed += left.numel() + right.numel() + indices.numel() + values.numel()
+            proposed_bytes += (
+                (left.numel() + right.numel() + values.numel())
+                * template.element_size()
+                + indices.numel() * indices.element_size()
+            )
+            sparse_scalars += indices.numel() + values.numel()
         return EvaluationMetadata(
             proposal_id=plan.proposal.proposal_id,
             original_scalars=original,
@@ -745,6 +821,10 @@ class TrainableParameterCPS(nn.Module):
             max_reconstruction_error=max_error,
             max_output_error=max_error,
             compression_applied=bool(factors),
+            original_bytes=original_bytes,
+            proposed_bytes=proposed_bytes,
+            byte_savings=original_bytes - proposed_bytes,
+            sparse_exception_scalars=sparse_scalars,
         )
 
     def evaluate(self, proposal: Optional[ProposalMetadata] = None) -> EvaluationMetadata:
@@ -805,6 +885,18 @@ class TrainableParameterCPS(nn.Module):
         self.slabs.append(nn.Parameter(value.detach().reshape(-1).clone()))
         return len(self.slabs) - 1
 
+    def _clear_sparse_index_buffers(self) -> None:
+        for name in self._sparse_index_names:
+            if name in self._buffers:
+                del self._buffers[name]
+        self._sparse_index_names = []
+
+    def _append_sparse_index_buffer(self, indices: torch.Tensor) -> str:
+        name = f"_sparse_indices_{len(self._sparse_index_names):06d}"
+        self.register_buffer(name, indices.detach().reshape(-1).to(dtype=torch.int64).clone())
+        self._sparse_index_names.append(name)
+        return name
+
     def _build_storage(
         self,
         plan: _StagedPlan,
@@ -812,6 +904,7 @@ class TrainableParameterCPS(nn.Module):
         allow_compression: bool = False,
     ) -> None:
         self.slabs = nn.ParameterList()
+        self._clear_sparse_index_buffers()
         self._registry.clear()
         self._representations.clear()
         if allow_compression and self.config.enable_compression:
@@ -840,7 +933,7 @@ class TrainableParameterCPS(nn.Module):
                 offset += parameter.numel()
 
         template_locations: Dict[int, Tuple[int, int]] = {}
-        for handle, (left, right, rank) in factors.items():
+        for handle, (left, right, rank, indices, values) in factors.items():
             template = templates[handle]
             identity = id(template)
             if identity not in template_locations:
@@ -848,9 +941,17 @@ class TrainableParameterCPS(nn.Module):
             template_slab, template_offset = template_locations[identity]
             left_slab = self._append_slab(left) if rank else -1
             right_slab = self._append_slab(right) if rank else -1
+            exception_slab = self._append_slab(values) if values.numel() else -1
+            exception_index_buffer = (
+                self._append_sparse_index_buffer(indices) if indices.numel() else ""
+            )
             parameter = plan.parameter_by_handle[handle]
             self._representations[handle] = _Representation(
-                kind="low_rank",
+                kind=(
+                    "shared_low_rank_sparse"
+                    if indices.numel()
+                    else "shared_low_rank"
+                ),
                 shape=tuple(parameter.shape),
                 template_slab=template_slab,
                 template_offset=template_offset,
@@ -859,6 +960,9 @@ class TrainableParameterCPS(nn.Module):
                 right_slab=right_slab,
                 right_offset=0,
                 rank=rank,
+                exception_slab=exception_slab,
+                exception_index_buffer=exception_index_buffer,
+                exception_count=indices.numel(),
             )
 
         refs_by_handle = {ref.handle: ref for ref in plan.proposal.references}
@@ -874,15 +978,27 @@ class TrainableParameterCPS(nn.Module):
             else:
                 updated = replace(
                     ref,
-                    storage_kind="shared_low_rank",
+                    storage_kind=representation.kind,
                     slab_index=representation.template_slab,
                     offset=representation.template_offset,
                     rank=representation.rank,
                 )
             self._registry[handle] = updated
 
-        stored = sum(parameter.numel() for parameter in self.slabs)
+        stored = sum(parameter.numel() for parameter in self.slabs) + sum(
+            self._buffers[name].numel() for name in self._sparse_index_names
+        )
+        stored_bytes = sum(
+            parameter.numel() * parameter.element_size() for parameter in self.slabs
+        ) + sum(
+            self._buffers[name].numel() * self._buffers[name].element_size()
+            for name in self._sparse_index_names
+        )
         original = sum(parameter.numel() for parameter in plan.parameter_by_handle.values())
+        original_bytes = sum(
+            parameter.numel() * parameter.element_size()
+            for parameter in plan.parameter_by_handle.values()
+        )
         self._evaluation = replace(
             self._evaluation or self._analyze_plan(plan),
             proposed_scalars=stored,
@@ -890,6 +1006,13 @@ class TrainableParameterCPS(nn.Module):
             max_reconstruction_error=max_error,
             max_output_error=max_error,
             compression_applied=bool(factors),
+            original_bytes=original_bytes,
+            proposed_bytes=stored_bytes,
+            byte_savings=original_bytes - stored_bytes,
+            sparse_exception_scalars=sum(
+                representation.exception_count * 2
+                for representation in self._representations.values()
+            ),
         )
 
     def materialize(self, handle: str) -> torch.Tensor:
@@ -906,15 +1029,23 @@ class TrainableParameterCPS(nn.Module):
         template = self.slabs[representation.template_slab].narrow(
             0, representation.template_offset, rows * cols
         ).view(rows, cols)
-        if representation.rank == 0:
-            return template
-        left = self.slabs[representation.left_slab].narrow(
-            0, representation.left_offset, rows * representation.rank
-        ).view(rows, representation.rank)
-        right = self.slabs[representation.right_slab].narrow(
-            0, representation.right_offset, representation.rank * cols
-        ).view(representation.rank, cols)
-        return template + left @ right
+        reconstructed = template
+        if representation.rank:
+            left = self.slabs[representation.left_slab].narrow(
+                0, representation.left_offset, rows * representation.rank
+            ).view(rows, representation.rank)
+            right = self.slabs[representation.right_slab].narrow(
+                0, representation.right_offset, representation.rank * cols
+            ).view(representation.rank, cols)
+            reconstructed = reconstructed + left @ right
+        if representation.exception_count:
+            indices = self._buffers[representation.exception_index_buffer]
+            values = self.slabs[representation.exception_slab].narrow(
+                0, 0, representation.exception_count
+            )
+            reconstructed = reconstructed.reshape(-1).index_add(0, indices, values)
+            reconstructed = reconstructed.view(rows, cols)
+        return reconstructed
 
     def _handle(self, plan: _StagedPlan, parameter: Optional[nn.Parameter]) -> Optional[str]:
         if parameter is None:
@@ -1035,6 +1166,11 @@ class TrainableParameterCPS(nn.Module):
                 replacements=plan.proposal.replacements,
                 parameter_handles=tuple(self._registry),
             )
+            self._rollback_record = RollbackRecord(
+                transaction_id=self._commit.transaction_id,
+                available=True,
+                retained_paths=tuple(originals),
+            )
             return self._commit
 
     def compress_committed(
@@ -1124,6 +1260,23 @@ class TrainableParameterCPS(nn.Module):
                     compression_applied=False,
                 )
                 return self._evaluation
+            if (
+                self._evaluation is None
+                or self._evaluation.scalar_savings <= 0
+                or self._evaluation.byte_savings <= 0
+            ):
+                self._build_storage(compression_plan, allow_compression=False)
+                self._evaluation = replace(
+                    candidate_eval,
+                    proposed_scalars=candidate_eval.original_scalars,
+                    scalar_savings=0,
+                    proposed_bytes=candidate_eval.original_bytes,
+                    byte_savings=0,
+                    max_output_error=output_error,
+                    compression_applied=False,
+                    sparse_exception_scalars=0,
+                )
+                return self._evaluation
             self._evaluation = replace(
                 self._evaluation or candidate_eval,
                 max_output_error=output_error,
@@ -1154,6 +1307,41 @@ class TrainableParameterCPS(nn.Module):
 
     evaluate_compression = propose_compression
 
+    def finalize(
+        self,
+        commit_id: Optional[str] = None,
+        *,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+    ) -> CommitMetadata:
+        """Irreversibly release original modules retained for rollback."""
+
+        with self._lock:
+            if optimizer is not None:
+                raise ValueError(
+                    "finalization changes rollback ownership; rebuild the optimizer if needed"
+                )
+            if self._commit is None or not self._commit.committed:
+                raise RuntimeError("an active committed transaction is required")
+            if self._commit.rolled_back:
+                raise RuntimeError("a rolled-back transaction cannot be finalized")
+            if commit_id is not None and commit_id != self._commit.transaction_id:
+                raise ValueError("finalization transaction id does not match active commit")
+            if self._commit.finalized:
+                return self._commit
+            object.__setattr__(self, "_original_modules", {})
+            self._staged = None
+            self._commit = replace(self._commit, finalized=True)
+            self._rollback_record = RollbackRecord(
+                transaction_id=self._commit.transaction_id,
+                available=False,
+                retained_paths=(),
+                finalized=True,
+                reason="rollback snapshot irreversibly released",
+            )
+            return self._commit
+
+    release_rollback_snapshot = finalize
+
     def rollback(
         self,
         commit_id: Optional[str] = None,
@@ -1173,6 +1361,10 @@ class TrainableParameterCPS(nn.Module):
                 raise ValueError("rollback transaction id does not match active commit")
             if self._commit.rolled_back:
                 return self._commit
+            if self._commit.finalized:
+                raise RuntimeError(
+                    "rollback snapshot was irreversibly released by finalization"
+                )
             root_ref = self.__dict__.get("_root_ref")
             root = None if root_ref is None else root_ref()
             if root is None:
@@ -1198,9 +1390,16 @@ class TrainableParameterCPS(nn.Module):
             if getattr(root, self._ATTACHMENT_NAME, None) is self:
                 delattr(root, self._ATTACHMENT_NAME)
             self._commit = replace(self._commit, committed=False, rolled_back=True)
+            self._rollback_record = RollbackRecord(
+                transaction_id=self._commit.transaction_id,
+                available=False,
+                restored_paths=tuple(originals),
+                reason="rollback completed",
+            )
             object.__setattr__(self, "_original_modules", {})
             object.__setattr__(self, "_root_ref", None)
             self.slabs = nn.ParameterList()
+            self._clear_sparse_index_buffers()
             self._registry.clear()
             self._representations.clear()
             return self._commit
@@ -1208,32 +1407,49 @@ class TrainableParameterCPS(nn.Module):
     def capacity_report(self) -> Dict[str, Any]:
         """Report literal tensor scalar counts; no theoretical multipliers."""
 
-        if self._staged is None:
+        proposal = self.proposal
+        if proposal is None:
             original = 0
             aliases = 0
         else:
-            original = sum(
-                parameter.numel() for parameter in self._staged.parameter_by_handle.values()
-            )
+            original = sum(ref.numel for ref in proposal.references)
             aliases = sum(
-                max(0, len(ref.aliases) - 1) for ref in self._staged.proposal.references
+                max(0, len(ref.aliases) - 1) for ref in proposal.references
             )
-        stored = sum(parameter.numel() for parameter in self.slabs)
+        trainable_stored = sum(parameter.numel() for parameter in self.slabs)
+        index_stored = sum(
+            self._buffers[name].numel() for name in self._sparse_index_names
+        )
+        stored = trainable_stored + index_stored
         original_eligible = (
-            sum(ref.numel * max(1, len(ref.aliases)) for ref in self._staged.proposal.references)
-            if self._staged is not None
+            sum(ref.numel * max(1, len(ref.aliases)) for ref in proposal.references)
+            if proposal is not None
             else 0
         )
         if not self._representations and self._evaluation is not None:
             stored = self._evaluation.proposed_scalars
         literal_bytes = sum(
             parameter.numel() * parameter.element_size() for parameter in self.slabs
+        ) + sum(
+            self._buffers[name].numel() * self._buffers[name].element_size()
+            for name in self._sparse_index_names
+        )
+        original_bytes = (
+            self._evaluation.original_bytes
+            if self._evaluation is not None
+            else literal_bytes
         )
         bytes_by_dtype: Dict[str, int] = {}
         for parameter in self.slabs:
             key = str(parameter.dtype)
             bytes_by_dtype[key] = bytes_by_dtype.get(key, 0) + (
                 parameter.numel() * parameter.element_size()
+            )
+        for name in self._sparse_index_names:
+            buffer = self._buffers[name]
+            key = str(buffer.dtype)
+            bytes_by_dtype[key] = bytes_by_dtype.get(key, 0) + (
+                buffer.numel() * buffer.element_size()
             )
         return {
             "original_scalar_count": original,
@@ -1242,12 +1458,15 @@ class TrainableParameterCPS(nn.Module):
             "compression_ratio": (stored / original) if original else 1.0,
             "original_eligible_scalars": original_eligible,
             "unique_scalars_after_sharing": original,
-            "literal_trainable_scalars": stored,
+            "literal_trainable_scalars": trainable_stored,
+            "literal_index_scalars": index_stored,
             "compressed_scalars": stored,
             "real_compression_ratio": (
                 original_eligible / stored if stored else 1.0
             ),
             "literal_bytes": literal_bytes,
+            "original_bytes": original_bytes,
+            "byte_savings": original_bytes - literal_bytes,
             "bytes_by_dtype": bytes_by_dtype,
             "estimated_adam_training_bytes": literal_bytes * 4,
             "unique_parameter_handles": len(
@@ -1257,8 +1476,8 @@ class TrainableParameterCPS(nn.Module):
             "tied_alias_count": aliases,
             "slab_count": len(self.slabs),
             "rejected_modules": (
-                dict(self._staged.proposal.rejected)
-                if self._staged is not None
+                dict(proposal.rejected)
+                if proposal is not None
                 else {}
             ),
             "ownership": {
@@ -1274,8 +1493,14 @@ class TrainableParameterCPS(nn.Module):
             },
             "cohorts": [
                 asdict(cohort)
-                for cohort in (self.group() if self._staged is not None else ())
+                for cohort in (self.group() if proposal is not None else ())
             ],
+            "finalized": bool(self._commit and self._commit.finalized),
+            "rollback": (
+                None
+                if self._rollback_record is None
+                else asdict(self._rollback_record)
+            ),
             "literal": True,
         }
 
@@ -1283,11 +1508,16 @@ class TrainableParameterCPS(nn.Module):
         """Return JSON-serializable transaction metadata (tensor data is in state_dict)."""
 
         return {
-            "version": 1,
+            "version": 2,
             "config": asdict(self.config),
             "proposal": None if self.proposal is None else asdict(self.proposal),
             "evaluation": None if self._evaluation is None else asdict(self._evaluation),
             "commit": None if self._commit is None else asdict(self._commit),
+            "rollback": (
+                None
+                if self._rollback_record is None
+                else asdict(self._rollback_record)
+            ),
             "registry": {handle: asdict(ref) for handle, ref in self._registry.items()},
             "representations": {
                 handle: asdict(representation)
@@ -1295,6 +1525,14 @@ class TrainableParameterCPS(nn.Module):
             },
             "slab_shapes": [list(parameter.shape) for parameter in self.slabs],
             "slab_dtypes": [str(parameter.dtype) for parameter in self.slabs],
+            "sparse_index_buffers": [
+                {
+                    "name": name,
+                    "shape": list(self._buffers[name].shape),
+                    "dtype": str(self._buffers[name].dtype),
+                }
+                for name in self._sparse_index_names
+            ],
             "capacity": self.capacity_report(),
         }
 
@@ -1303,7 +1541,7 @@ class TrainableParameterCPS(nn.Module):
     def load_manifest(self, manifest: Mapping[str, Any]) -> None:
         """Validate manifest compatibility; tensor restoration uses ``load_state_dict``."""
 
-        if manifest.get("version") != 1:
+        if manifest.get("version") != 2:
             raise ValueError("unsupported CPS manifest version")
         config = manifest.get("config")
         if not isinstance(config, Mapping):
@@ -1311,8 +1549,40 @@ class TrainableParameterCPS(nn.Module):
         normalized = dict(config)
         normalized["include"] = tuple(normalized.get("include", ("*",)))
         normalized["exclude"] = tuple(normalized.get("exclude", ()))
+        normalized["allowed_module_types"] = tuple(
+            normalized.get(
+                "allowed_module_types",
+                ("Linear", "Embedding", "MultiheadAttention"),
+            )
+        )
         if TrainableParameterCPSConfig(**normalized) != self.config:
             raise ValueError("manifest config does not match this CPS")
+        for key in ("registry", "representations"):
+            if not isinstance(manifest.get(key), Mapping):
+                raise ValueError(f"manifest is missing {key} metadata")
+        slab_shapes = manifest.get("slab_shapes")
+        slab_dtypes = manifest.get("slab_dtypes")
+        if not isinstance(slab_shapes, list) or not isinstance(slab_dtypes, list):
+            raise ValueError("manifest slab metadata must be lists")
+        if len(slab_shapes) != len(slab_dtypes):
+            raise ValueError("manifest slab shape/dtype counts differ")
+        for shape in slab_shapes:
+            if (
+                not isinstance(shape, list)
+                or any(not isinstance(value, int) or value < 0 for value in shape)
+            ):
+                raise ValueError("manifest contains an invalid slab shape")
+        sparse_buffers = manifest.get("sparse_index_buffers")
+        if not isinstance(sparse_buffers, list):
+            raise ValueError("manifest sparse index metadata must be a list")
+        names = [item.get("name") for item in sparse_buffers if isinstance(item, Mapping)]
+        if len(names) != len(sparse_buffers) or len(set(names)) != len(names):
+            raise ValueError("manifest contains invalid sparse index buffer names")
+        if any(
+            not isinstance(name, str) or not name.startswith("_sparse_indices_")
+            for name in names
+        ):
+            raise ValueError("manifest contains an unsafe sparse index buffer name")
 
     def prepare_from_manifest(
         self,
@@ -1323,9 +1593,29 @@ class TrainableParameterCPS(nn.Module):
         self.load_manifest(manifest)
         proposal = self.stage(root)
         saved_proposal = manifest.get("proposal") or {}
+        if not isinstance(saved_proposal, Mapping):
+            raise ValueError("manifest proposal metadata must be a mapping")
         saved_replacements = tuple(saved_proposal.get("replacements", ()))
         if saved_replacements and tuple(proposal.replacements) != saved_replacements:
             raise ValueError("checkpoint CPS binding paths do not match this model")
+        saved_refs = saved_proposal.get("references", ())
+        current_bindings = [
+            (ref.handle, ref.module_path, ref.parameter_name, tuple(ref.shape), ref.dtype)
+            for ref in proposal.references
+        ]
+        saved_bindings = [
+            (
+                str(ref.get("handle")),
+                str(ref.get("module_path")),
+                str(ref.get("parameter_name")),
+                tuple(ref.get("shape", ())),
+                str(ref.get("dtype")),
+            )
+            for ref in saved_refs
+            if isinstance(ref, Mapping)
+        ]
+        if saved_refs and saved_bindings != current_bindings:
+            raise ValueError("checkpoint CPS parameter bindings do not match this model")
         commit = self.commit(proposal)
 
         saved_shapes = manifest.get("slab_shapes") or []
@@ -1335,30 +1625,44 @@ class TrainableParameterCPS(nn.Module):
             reference = next(self.parameters(), None)
             device = reference.device if reference is not None else torch.device("cpu")
             dtype = reference.dtype if reference is not None else torch.float32
+            resolved_dtypes = []
+            for value in saved_dtypes:
+                resolved = getattr(torch, str(value).replace("torch.", ""), None)
+                if not isinstance(resolved, torch.dtype):
+                    raise ValueError(f"unsupported slab dtype in manifest: {value}")
+                resolved_dtypes.append(resolved)
             self.slabs = nn.ParameterList(
                 [
                     nn.Parameter(
                         torch.empty(
                             tuple(int(v) for v in shape),
                             device=device,
-                            dtype=(
-                                getattr(
-                                    torch,
-                                    str(saved_dtypes[index]).replace("torch.", ""),
-                                    dtype,
-                                )
-                                if index < len(saved_dtypes)
-                                else dtype
-                            ),
+                            dtype=resolved_dtypes[index],
                         )
                     )
                     for index, shape in enumerate(saved_shapes)
                 ]
             )
             self._representations = {
-                str(handle): _Representation(**dict(payload))
+                str(handle): _Representation(
+                    **{
+                        **dict(payload),
+                        "shape": tuple(dict(payload).get("shape", ())),
+                    }
+                )
                 for handle, payload in saved_representations.items()
+                if isinstance(payload, Mapping)
             }
+            if len(self._representations) != len(saved_representations):
+                raise ValueError("manifest contains invalid representation metadata")
+            self._clear_sparse_index_buffers()
+            for payload in manifest.get("sparse_index_buffers", ()):
+                shape = tuple(int(value) for value in payload.get("shape", ()))
+                if payload.get("dtype") != "torch.int64" or len(shape) != 1:
+                    raise ValueError("sparse index buffers must be one-dimensional int64")
+                name = str(payload["name"])
+                self.register_buffer(name, torch.empty(shape, device=device, dtype=torch.int64))
+                self._sparse_index_names.append(name)
             registry = {}
             for handle, payload in (manifest.get("registry") or {}).items():
                 data = dict(payload)
@@ -1366,6 +1670,75 @@ class TrainableParameterCPS(nn.Module):
                 data["aliases"] = tuple(data.get("aliases", ()))
                 registry[str(handle)] = ParameterRefMetadata(**data)
             self._registry = registry
+            if set(self._registry) != set(self._representations):
+                raise ValueError("manifest registry and representation handles differ")
+            for handle, representation in self._representations.items():
+                if representation.shape != self._registry[handle].shape:
+                    raise ValueError("manifest representation and registry shapes differ")
+                if representation.kind not in {
+                    "exact",
+                    "shared_low_rank",
+                    "shared_low_rank_sparse",
+                }:
+                    raise ValueError("manifest contains an unknown representation kind")
+                slab_indices = [
+                    representation.slab_index
+                    if representation.kind == "exact"
+                    else representation.template_slab,
+                    representation.left_slab,
+                    representation.right_slab,
+                    representation.exception_slab,
+                ]
+                if any(index >= len(self.slabs) for index in slab_indices if index >= 0):
+                    raise ValueError("manifest representation references a missing slab")
+                if (
+                    representation.exception_count
+                    and representation.exception_index_buffer
+                    not in self._sparse_index_names
+                ):
+                    raise ValueError(
+                        "manifest representation references a missing sparse index buffer"
+                    )
+        saved_evaluation = manifest.get("evaluation")
+        if isinstance(saved_evaluation, Mapping):
+            data = dict(saved_evaluation)
+            data["compressed_handles"] = tuple(data.get("compressed_handles", ()))
+            data["exact_handles"] = tuple(data.get("exact_handles", ()))
+            self._evaluation = EvaluationMetadata(**data)
+        saved_commit = manifest.get("commit")
+        if isinstance(saved_commit, Mapping):
+            data = dict(saved_commit)
+            data["replacements"] = tuple(data.get("replacements", ()))
+            data["parameter_handles"] = tuple(data.get("parameter_handles", ()))
+            self._commit = CommitMetadata(**data)
+            commit = self._commit
+        saved_rollback = manifest.get("rollback")
+        if isinstance(saved_rollback, Mapping):
+            data = dict(saved_rollback)
+            data["retained_paths"] = tuple(data.get("retained_paths", ()))
+            data["restored_paths"] = tuple(data.get("restored_paths", ()))
+            self._rollback_record = RollbackRecord(**data)
+        if saved_proposal:
+            restored_refs = []
+            for payload in saved_proposal.get("references", ()):
+                if not isinstance(payload, Mapping):
+                    raise ValueError("manifest contains invalid proposal references")
+                data = dict(payload)
+                data["shape"] = tuple(data.get("shape", ()))
+                data["aliases"] = tuple(data.get("aliases", ()))
+                restored_refs.append(ParameterRefMetadata(**data))
+            self._proposal_snapshot = ProposalMetadata(
+                proposal_id=str(saved_proposal.get("proposal_id")),
+                references=tuple(restored_refs),
+                replacements=tuple(saved_proposal.get("replacements", ())),
+                rejected=dict(saved_proposal.get("rejected", {})),
+                state=str(saved_proposal.get("state", "staged")),
+            )
+        else:
+            self._proposal_snapshot = proposal
+        if commit.finalized:
+            object.__setattr__(self, "_original_modules", {})
+            self._staged = None
         return commit
 
 

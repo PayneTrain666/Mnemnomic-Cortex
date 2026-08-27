@@ -185,7 +185,8 @@ Status: **LEGACY / SHIM** — real logic lives at the package root or named subp
 | Reasoning-depth adapters | **OPT-IN** | Off unless explicitly enabled |
 | Shared-slot subsystem (`memory/`) | **OPT-IN** | Not default in all capacity profiles |
 | Parameter storage loop training writes | **OPT-IN** | Often read-only / disabled by default |
-| Trainable shared-parameter CPS | **OPT-IN** | Disabled by default; exact consolidation must validate before commit; compression is separately gated |
+| Trainable shared-parameter CPS | **OPT-IN** | Disabled by default; exact consolidation must validate before commit; compression is separately gated; sparse exceptions and irreversible finalize/release are available after probe validation |
+| Hybrid neural capacity profile (AMP dtype, SDPA preference, activation checkpointing, task-decoder shared GQA, CPS↔loop handle routing) | **OPT-IN** | Defaults unchanged; QDT attention edits deferred until QD6A source-truth inventory is present; literal vs routing capacity kept separate |
 
 ### Legacy / duplicate / parameter cost
 

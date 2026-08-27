@@ -71,6 +71,8 @@ class QDTWorkingMemoryConfig:
     context_tokens: int = 0
     use_shadow_writes: bool = True
     residual_fusion_weight: float = 0.50
+    enable_inter_manifold_attention: bool = True
+    inter_manifold_residual_mix: float = 0.15
     hardware_profile: str = "custom"
     qspin_guarded_shadow: bool = False
     qspin_source_matrix_complete: bool = True
@@ -194,6 +196,8 @@ class QDTWorkingMemoryConfig:
         self.qspin_live_mode = mode
         if not 0.0 <= self.residual_fusion_weight <= 1.0:
             raise ValueError("residual_fusion_weight must be in [0,1]")
+        if not 0.0 <= float(self.inter_manifold_residual_mix) <= 1.0:
+            raise ValueError("inter_manifold_residual_mix must be in [0,1]")
         if self.eps <= 0:
             raise ValueError("eps must be positive")
 

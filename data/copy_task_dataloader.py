@@ -57,6 +57,11 @@ class CopyTaskDataConfig:
     curriculum_start_len: int = 4
     curriculum_end_len: int = 20
     curriculum_ramp_epochs: int = 10
+    curriculum_hold_epochs: int = 0
+    # When current curriculum max > mix anchor, this fraction of samples are drawn
+    # at the short/anchor length so long-ramp epochs do not starve short reverse.
+    curriculum_short_mix_prob: float = 0.0
+    curriculum_mix_anchor_len: int = 0
 
     # Task variant: forward copy, reverse copy, or mixed per sample
     task_mode: str = "copy"  # copy | reverse | mixed
@@ -131,6 +136,8 @@ class CopyTaskDataConfig:
             raise ValueError("encoder_d_model must be divisible by encoder_heads")
         if self.delayed_copy_gap < 0:
             raise ValueError("delayed_copy_gap must be non-negative")
+        if not 0.0 <= float(self.curriculum_short_mix_prob) <= 1.0:
+            raise ValueError("curriculum_short_mix_prob must be in [0, 1]")
 
     def curriculum_length(self, epoch: int = 1) -> int:
         if int(self.fixed_len) > 0:
@@ -138,9 +145,18 @@ class CopyTaskDataConfig:
         if not self.curriculum_enabled:
             return int(self.max_len)
         ramp = max(1, int(self.curriculum_ramp_epochs))
+        hold = max(0, int(self.curriculum_hold_epochs))
         ep = max(1, int(epoch))
-        t = min(1.0, (ep - 1) / float(ramp))
-        cur = int(round(self.curriculum_start_len + t * (self.curriculum_end_len - self.curriculum_start_len)))
+        if ep <= hold:
+            cur = int(self.curriculum_start_len)
+        else:
+            t = min(1.0, (ep - hold - 1) / float(ramp))
+            cur = int(
+                round(
+                    self.curriculum_start_len
+                    + t * (self.curriculum_end_len - self.curriculum_start_len)
+                )
+            )
         return int(max(self.min_len, min(self.max_len, cur)))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -218,11 +234,23 @@ class CopyTaskDataset(Dataset):
             self.epoch = int(epoch)
             self._rng = random.Random(int(self.cfg.seed) + self.epoch * 10007)
         cur_max = self.cfg.curriculum_length(self.epoch)
-        local_cfg = CopyTaskDataConfig(**{**self.cfg.to_dict(), "max_len": cur_max})
+        mix_prob = float(self.cfg.curriculum_short_mix_prob)
+        anchor = int(self.cfg.curriculum_mix_anchor_len) or int(self.cfg.curriculum_start_len)
+        anchor = max(int(self.cfg.min_len), min(int(cur_max), int(anchor)))
         self.data = []
         delim_id = TOK2IDX.get(self.cfg.delimiter_token) if self.cfg.delimiter_token else None
         gap = int(self.cfg.delayed_copy_gap)
         for _ in range(int(self.cfg.n_samples)):
+            sample_max = int(cur_max)
+            if mix_prob > 0.0 and int(cur_max) > int(anchor) and self._rng.random() < mix_prob:
+                # Prefer exact short mastery replay; occasionally mid lengths below cur_max.
+                if self._rng.random() < 0.75:
+                    sample_max = int(anchor)
+                else:
+                    sample_max = int(self._rng.randint(int(anchor), max(int(anchor), int(cur_max) - 1)))
+            local_cfg = CopyTaskDataConfig(
+                **{**self.cfg.to_dict(), "max_len": sample_max, "min_len": min(int(self.cfg.min_len), sample_max)}
+            )
             seq = _sample_sequence(local_cfg, self.symbol_ids, self._rng)
             task_variant = resolve_copy_task_variant(self.cfg, self._rng)
             tgt_content = _target_content_for_task(seq, task_variant)

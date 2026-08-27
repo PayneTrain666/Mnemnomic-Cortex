@@ -16,7 +16,8 @@ import os
 import random
 import sys
 import time
-from typing import Dict, Optional, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -39,8 +40,15 @@ from data.copy_task_dataloader import (
     build_copy_task_dataloader,
 )
 from mnemonic_cortex.memory import SlotWriteRequest
-from mnemonic_cortex.optimizer import OptimizerConfig, build_optimizer, build_warmup_cosine_scheduler
+from mnemonic_cortex.optimizer import (
+    OptimizerConfig,
+    build_optimizer,
+    build_warmup_cosine_scheduler,
+    load_optimizer_state_dict_checked,
+    optimizer_parameter_layout,
+)
 from mnemonic_cortex.trainable_parameter_cps import TrainableParameterCPSConfig
+from tools.count_model_params import print_literal_training_bytes
 
 
 # =============================================================================
@@ -59,6 +67,115 @@ def _clear_complex_grads(params) -> None:
     for p in params:
         if p.grad is not None and p.grad.is_complex():
             p.grad = None
+
+
+def _unique_trainable_params(params) -> List[torch.nn.Parameter]:
+    """Deduplicate parameter handles (CPS / tied aliases break naive clip lists)."""
+    seen = set()
+    out: List[torch.nn.Parameter] = []
+    for p in params:
+        if p is None or not getattr(p, "requires_grad", False):
+            continue
+        try:
+            key = int(p.data_ptr())
+        except Exception:
+            key = id(p)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
+
+
+@torch.no_grad()
+def _grad_total_norm(params) -> float:
+    """L2 norm over float + complex grads (complex via real view)."""
+    norms = []
+    for p in params:
+        g = p.grad
+        if g is None:
+            continue
+        if torch.is_complex(g):
+            norms.append(torch.view_as_real(g).detach().float().norm())
+        else:
+            norms.append(g.detach().float().norm())
+    if not norms:
+        return 0.0
+    return float(torch.norm(torch.stack(norms), p=2).item())
+
+
+@torch.no_grad()
+def _clip_gradients(params, max_norm: float) -> Tuple[float, float, float]:
+    """
+    Clip grads with CPS-safe unique handles.
+    Returns (pre_norm, post_norm, clip_hit).
+    """
+    uniq = _unique_trainable_params(params)
+    pre = _grad_total_norm(uniq)
+    max_n = float(max_norm)
+    hit = 1.0 if pre > max_n + 1e-8 else 0.0
+    if pre > 0.0 and hit:
+        scale = max_n / (pre + 1e-12)
+        for p in uniq:
+            if p.grad is None:
+                continue
+            p.grad.mul_(scale)
+    post = _grad_total_norm(uniq)
+    return pre, post, hit
+
+
+def _resolve_amp_dtype(
+    device: torch.device, enabled: bool, requested: str
+) -> Tuple[bool, torch.dtype, str]:
+    if not bool(enabled) or device.type != "cuda":
+        return False, torch.float16, "disabled"
+    choice = str(requested).strip().lower()
+    bf16_supported = bool(
+        torch.cuda.is_available()
+        and hasattr(torch.cuda, "is_bf16_supported")
+        and torch.cuda.is_bf16_supported()
+    )
+    if choice == "bf16" and not bf16_supported:
+        return True, torch.float16, "fp16_fallback"
+    if choice == "bf16" or (choice == "auto" and bf16_supported):
+        return True, torch.bfloat16, "bf16"
+    return True, torch.float16, "fp16"
+
+
+def _configure_sdpa_backends(device: torch.device) -> Dict[str, object]:
+    """Use math SDPA by default — flash/mem-efficient can misalign on some GPUs (e.g. RTX 5050)."""
+    report: Dict[str, object] = {
+        "requested": True,
+        "device": str(device),
+        "flash": None,
+        "mem_efficient": None,
+        "math": None,
+        "status": "unavailable",
+    }
+    if device.type != "cuda" or not hasattr(torch.backends, "cuda"):
+        report["status"] = "skipped_non_cuda"
+        return report
+    cuda_backends = torch.backends.cuda
+    try:
+        if hasattr(cuda_backends, "enable_flash_sdp"):
+            cuda_backends.enable_flash_sdp(False)
+            report["flash"] = False
+        if hasattr(cuda_backends, "enable_mem_efficient_sdp"):
+            cuda_backends.enable_mem_efficient_sdp(False)
+            report["mem_efficient"] = False
+        if hasattr(cuda_backends, "enable_math_sdp"):
+            cuda_backends.enable_math_sdp(True)
+            report["math"] = True
+        report["status"] = "configured_math_only"
+    except Exception as exc:  # pragma: no cover - backend availability varies
+        report["status"] = f"error:{type(exc).__name__}"
+    return report
+
+
+def _autocast(device: torch.device, enabled: bool, dtype: torch.dtype):
+    if device.type != "cuda":
+        return contextlib.nullcontext()
+    return torch.amp.autocast("cuda", dtype=dtype, enabled=enabled)
 
 
 def _safe_mean_scalar(v, default: float) -> float:
@@ -157,6 +274,13 @@ def _copy_task_cfg_from_args(
                 else int(args.len8_epochs)
             )
         ),
+        curriculum_hold_epochs=int(getattr(args, "copy_curriculum_hold_epochs", 0) or 0),
+        curriculum_short_mix_prob=float(getattr(args, "copy_curriculum_short_mix_prob", 0.0) or 0.0),
+        curriculum_mix_anchor_len=int(
+            getattr(args, "copy_curriculum_mix_anchor_len", 0)
+            or getattr(args, "copy_curriculum_start_len", 0)
+            or args.len8
+        ),
         noise_prob=float(getattr(args, "copy_noise_prob", 0.0)),
         replace_prob=float(getattr(args, "copy_replace_prob", 0.0)),
         repeat_factor=int(getattr(args, "copy_repeat_factor", 1)),
@@ -195,17 +319,57 @@ def _resolve_train_max_len(args, epoch: int) -> int:
     return int(args.len16)
 
 
-def _curriculum_length_for_epoch(args, epoch: int) -> int:
+def _curriculum_length_for_epoch(
+    args,
+    epoch: int,
+    *,
+    unlocked: bool = True,
+    progress_epoch: Optional[int] = None,
+) -> int:
+    start_len = int(getattr(args, "copy_curriculum_start_len", 0) or args.len8)
+    mastery_gate = float(getattr(args, "copy_curriculum_mastery_seq_acc", 0.0) or 0.0)
+    if mastery_gate > 0.0 and not unlocked:
+        return int(start_len)
     if not bool(args.use_copy_task_dataloader) or not bool(args.copy_curriculum_enabled):
         return _resolve_train_max_len(args, epoch)
+    ep = int(progress_epoch if progress_epoch is not None else epoch)
     cfg = _copy_task_cfg_from_args(
         args,
         n_samples=1,
-        max_len=_resolve_train_max_len(args, epoch),
+        max_len=_resolve_train_max_len(args, ep),
         shuffle=True,
-        epoch=epoch,
+        epoch=ep,
     )
-    return int(cfg.curriculum_length(epoch))
+    return int(cfg.curriculum_length(ep))
+
+
+def _sequence_failure_loss(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    *,
+    ignore_index: int,
+    label_smoothing: float = 0.0,
+) -> torch.Tensor:
+    """Mean token CE over sequences that are not exact matches (exact-match pressure)."""
+    bsz, seq_len, vocab = logits.shape
+    token_loss = F.cross_entropy(
+        logits.reshape(-1, vocab),
+        targets.reshape(-1),
+        ignore_index=int(ignore_index),
+        label_smoothing=float(label_smoothing),
+        reduction="none",
+    ).view(bsz, seq_len)
+    mask = targets != int(ignore_index)
+    denom = mask.sum(dim=1).clamp_min(1).to(dtype=token_loss.dtype)
+    per_seq = (token_loss * mask.to(dtype=token_loss.dtype)).sum(dim=1) / denom
+    with torch.no_grad():
+        preds = logits.argmax(dim=-1)
+        row_ok = ((preds == targets) | (~mask)).all(dim=1)
+        valid = mask.any(dim=1)
+        fail = valid & (~row_ok)
+    if bool(fail.any().item()):
+        return per_seq[fail].mean()
+    return per_seq.mean() * 0.0
 
 
 def _configure_checkpoint_paths(args) -> None:
@@ -504,6 +668,7 @@ def _save_checkpoint(
         "best_record": best_record,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
+        "optimizer_parameter_layout": optimizer_parameter_layout(optimizer),
         "scheduler_state_dict": scheduler.state_dict(),
         "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
         "args": vars(args),
@@ -530,15 +695,37 @@ def _append_success_memory(path: str, payload: Dict):
 
 def _resolve_best_metric(summary: Dict[str, float], name: str, alpha: float) -> float:
     key = str(name).strip().lower()
+
+    def _finite(key_name: str, default: float = 0.0) -> float:
+        v = float(summary.get(key_name, default))
+        return default if not math.isfinite(v) else v
+
     if key == "val_acc_curriculum_len":
-        return float(summary.get("val_acc_curriculum_len", 0.0))
+        return _finite("val_acc_curriculum_len")
+    if key == "val_seq_acc_curriculum_len":
+        return _finite("val_seq_acc_curriculum_len")
+    if key == "val_seq_acc_len8":
+        # Fall back to train seq if eval CUDA-failed (NaN).
+        v = _finite("val_seq_acc_len8", default=float("nan"))
+        if math.isfinite(v):
+            return v
+        return _finite("train_seq_acc")
+    if key == "val_acc_len8":
+        return _finite("val_acc_len8")
     if key == "neg_val_loss_curriculum_len":
-        return -float(summary.get("val_loss_curriculum_len", 1e9))
+        return -_finite("val_loss_curriculum_len", 1e9)
     if key == "composite":
-        return float(summary.get("val_acc_curriculum_len", 0.0)) - float(alpha) * float(
-            summary.get("val_loss_curriculum_len", 0.0)
+        return _finite("val_acc_curriculum_len") - float(alpha) * _finite("val_loss_curriculum_len")
+    if key == "seq_composite":
+        # Prefer exact sequence mastery, with token accuracy as a secondary signal.
+        return (
+            _finite("val_seq_acc_curriculum_len")
+            + 0.35 * _finite("val_acc_curriculum_len")
+            + 0.15 * _finite("val_seq_acc_len8")
+            + 0.15 * _finite("val_seq_acc_len16")
+            - float(alpha) * _finite("val_loss_curriculum_len")
         )
-    return float(summary.get("val_acc_curriculum_len", 0.0))
+    return _finite("val_acc_curriculum_len")
 
 
 def _auto_select_best_checkpoint(preferred_best_out: str, scope_dir: str = "") -> str:
@@ -584,38 +771,136 @@ def _load_state_dict_compatible(model: torch.nn.Module, incoming: Dict[str, torc
     return {"loaded": len(compatible), "skipped": skipped}
 
 
+def _is_numeric_tensor(tensor: torch.Tensor) -> bool:
+    """True for float or complex tensors (complex is not is_floating_point)."""
+    return bool(tensor is not None and (torch.is_floating_point(tensor) or torch.is_complex(tensor)))
+
+
+@torch.no_grad()
+def _sanitize_model_parameters(module: torch.nn.Module) -> int:
+    """Replace non-finite parameter/buffer values in-place. Returns touched tensor count."""
+    touched = 0
+    for tensor in list(module.parameters()) + list(module.buffers()):
+        if not _is_numeric_tensor(tensor):
+            continue
+        if not torch.isfinite(tensor).all():
+            if torch.is_complex(tensor):
+                # Complex nan_to_num has no autograd; in-place via real/imag views.
+                tensor.real.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
+                tensor.imag.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
+            else:
+                tensor.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
+            touched += 1
+    return touched
+
+
+@torch.no_grad()
+def _clear_hg_pending_writes(module: torch.nn.Module) -> int:
+    """Drop buffered HG hologram writes that may contain nonfinite contribs."""
+    cleared = 0
+    for child in module.modules():
+        idx_buf = getattr(child, "_upd_idx_buffer", None)
+        val_buf = getattr(child, "_upd_val_buffer", None)
+        if isinstance(idx_buf, list) and isinstance(val_buf, list):
+            if idx_buf or val_buf:
+                idx_buf.clear()
+                val_buf.clear()
+                cleared += 1
+    return cleared
+
+
+@torch.no_grad()
+def _snapshot_finite_state(module: torch.nn.Module) -> Dict[str, torch.Tensor]:
+    """CPU clone of float/complex parameters/buffers for NaN recovery."""
+    snap: Dict[str, torch.Tensor] = {}
+    for name, tensor in list(module.named_parameters()) + list(module.named_buffers()):
+        if not _is_numeric_tensor(tensor):
+            continue
+        if torch.isfinite(tensor).all():
+            # Keep complex dtype; cast real floats to fp32 for compact CPU storage.
+            if torch.is_complex(tensor):
+                snap[name] = tensor.detach().to(device="cpu").clone()
+            else:
+                snap[name] = tensor.detach().to(device="cpu", dtype=torch.float32).clone()
+    return snap
+
+
+@torch.no_grad()
+def _restore_finite_snapshot(module: torch.nn.Module, snap: Dict[str, torch.Tensor]) -> int:
+    """Restore float/complex tensors from a prior finite snapshot. Returns restored count."""
+    if not snap:
+        return 0
+    restored = 0
+    name_map = dict(list(module.named_parameters()) + list(module.named_buffers()))
+    for name, cpu_t in snap.items():
+        tensor = name_map.get(name)
+        if tensor is None or getattr(tensor, "shape", None) != getattr(cpu_t, "shape", None):
+            continue
+        tensor.copy_(cpu_t.to(device=tensor.device, dtype=tensor.dtype))
+        restored += 1
+    return restored
+
+
 # --- EVAL PATH: measure loss / accuracy without updating weights ---
-def _evaluate(model, loader, device, *, use_aligned_targets: bool = False) -> Tuple[float, float, float]:
+def _evaluate(
+    model,
+    loader,
+    device,
+    *,
+    use_aligned_targets: bool = False,
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.float16,
+) -> Tuple[float, float, float]:
     model.eval()
     total_loss = 0.0
     total_tok = 0
     correct_tok = 0
     total_seq = 0
     correct_seq = 0
-    with torch.no_grad():
-        for batch in loader:
-            src, tgt = _unpack_copy_batch(batch)
-            src = src.to(device)
-            tgt = tgt.to(device)
-            logits = model(src)
-            if use_aligned_targets:
-                logits, tgt = align_logits_targets(logits, tgt)
-            else:
-                logits, tgt = _align_logits_targets(logits, tgt)
-            loss = F.cross_entropy(
-                logits.reshape(-1, logits.size(-1)),
-                tgt.reshape(-1),
-                ignore_index=TOK2IDX["<pad>"],
-            )
-            preds = logits.argmax(dim=-1)
-            mask = tgt != TOK2IDX["<pad>"]
-            correct_tok += (preds == tgt).masked_select(mask).sum().item()
-            total_tok += mask.sum().item()
-            valid_rows = mask.any(dim=1)
-            row_ok = ((preds == tgt) | (~mask)).all(dim=1)
-            correct_seq += row_ok.masked_select(valid_rows).sum().item()
-            total_seq += valid_rows.sum().item()
-            total_loss += loss.item()
+    try:
+        with torch.no_grad():
+            for batch in loader:
+                src, tgt = _unpack_copy_batch(batch)
+                src = src.to(device)
+                tgt = tgt.to(device)
+                with _autocast(torch.device(device), use_amp, amp_dtype):
+                    logits = model(src)
+                if use_aligned_targets:
+                    logits, tgt = align_logits_targets(logits, tgt)
+                else:
+                    logits, tgt = _align_logits_targets(logits, tgt)
+                if not torch.isfinite(logits).all():
+                    raise RuntimeError("nonfinite logits during evaluate")
+                loss = F.cross_entropy(
+                    logits.reshape(-1, logits.size(-1)),
+                    tgt.reshape(-1),
+                    ignore_index=TOK2IDX["<pad>"],
+                )
+                preds = logits.argmax(dim=-1)
+                mask = tgt != TOK2IDX["<pad>"]
+                correct_tok += (preds == tgt).masked_select(mask).sum().item()
+                total_tok += mask.sum().item()
+                valid_rows = mask.any(dim=1)
+                row_ok = ((preds == tgt) | (~mask)).all(dim=1)
+                correct_seq += row_ok.masked_select(valid_rows).sum().item()
+                total_seq += valid_rows.sum().item()
+                total_loss += loss.item()
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+    except Exception as exc:
+        # RTX 50xx / complex-FFT paths can throw async misaligned-address only at eval.
+        # Soft-fail so training progress + checkpoints are not discarded.
+        msg = str(exc)
+        print(f"[copy][warn] evaluate failed ({type(exc).__name__}): {msg}", flush=True)
+        if device.type == "cuda":
+            try:
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+            except Exception:
+                pass
+        model.train()
+        return float("nan"), float("nan"), float("nan")
+    model.train()
     return (
         total_loss / max(1, len(loader)),
         correct_tok / max(1, total_tok),
@@ -661,6 +946,11 @@ def main():
     p.add_argument("--grad_clip", type=float, default=1.0)
     p.add_argument("--train_samples_per_epoch", type=int, default=4096)
     p.add_argument("--eval_samples", type=int, default=1024)
+    p.add_argument(
+        "--skip_epoch_eval",
+        action="store_true",
+        help="Skip CUDA epoch-end validation (use train metrics); avoids RTX 50xx misaligned-address crashes.",
+    )
     p.add_argument("--metrics_jsonl", default="logs/copy_task_gpu_metrics.jsonl")
     p.add_argument("--recall_loss_weight", type=float, default=0.12)
     p.add_argument("--cms_aux_weight", type=float, default=0.015)
@@ -717,6 +1007,29 @@ def main():
     p.add_argument("--checkpoint_every_epochs", type=int, default=1)
     p.add_argument("--use_amp", action="store_true")
     p.add_argument("--no_amp", dest="use_amp", action="store_false")
+    p.add_argument(
+        "--amp_dtype",
+        choices=["auto", "fp16", "bf16"],
+        default="auto",
+        help="CUDA autocast dtype; unsupported bf16 safely falls back to fp16.",
+    )
+    p.add_argument(
+        "--report_capacity",
+        action="store_true",
+        help="Report literal parameter, gradient, optimizer, CPS rollback, and CUDA peak bytes.",
+    )
+    p.add_argument(
+        "--open_metrics_dashboard",
+        action="store_true",
+        help="Launch the live metrics dashboard in a background local server and open a browser.",
+    )
+    p.add_argument("--metrics_dashboard_host", default="127.0.0.1")
+    p.add_argument("--metrics_dashboard_port", type=int, default=8765)
+    p.add_argument(
+        "--no_metrics_dashboard_browser",
+        action="store_true",
+        help="Serve the dashboard without auto-opening a browser tab.",
+    )
     p.add_argument("--enable_diagnostics", action="store_true")
     p.add_argument("--disable_diagnostics", dest="enable_diagnostics", action="store_false")
     p.add_argument("--diagnostics_log_path", default="")
@@ -735,6 +1048,44 @@ def main():
     p.add_argument("--copy_curriculum_start_len", type=int, default=0)
     p.add_argument("--copy_curriculum_end_len", type=int, default=0)
     p.add_argument("--copy_curriculum_ramp_epochs", type=int, default=0)
+    p.add_argument("--copy_curriculum_hold_epochs", type=int, default=0)
+    p.add_argument("--copy_curriculum_short_mix_prob", type=float, default=0.0)
+    p.add_argument("--copy_curriculum_mix_anchor_len", type=int, default=0)
+    p.add_argument(
+        "--copy_curriculum_mastery_seq_acc",
+        type=float,
+        default=0.0,
+        help="Hold curriculum at start_len until val_seq_acc_len8 reaches this (0=disabled).",
+    )
+    p.add_argument("--seq_loss_weight", type=float, default=0.0)
+    p.add_argument(
+        "--length_lr_restart_mult",
+        type=float,
+        default=1.0,
+        help="Multiply LR / adaptive mult when curriculum length increases.",
+    )
+    p.add_argument(
+        "--slim_reverse_stack",
+        action="store_true",
+        help="Disable HGM/spatial/advanced CMS/shared slots; keep QDT+decoder+CPS+PSLS(+light LTM).",
+    )
+    p.add_argument("--enable_parameter_storage_loop", action="store_true")
+    p.add_argument(
+        "--disable_parameter_storage_loop",
+        dest="enable_parameter_storage_loop",
+        action="store_false",
+    )
+    p.add_argument("--parameter_loop_free_hidden_layers", type=int, default=8)
+    p.add_argument("--parameter_loop_slots_per_layer", type=int, default=80)
+    p.add_argument("--parameter_loop_consolidation_interval", type=int, default=25)
+    p.add_argument("--parameter_loop_consolidation_max_bundles", type=int, default=4)
+    p.add_argument("--parameter_loop_consolidation_write_scale", type=float, default=0.25)
+    p.add_argument("--parameter_loop_gate_reg_weight", type=float, default=0.02)
+    p.add_argument("--parameter_loop_gate_init", type=float, default=0.01)
+    p.add_argument("--parameter_loop_gate_min", type=float, default=0.01)
+    p.add_argument("--parameter_loop_gate_max", type=float, default=0.35)
+    p.add_argument("--fusion_balance_weight", type=float, default=0.0)
+    p.add_argument("--fusion_balance_floor", type=float, default=0.12)
     p.add_argument("--copy_noise_prob", type=float, default=0.0)
     p.add_argument("--copy_replace_prob", type=float, default=0.0)
     p.add_argument("--copy_repeat_factor", type=int, default=1)
@@ -762,12 +1113,63 @@ def main():
     p.add_argument("--trainable_cps_max_rank", type=int, default=8)
     p.add_argument("--trainable_cps_reconstruction_tolerance", type=float, default=1e-4)
     p.add_argument("--trainable_cps_output_tolerance", type=float, default=1e-5)
+    p.add_argument(
+        "--enable_spatial_ltm",
+        action="store_true",
+        help="Enable spatial LTM bank + spatial MANN extension wiring.",
+    )
+    p.add_argument(
+        "--disable_spatial_ltm",
+        dest="enable_spatial_ltm",
+        action="store_false",
+        help="Keep spatial LTM/MANN extension off (trainer historical default).",
+    )
+    p.add_argument(
+        "--spatial_mann_hops",
+        type=int,
+        default=3,
+        help="MANN hop count used when spatial LTM extension is enabled.",
+    )
+    p.add_argument(
+        "--hgm_enabled",
+        action="store_true",
+        help="Also mount HGM shared+episodic path on CortexSeqModel (redundant with full fusion stack).",
+    )
     p.set_defaults(copy_enable_sin_encoder=True, copy_enable_sin_decoder=True)
     p.set_defaults(auto_resume_best=True, auto_resume_weights_only=True)
     p.set_defaults(enable_diagnostics=True)
     p.set_defaults(save_checkpoints=True, use_amp=None)
     p.set_defaults(enable_shared_slot_writes=True)
+    p.set_defaults(enable_spatial_ltm=False)
+    p.set_defaults(enable_parameter_storage_loop=False)
     args = p.parse_args()
+
+    # Reverse-task decoder profile: position order is the label; force sinusoidal PE.
+    if str(args.copy_task_mode).lower() == "reverse" and bool(args.enable_task_decoder):
+        if not bool(args.task_decoder_use_sinusoidal):
+            args.task_decoder_use_sinusoidal = True
+            print(
+                "[copy] reverse profile: enabled --task_decoder_use_sinusoidal",
+                flush=True,
+            )
+
+    if bool(getattr(args, "slim_reverse_stack", False)):
+        # Lean reverse-mastery profile: QDT WM + task decoder + CPS + light LTM.
+        args.enable_spatial_ltm = False
+        args.hgm_enabled = False
+        args.enable_full_fusion_stack = False
+        args.full_stack_disable_advanced = True
+        args.full_stack_disable_shared_memory = True
+        args.full_stack_disable_qdt_wm_bridge = False
+        args.enable_shared_slot_writes = False
+        args.enable_task_decoder = True
+        args.task_decoder_use_sinusoidal = True
+        args.enable_parameter_storage_loop = True
+        print(
+            "[copy] slim_reverse_stack=on "
+            "(no HGM/spatial/advanced-CMS/shared-slots; keep QDT+decoder+CPS+PSLS+light LTM)",
+            flush=True,
+        )
 
     seed_all(args.seed)
     use_cuda = str(args.device).startswith("cuda")
@@ -776,6 +1178,13 @@ def main():
         raise RuntimeError("CUDA device requested but torch.cuda.is_available() is False")
     if args.use_amp is None:
         args.use_amp = bool(use_cuda)
+    use_amp, amp_dtype, amp_dtype_name = _resolve_amp_dtype(
+        device, bool(args.use_amp), str(args.amp_dtype)
+    )
+    sdpa_report = _configure_sdpa_backends(device)
+    print(f"[copy] sdpa={sdpa_report}", flush=True)
+    if use_cuda:
+        torch.cuda.reset_peak_memory_stats(device)
     _configure_checkpoint_paths(args)
     os.makedirs(os.path.dirname(args.metrics_jsonl) or ".", exist_ok=True)
 
@@ -789,6 +1198,23 @@ def main():
         )
         mastery_model = CopyTaskMasteryModel(mastery_cfg, vocab_size=VOCAB_SIZE).to(device)
 
+    spatial_ltm_on = bool(getattr(args, "enable_spatial_ltm", False))
+    reverse_decoder = (
+        str(args.copy_task_mode).lower() == "reverse" and bool(args.enable_task_decoder)
+    )
+    # Reverse-tuned decoder: keep heads divisible by d_model; prefer sinusoidal PE.
+    td_layers = int(args.task_decoder_layers)
+    td_heads = int(args.task_decoder_heads)
+    td_dropout = float(args.task_decoder_dropout)
+    if reverse_decoder:
+        # Position-sensitive reverse decoding benefits from sinusoidal PE + stable depth.
+        td_layers = max(td_layers, 3)
+        if int(args.d_model) % max(1, td_heads) != 0:
+            for h in (8, 5, 4, 2, 1):
+                if int(args.d_model) % h == 0:
+                    td_heads = h
+                    break
+        td_dropout = min(td_dropout, 0.1)
     model = CortexSeqModel(
         vocab_size=VOCAB_SIZE,
         d_model=args.d_model,
@@ -796,26 +1222,80 @@ def main():
         ltm_curved_hidden_mult=float(args.ltm_curved_hidden_mult),
         cms_enabled=True,
         cms_senses=3,
+        cms_multi_store=True,
+        cms_consolidation_intent="auto",
         cms_aux_weight=float(args.cms_aux_weight),
         recall_loss_weight=float(args.recall_loss_weight),
+        hgm_enabled=bool(getattr(args, "hgm_enabled", False)),
         task_decoder_enabled=bool(args.enable_task_decoder),
-        task_decoder_layers=int(args.task_decoder_layers),
-        task_decoder_heads=int(args.task_decoder_heads),
-        task_decoder_dropout=float(args.task_decoder_dropout),
+        task_decoder_layers=td_layers,
+        task_decoder_heads=td_heads,
+        task_decoder_dropout=td_dropout,
         task_decoder_use_sinusoidal=bool(args.task_decoder_use_sinusoidal),
-        ltm_enable_spatial_ltm=False,
-        ltm_auto_wire_spatial=False,
+        ltm_enable_spatial_ltm=spatial_ltm_on,
+        ltm_auto_wire_spatial=spatial_ltm_on,
+        ltm_auto_enable_spatial_extension=spatial_ltm_on,
         working_memory_fabric=str(args.working_memory_fabric),
         qdt_hardware_profile=str(args.qdt_hardware_profile),
         qdt_qspin_guarded_shadow=True,
         qdt_qspin_live_activation=False,
         qdt_qspin_live_kill_switch_enabled=True,
+        # Mount PSLS after CPS checkpoint preparation/commit so architecture-
+        # expanding resumes preserve the original CPS slab and binding layout.
+        enable_parameter_storage_loop_stack=False,
+        parameter_loop_slots_per_layer=max(1, int(args.parameter_loop_slots_per_layer)),
+        parameter_loop_free_hidden_layers=max(0, int(args.parameter_loop_free_hidden_layers)),
+        enable_parameter_loop_ltm_context=bool(args.enable_parameter_storage_loop),
+        enable_parameter_loop_training_writes=False,
+        parameter_loop_training_write_scale=max(
+            0.0, float(args.parameter_loop_consolidation_write_scale)
+        ),
+        enable_parameter_loop_auto_consolidation=bool(
+            args.enable_parameter_storage_loop and args.enable_trainable_parameter_cps
+        ),
+        parameter_loop_consolidation_interval=max(
+            1, int(args.parameter_loop_consolidation_interval)
+        ),
+        parameter_loop_consolidation_max_bundles=max(
+            1, int(args.parameter_loop_consolidation_max_bundles)
+        ),
+        parameter_loop_consolidation_min_params=1,
+        parameter_loop_consolidation_min_total_numel=1024,
+        parameter_loop_gate_init=float(args.parameter_loop_gate_init),
+        parameter_loop_gate_min=float(args.parameter_loop_gate_min),
+        parameter_loop_gate_max=float(args.parameter_loop_gate_max),
     ).to(device)
+    if spatial_ltm_on and hasattr(model.cortex, "enable_spatial_ltm_extension"):
+        if getattr(model.cortex, "spatial_ltm_extension", None) is None:
+            model.cortex.enable_spatial_ltm_extension(
+                mann_hops=max(1, int(getattr(args, "spatial_mann_hops", 3)))
+            )
+            model = model.to(device)
+        elif int(getattr(args, "spatial_mann_hops", 3)) > 0:
+            # Re-apply hop count into wiring metadata when already auto-wired.
+            model.cortex.enable_spatial_ltm_extension(
+                mann_hops=max(1, int(args.spatial_mann_hops))
+            )
+            model = model.to(device)
     wm_fabric = model.cortex.describe_working_memory_fabric()
     print(
         "[copy] working_memory="
         f"{wm_fabric['fabric']} class={wm_fabric['working_memory_class']} "
         "qspin_live=false",
+        flush=True,
+    )
+    print(
+        "[copy] memory_stack="
+        f"spatial_ltm={spatial_ltm_on} "
+        f"spatial_mann_hops={int(getattr(args, 'spatial_mann_hops', 3))} "
+        f"spatial_extension={getattr(model.cortex, 'spatial_ltm_extension', None) is not None} "
+        f"hgm={bool(getattr(args, 'hgm_enabled', False))} "
+        f"psls={bool(args.enable_parameter_storage_loop)} "
+        f"psls_free_layers={int(args.parameter_loop_free_hidden_layers)} "
+        f"psls_slots={int(args.parameter_loop_slots_per_layer)} "
+        f"task_decoder={bool(args.enable_task_decoder)} "
+        f"sin_pe={bool(args.task_decoder_use_sinusoidal)} "
+        f"td_layers={td_layers} td_heads={td_heads}",
         flush=True,
     )
     if args.disable_fusion:
@@ -912,11 +1392,26 @@ def main():
             trainable_cps_manifest
             and hasattr(model, "prepare_trainable_parameter_cps_from_manifest")
         ):
-            model.prepare_trainable_parameter_cps_from_manifest(
-                trainable_cps_manifest
-            )
-            model.to(device)
+            try:
+                model.prepare_trainable_parameter_cps_from_manifest(
+                    trainable_cps_manifest
+                )
+                model.to(device)
+            except ValueError as exc:
+                if bool(args.resume_strict):
+                    raise
+                # Architecture-expanding resumes (for example enabling PSLS)
+                # cannot reuse the old CPS binding layout. No commit occurs
+                # before manifest validation fails, so discard the staged store
+                # and rebuild CPS against the current model below.
+                object.__setattr__(model, "trainable_parameter_cps", None)
+                print(
+                    "[copy][warn] checkpoint CPS layout is incompatible with "
+                    f"the current architecture; rebuilding CPS: {exc}",
+                    flush=True,
+                )
 
+    store = None
     if args.enable_trainable_parameter_cps:
         store = getattr(model, "trainable_parameter_cps", None)
         if store is None:
@@ -934,16 +1429,102 @@ def main():
             proposal = store.stage(model)
             store.commit(proposal)
             if args.trainable_cps_compress:
-                store.compress_committed()
+                probe_tokens = (
+                    torch.arange(8, device=device, dtype=torch.long)
+                    .remainder(max(1, VOCAB_SIZE))
+                    .view(1, -1)
+                )
+                was_training = model.training
+                model.eval()
+
+                def compression_probe(root):
+                    with torch.no_grad():
+                        return root(probe_tokens)
+
+                evaluation = store.compress_committed(probe=compression_probe)
+                model.train(was_training)
+                print(
+                    "[copy] trainable_cps_compression_probe="
+                    f"applied={evaluation.compression_applied} "
+                    f"max_output_error={evaluation.max_output_error}",
+                    flush=True,
+                )
         model.to(device)
+        cps_report = store.capacity_report()
+        # Keep terminal usable: full rejected_modules maps can be megabytes.
+        cps_summary = {
+            k: cps_report.get(k)
+            for k in (
+                "original_scalar_count",
+                "stored_scalar_count",
+                "scalar_savings",
+                "byte_savings",
+                "compression_ratio",
+                "estimated_adam_training_bytes",
+                "unique_parameter_handles",
+                "tied_alias_count",
+                "slab_count",
+            )
+            if isinstance(cps_report, dict)
+        }
+        if isinstance(cps_report, dict):
+            rejected = cps_report.get("rejected_modules") or {}
+            cps_summary["rejected_module_count"] = len(rejected) if hasattr(rejected, "__len__") else 0
+        print(f"[copy] trainable_cps={cps_summary}", flush=True)
+
+    if bool(args.enable_parameter_storage_loop):
+        if getattr(model.cortex, "parameter_storage_loop_stack", None) is None:
+            model.cortex.enable_parameter_storage_loop(
+                slots_per_layer=max(1, int(args.parameter_loop_slots_per_layer)),
+                free_hidden_layers=max(
+                    0, int(args.parameter_loop_free_hidden_layers)
+                ),
+            )
+            model.to(device)
+        psls_desc = model.cortex.describe_parameter_storage_loop()
         print(
-            f"[copy] trainable_cps={store.capacity_report()}",
+            "[copy] parameter_loop_mounted="
+            f"free_layers={int(args.parameter_loop_free_hidden_layers)} "
+            f"slots_per_layer={int(args.parameter_loop_slots_per_layer)} "
+            f"auto_consolidation={bool(model.cortex.enable_parameter_loop_auto_consolidation)} "
+            f"effective_ratio={float(psls_desc['capacity_estimate']['effective_to_physical_ratio']):.3f}",
             flush=True,
         )
 
-    opt_params = list(model.parameters())
+    # CMS depth gate is a single logit; under global grad-norm clip (~1.0 vs
+    # pre_grad hundreds) its updates vanish. Give it a dedicated higher LR.
+    cms_gate_params = []
+    other_params = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if (
+            name.endswith("consolidated_memory_depth_gate")
+            or "consolidated_memory_depth_gate" in name
+            or name.endswith("parameter_storage_loop_gate")
+            or "parameter_storage_loop_gate" in name
+        ):
+            cms_gate_params.append(param)
+        else:
+            other_params.append(param)
     if mastery_model is not None:
-        opt_params += list(mastery_model.parameters())
+        other_params.extend(p for p in mastery_model.parameters() if p.requires_grad)
+    cms_gate_lr = float(args.lr) * 5.0
+    if cms_gate_params:
+        opt_params = [
+            {"params": other_params, "lr": float(args.lr)},
+            {
+                "params": cms_gate_params,
+                "lr": cms_gate_lr,
+                "weight_decay": 0.0,
+            },
+        ]
+        print(
+            f"[copy] residual_gate_param_group n={len(cms_gate_params)} lr={cms_gate_lr:.6g}",
+            flush=True,
+        )
+    else:
+        opt_params = other_params
     opt = build_optimizer(
         opt_params,
         OptimizerConfig(
@@ -962,8 +1543,17 @@ def main():
         min_lr_ratio=float(args.min_lr_ratio),
     )
 
-    use_amp = bool(args.use_amp) and use_cuda
-    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+    scaler = torch.amp.GradScaler(
+        "cuda", enabled=bool(use_amp and amp_dtype == torch.float16)
+    )
+    if args.report_capacity:
+        print_literal_training_bytes(
+            "startup",
+            model,
+            optimizer=opt,
+            cps_store=store,
+            cuda_device=device,
+        )
     steps_per_epoch = max(1, args.total_steps // args.epochs)
     global_step = 0
     best_acc = -1.0
@@ -996,10 +1586,47 @@ def main():
                 flush=True,
             )
 
+    if args.resume_checkpoint and resume_ckpt is None:
+        resume_ckpt = torch.load(args.resume_checkpoint, map_location=device)
+        trainable_cps_manifest = resume_ckpt.get("trainable_parameter_cps_manifest")
+        if (
+            trainable_cps_manifest
+            and hasattr(model, "prepare_trainable_parameter_cps_from_manifest")
+        ):
+            model.prepare_trainable_parameter_cps_from_manifest(trainable_cps_manifest)
+            model.to(device)
+
     if args.resume_checkpoint:
         ckpt = resume_ckpt
+        if ckpt is None:
+            raise RuntimeError(
+                f"failed to load resume checkpoint: {args.resume_checkpoint}"
+            )
         strict = bool(args.resume_strict)
         load_stats = _load_state_dict_compatible(model, ckpt.get("model_state_dict", {}), strict=strict)
+        incoming_state = ckpt.get("model_state_dict", {})
+        introducing_parameter_loop = bool(
+            args.enable_parameter_storage_loop
+            and isinstance(incoming_state, dict)
+            and not any(
+                "parameter_storage_loop_stack" in str(key)
+                for key in incoming_state
+            )
+        )
+        if introducing_parameter_loop:
+            gate_init = max(
+                1e-6,
+                min(1.0 - 1e-6, float(args.parameter_loop_gate_init)),
+            )
+            with torch.no_grad():
+                model.cortex.parameter_storage_loop_gate.fill_(
+                    float(torch.logit(torch.tensor(gate_init)).item())
+                )
+            print(
+                "[copy] initialized newly introduced PSLS residual gate "
+                f"to {gate_init:.6f}",
+                flush=True,
+            )
         if not strict and int(load_stats.get("skipped", 0)) > 0:
             print(
                 f"[copy] resume checkpoint loaded with shape filtering "
@@ -1023,7 +1650,17 @@ def main():
                 print(f"[copy] restored_fusion_gates={restored_gates}", flush=True)
         if not args.resume_weights_only:
             if ckpt.get("optimizer_state_dict", None) is not None:
-                opt.load_state_dict(ckpt["optimizer_state_dict"])
+                try:
+                    load_optimizer_state_dict_checked(
+                        opt,
+                        ckpt["optimizer_state_dict"],
+                        saved_layout=ckpt.get("optimizer_parameter_layout"),
+                    )
+                except RuntimeError as exc:
+                    print(
+                        f"[copy][warn] refusing stale optimizer state after CPS/layout change: {exc}",
+                        flush=True,
+                    )
             if ckpt.get("scheduler_state_dict", None) is not None:
                 scheduler.load_state_dict(ckpt["scheduler_state_dict"])
             if ckpt.get("scaler_state_dict", None) is not None:
@@ -1053,7 +1690,10 @@ def main():
             f"task={task_desc} "
             f"copy_curriculum={int(getattr(args, 'copy_curriculum_start_len', 0) or args.len8)}"
             f"->{int(getattr(args, 'copy_curriculum_end_len', 0) or args.len16)} "
-            f"over {int(getattr(args, 'copy_curriculum_ramp_epochs', 0) or args.epochs)} epochs"
+            f"hold={int(getattr(args, 'copy_curriculum_hold_epochs', 0) or 0)} "
+            f"ramp={int(getattr(args, 'copy_curriculum_ramp_epochs', 0) or args.epochs)} epochs "
+            f"mix={float(getattr(args, 'copy_curriculum_short_mix_prob', 0.0) or 0.0):.2f} "
+            f"mastery_gate={float(getattr(args, 'copy_curriculum_mastery_seq_acc', 0.0) or 0.0):.3f}"
         )
     else:
         cur_desc = (
@@ -1066,7 +1706,8 @@ def main():
         f"device={device} batch={args.batch_size} epochs={args.epochs} total_steps={args.total_steps} "
         f"curriculum=({cur_desc}) "
         f"dynamic_lr=warmup+cosine grad_clip={args.grad_clip} target_grad_norm={args.target_grad_norm} "
-        f"disable_fusion={bool(args.disable_fusion)} amp={bool(use_amp)} save_checkpoints={bool(args.save_checkpoints)}",
+        f"disable_fusion={bool(args.disable_fusion)} amp={bool(use_amp)} "
+        f"amp_dtype={amp_dtype_name} save_checkpoints={bool(args.save_checkpoints)}",
         flush=True,
     )
     print(
@@ -1110,6 +1751,25 @@ def main():
     )
     print("[copy] metrics logged every 5 steps with live terminal output", flush=True)
     print(f"[copy] metrics_jsonl={args.metrics_jsonl}", flush=True)
+    if bool(getattr(args, "open_metrics_dashboard", False)):
+        from tools.training_metrics_dashboard import launch_in_background
+
+        launch_in_background(
+            args.metrics_jsonl,
+            host=str(args.metrics_dashboard_host),
+            port=int(args.metrics_dashboard_port),
+            open_browser=not bool(args.no_metrics_dashboard_browser),
+            target_grad_norm=float(args.target_grad_norm),
+        )
+        print(
+            f"[copy] metrics_dashboard=http://{args.metrics_dashboard_host}:{int(args.metrics_dashboard_port)}/"
+            f"?metrics={Path(args.metrics_jsonl).as_posix()}",
+            flush=True,
+        )
+        print(
+            "[copy] metrics guide: docs/copy_training_metrics_guide.md",
+            flush=True,
+        )
     if args.checkpoint_out:
         print(f"[copy] checkpoint_out={args.checkpoint_out}", flush=True)
     if args.checkpoint_best_out:
@@ -1120,9 +1780,25 @@ def main():
     ema_loss = None
     best_running_acc = 0.0
     last_success_step = -10**9
+    mastery_gate = float(getattr(args, "copy_curriculum_mastery_seq_acc", 0.0) or 0.0)
+    curriculum_unlocked = mastery_gate <= 0.0
+    curriculum_progress_epoch = 1
+    prev_cur_len: Optional[int] = None
+    finite_state_snap: Dict[str, torch.Tensor] = _snapshot_finite_state(model)
+    nonfinite_streak = 0
     shared_writes_active = bool(args.enable_shared_slot_writes) and _shared_slot_training_available(model.cortex)
+    print(
+        f"[copy] finite recovery snapshot tensors={len(finite_state_snap)}",
+        flush=True,
+    )
     total_episodic_writes = 0
     total_consolidation_writes = 0
+    print(
+        f"[copy] seq_loss_weight={float(args.seq_loss_weight):.3f} "
+        f"length_lr_restart_mult={float(args.length_lr_restart_mult):.3f} "
+        f"curriculum_unlocked={curriculum_unlocked} mastery_gate={mastery_gate:.3f}",
+        flush=True,
+    )
 
     with open(args.metrics_jsonl, "w", encoding="utf-8") as jf:
         jf.write(
@@ -1178,16 +1854,43 @@ def main():
                     f"[copy] topology_relaxed epoch={ep} factor={float(args.topology_relax_factor):.3f}",
                     flush=True,
                 )
-            cur_len = _curriculum_length_for_epoch(args, ep)
+            cur_len = _curriculum_length_for_epoch(
+                args,
+                ep,
+                unlocked=curriculum_unlocked,
+                progress_epoch=curriculum_progress_epoch,
+            )
             train_max_len = _resolve_train_max_len(args, ep)
             phase_epoch_boundary = int(args.phase_transition_epoch) if int(args.phase_transition_epoch) > 0 else int(args.len8_epochs)
+            if prev_cur_len is not None and int(cur_len) > int(prev_cur_len):
+                restart_m = float(getattr(args, "length_lr_restart_mult", 1.0) or 1.0)
+                if restart_m > 1.0:
+                    adaptive_mult = min(
+                        float(args.adaptive_lr_max_mult),
+                        max(float(adaptive_mult), 1.0) * restart_m,
+                    )
+                    for g in opt.param_groups:
+                        g["lr"] = float(g["lr"]) * float(restart_m)
+                    print(
+                        f"[copy] length_lr_restart {prev_cur_len}->{cur_len} "
+                        f"mult={restart_m:.3f} adaptive_mult={adaptive_mult:.3f}",
+                        flush=True,
+                    )
+            if prev_cur_len != cur_len:
+                print(
+                    f"[copy] curriculum_len={cur_len} unlocked={curriculum_unlocked} "
+                    f"progress_epoch={curriculum_progress_epoch} wall_epoch={ep}",
+                    flush=True,
+                )
+            prev_cur_len = int(cur_len)
+            loader_epoch = int(curriculum_progress_epoch if curriculum_unlocked else 1)
             if bool(args.use_copy_task_dataloader):
                 train_loader = _build_copy_task_loader(
                     args,
                     n_samples=args.train_samples_per_epoch,
                     max_len=train_max_len,
                     shuffle=True,
-                    epoch=ep,
+                    epoch=loader_epoch,
                 )
                 if bool(args.copy_curriculum_enabled):
                     eval_loader_cur = _build_copy_task_loader(
@@ -1195,7 +1898,7 @@ def main():
                         n_samples=max(256, args.eval_samples // 2),
                         max_len=train_max_len,
                         shuffle=False,
-                        epoch=ep,
+                        epoch=loader_epoch,
                     )
                 else:
                     eval_loader_cur = eval_loader_8 if int(cur_len) == int(args.len8) else eval_loader_16
@@ -1233,40 +1936,111 @@ def main():
 
                 src = src.to(device)
                 tgt = tgt.to(device)
-                amp_ctx = torch.amp.autocast("cuda", enabled=use_amp) if use_cuda else contextlib.nullcontext()
-                with amp_ctx:
-                    logits, aux = model(src, return_aux_losses=True)
-                    if bool(args.use_copy_task_dataloader):
-                        logits_t, tgt_t = align_logits_targets(logits, tgt)
-                    else:
-                        logits_t, tgt_t = _align_logits_targets(logits, tgt)
-                    loss = F.cross_entropy(
-                        logits_t.reshape(-1, logits_t.size(-1)),
-                        tgt_t.reshape(-1),
-                        ignore_index=TOK2IDX["<pad>"],
-                        label_smoothing=float(args.label_smoothing),
-                    )
-                    recall_loss_val = 0.0
-                    cms_loss_val = 0.0
-                    if isinstance(aux.get("recall_loss", None), torch.Tensor):
-                        recall_loss_val = float(aux["recall_loss"].detach().item())
-                        loss = loss + model.recall_loss_weight * aux["recall_loss"]
-                    if isinstance(aux.get("cms_loss", None), torch.Tensor):
-                        cms_loss_val = float(aux["cms_loss"].detach().item())
-                        loss = loss + aux["cms_loss"]
-                    if cur_len == int(args.len16):
-                        loss = loss * float(args.len16_loss_weight)
-                    mastery_loss_val = 0.0
-                    if mastery_model is not None:
-                        mastery_logits = mastery_model(src, tgt)
-                        mastery_loss = mastery_model.mastery_loss(
-                            mastery_logits,
-                            tgt,
+                if float(args.fusion_balance_weight) > 0.0:
+                    setattr(model, "fusion_balance_floor", float(args.fusion_balance_floor))
+                seq_loss_val = 0.0
+                recall_loss_val = 0.0
+                cms_loss_val = 0.0
+                fusion_balance_val = 0.0
+                parameter_loop_gate_loss_val = 0.0
+                mastery_loss_val = 0.0
+                try:
+                    with _autocast(device, use_amp, amp_dtype):
+                        logits, aux = model(src, return_aux_losses=True)
+                        if bool(args.use_copy_task_dataloader):
+                            logits_t, tgt_t = align_logits_targets(logits, tgt)
+                        else:
+                            logits_t, tgt_t = _align_logits_targets(logits, tgt)
+                        if not torch.isfinite(logits_t).all():
+                            raise ValueError("nonfinite logits")
+                        loss = F.cross_entropy(
+                            logits_t.reshape(-1, logits_t.size(-1)),
+                            tgt_t.reshape(-1),
                             ignore_index=TOK2IDX["<pad>"],
                             label_smoothing=float(args.label_smoothing),
                         )
-                        mastery_loss_val = float(mastery_loss.detach().item())
-                        loss = loss + float(args.copy_mastery_loss_weight) * mastery_loss
+                        if isinstance(aux.get("recall_loss", None), torch.Tensor):
+                            recall_loss_val = float(aux["recall_loss"].detach().item())
+                            loss = loss + model.recall_loss_weight * aux["recall_loss"]
+                        if isinstance(aux.get("cms_loss", None), torch.Tensor):
+                            cms_loss_val = float(aux["cms_loss"].detach().item())
+                            loss = loss + aux["cms_loss"]
+                        if float(args.fusion_balance_weight) > 0.0 and isinstance(
+                            aux.get("fusion_balance_loss", None), torch.Tensor
+                        ):
+                            fusion_balance_val = float(aux["fusion_balance_loss"].detach().item())
+                            loss = loss + float(args.fusion_balance_weight) * aux["fusion_balance_loss"]
+                        if float(args.parameter_loop_gate_reg_weight) > 0.0 and isinstance(
+                            aux.get("parameter_loop_gate_loss", None), torch.Tensor
+                        ):
+                            parameter_loop_gate_loss_val = float(
+                                aux["parameter_loop_gate_loss"].detach().item()
+                            )
+                            loss = loss + (
+                                float(args.parameter_loop_gate_reg_weight)
+                                * aux["parameter_loop_gate_loss"]
+                            )
+                        if float(args.seq_loss_weight) > 0.0:
+                            seq_loss = _sequence_failure_loss(
+                                logits_t,
+                                tgt_t,
+                                ignore_index=TOK2IDX["<pad>"],
+                                label_smoothing=float(args.label_smoothing),
+                            )
+                            seq_loss_val = float(seq_loss.detach().item())
+                            loss = loss + float(args.seq_loss_weight) * seq_loss
+                        if cur_len == int(args.len16):
+                            loss = loss * float(args.len16_loss_weight)
+                        if mastery_model is not None:
+                            mastery_logits = mastery_model(src, tgt)
+                            mastery_loss = mastery_model.mastery_loss(
+                                mastery_logits,
+                                tgt,
+                                ignore_index=TOK2IDX["<pad>"],
+                                label_smoothing=float(args.label_smoothing),
+                            )
+                            mastery_loss_val = float(mastery_loss.detach().item())
+                            loss = loss + float(args.copy_mastery_loss_weight) * mastery_loss
+                        if not torch.isfinite(loss).all():
+                            raise ValueError("nonfinite loss")
+                except (ValueError, RuntimeError) as exc:
+                    nonfinite_streak += 1
+                    print(
+                        f"[copy][warn] unstable step gstep={global_step + 1} "
+                        f"err={exc} streak={nonfinite_streak}",
+                        flush=True,
+                    )
+                    opt.zero_grad(set_to_none=True)
+                    # Skipping alone does nothing once weights are NaN-poisoned.
+                    # Complex HG banks (holograms_fft/mem_complex) must be restored too.
+                    restored = _restore_finite_snapshot(model, finite_state_snap)
+                    touched = _sanitize_model_parameters(model)
+                    pending_cleared = _clear_hg_pending_writes(model)
+                    if mastery_model is not None:
+                        touched += _sanitize_model_parameters(mastery_model)
+                    # Cool the schedule after instability so we don't re-poison immediately.
+                    adaptive_mult = max(float(args.adaptive_lr_min_mult), float(adaptive_mult) * 0.85)
+                    for g in opt.param_groups:
+                        g["lr"] = float(g["lr"]) * 0.85
+                    print(
+                        f"[copy][recover] restored={restored} sanitized_tensors={touched} "
+                        f"hg_pending_cleared={pending_cleared} adaptive_mult={adaptive_mult:.3f}",
+                        flush=True,
+                    )
+                    if nonfinite_streak >= 25:
+                        print(
+                            "[copy][fatal] persistent nonfinite logits/loss; stopping run "
+                            "(reload last good checkpoint and lower LR/AMP).",
+                            flush=True,
+                        )
+                        raise SystemExit(3)
+                    global_step += 1
+                    continue
+
+                nonfinite_streak = 0
+                # Refresh recovery snapshot periodically after healthy steps.
+                if global_step == 0 or (global_step % 25 == 0):
+                    finite_state_snap = _snapshot_finite_state(model)
 
                 opt.zero_grad(set_to_none=True)
                 if use_amp:
@@ -1287,20 +2061,70 @@ def main():
                 clip_params = list(model.parameters())
                 if mastery_model is not None:
                     clip_params += list(mastery_model.parameters())
-                pre_norm = torch.nn.utils.clip_grad_norm_(clip_params, max_norm=1e9)
-                pre_norm_v = float(pre_norm)
-                grad_scale = 1.0
-                grad_norm = torch.nn.utils.clip_grad_norm_(clip_params, float(args.grad_clip))
-                clip_hit = 1.0 if pre_norm_v > float(args.grad_clip) + 1e-8 else 0.0
+                pre_norm_v, post_norm_v, clip_hit = _clip_gradients(
+                    clip_params, float(args.grad_clip)
+                )
+                grad_norm = float(post_norm_v)
+                # If raw grads greatly exceed the clip, cool adaptive LR immediately.
+                if pre_norm_v > max(5.0 * float(args.grad_clip), float(args.target_grad_norm) * 5.0):
+                    adaptive_mult = max(
+                        float(args.adaptive_lr_min_mult),
+                        float(adaptive_mult) * float(args.adaptive_lr_down),
+                    )
+                grad_scale = (
+                    float(args.grad_clip) / max(pre_norm_v, 1e-12)
+                    if pre_norm_v > float(args.grad_clip)
+                    else 1.0
+                )
+                if args.report_capacity and global_step == 0:
+                    print_literal_training_bytes(
+                        "first_backward",
+                        model,
+                        optimizer=opt,
+                        cps_store=store,
+                        cuda_device=device,
+                    )
 
                 if use_amp:
                     scaler.step(opt)
                     scaler.update()
                 else:
                     opt.step()
+                if bool(args.enable_parameter_storage_loop):
+                    gate_param = getattr(
+                        model.cortex, "parameter_storage_loop_gate", None
+                    )
+                    if isinstance(gate_param, torch.Tensor):
+                        gate_min = max(
+                            1e-6, min(1.0 - 1e-6, float(args.parameter_loop_gate_min))
+                        )
+                        gate_max = max(
+                            gate_min,
+                            min(1.0 - 1e-6, float(args.parameter_loop_gate_max)),
+                        )
+                        with torch.no_grad():
+                            gate_param.clamp_(
+                                min=float(torch.logit(torch.tensor(gate_min)).item()),
+                                max=float(torch.logit(torch.tensor(gate_max)).item()),
+                            )
+                if bool(args.enable_parameter_storage_loop) and hasattr(
+                    model.cortex, "_maybe_consolidate_trainable_parameters"
+                ):
+                    # Post-step is autograd-safe: PSLS slots are no longer referenced
+                    # by a live graph, and CPS summaries reflect the updated weights.
+                    try:
+                        model.cortex._maybe_consolidate_trainable_parameters()
+                    except Exception as exc:
+                        print(
+                            f"[copy][warn] parameter-loop consolidation failed: {exc}",
+                            flush=True,
+                        )
                 episodic_writes_step = 0
                 consolidation_writes_step = 0
-                if hasattr(model, "cortex") and getattr(model.cortex, "advanced_broker", None) is not None:
+                if hasattr(model, "cortex") and (
+                    getattr(model.cortex, "advanced_broker", None) is not None
+                    or getattr(model.cortex, "consolidation_broker", None) is not None
+                ):
                     with torch.no_grad():
                         model.cortex._tick_advanced_consolidation()
                 if shared_writes_active and int(args.shared_slot_consolidation_every) > 0:
@@ -1447,6 +2271,11 @@ def main():
                         "token_entropy": float(run_entropy_mean),
                         "recall_loss": float(recall_loss_val),
                         "cms_loss": float(cms_loss_val),
+                        "fusion_balance_loss": float(fusion_balance_val),
+                        "parameter_loop_gate_loss": float(parameter_loop_gate_loss_val),
+                        "seq_loss": float(seq_loss_val),
+                        "curriculum_unlocked": float(curriculum_unlocked),
+                        "curriculum_progress_epoch": float(curriculum_progress_epoch),
                         "pre_grad_norm": float(pre_norm_v),
                         "grad_norm": float(grad_norm),
                         "grad_scale": float(grad_scale),
@@ -1488,18 +2317,96 @@ def main():
             train_grad_scale_mean = run_grad_scale / max(1, epoch_steps)
             train_clip_hit_rate = run_clip_hits / max(1, epoch_steps)
             use_align = bool(args.use_copy_task_dataloader)
-            val_loss_cur, val_acc_cur, val_seq_acc_cur = _evaluate(
-                model, eval_loader_cur, device, use_aligned_targets=use_align
-            )
-            val_loss_8, val_acc_8, val_seq_acc_8 = _evaluate(
-                model, eval_loader_8, device, use_aligned_targets=use_align
-            )
-            val_loss_16, val_acc_16, val_seq_acc_16 = _evaluate(
-                model, eval_loader_16, device, use_aligned_targets=use_align
-            )
-            epoch_metrics = {}
-            if hasattr(model, "cortex"):
-                epoch_metrics = _flatten_metrics(model.cortex.get_metrics())
+            # Persist weights before eval — CUDA misaligned-address has been killing the
+            # process at the first epoch-end eval with no checkpoint otherwise.
+            if bool(args.save_checkpoints) and args.checkpoint_out:
+                _save_checkpoint(
+                    args.checkpoint_out,
+                    model=model,
+                    optimizer=opt,
+                    scheduler=scheduler,
+                    scaler=scaler,
+                    epoch=ep,
+                    global_step=global_step,
+                    best_acc=best_acc,
+                    best_record=best_record,
+                    args=args,
+                    mastery_model=mastery_model,
+                    label="pre_eval",
+                )
+            if bool(args.skip_epoch_eval):
+                print(
+                    "[copy] skip_epoch_eval=on — using train metrics as val proxies",
+                    flush=True,
+                )
+                val_loss_cur = float(train_mean)
+                val_acc_cur = float(train_acc)
+                val_seq_acc_cur = float(train_seq_acc)
+                val_loss_8 = float(train_mean)
+                val_acc_8 = float(train_acc)
+                val_seq_acc_8 = float(train_seq_acc)
+                val_loss_16 = float(train_mean)
+                val_acc_16 = float(train_acc)
+                val_seq_acc_16 = float(train_seq_acc)
+                epoch_metrics = {}
+            else:
+                if device.type == "cuda":
+                    try:
+                        torch.cuda.synchronize()
+                    except Exception as sync_exc:
+                        print(f"[copy][warn] pre-eval cuda sync failed: {sync_exc}", flush=True)
+                val_loss_cur, val_acc_cur, val_seq_acc_cur = _evaluate(
+                    model,
+                    eval_loader_cur,
+                    device,
+                    use_aligned_targets=use_align,
+                    use_amp=use_amp,
+                    amp_dtype=amp_dtype,
+                )
+                eval_cuda_poisoned = not math.isfinite(float(val_loss_cur))
+                if eval_cuda_poisoned:
+                    print(
+                        "[copy][warn] skipping remaining eval passes after CUDA failure "
+                        "(context likely poisoned); using train metrics for epoch summary.",
+                        flush=True,
+                    )
+                    val_loss_8 = val_acc_8 = val_seq_acc_8 = float("nan")
+                    val_loss_16 = val_acc_16 = val_seq_acc_16 = float("nan")
+                else:
+                    val_loss_8, val_acc_8, val_seq_acc_8 = _evaluate(
+                        model,
+                        eval_loader_8,
+                        device,
+                        use_aligned_targets=use_align,
+                        use_amp=use_amp,
+                        amp_dtype=amp_dtype,
+                    )
+                    val_loss_16, val_acc_16, val_seq_acc_16 = _evaluate(
+                        model,
+                        eval_loader_16,
+                        device,
+                        use_aligned_targets=use_align,
+                        use_amp=use_amp,
+                        amp_dtype=amp_dtype,
+                    )
+                epoch_metrics = {}
+                if hasattr(model, "cortex") and not eval_cuda_poisoned:
+                    try:
+                        epoch_metrics = _flatten_metrics(model.cortex.get_metrics())
+                    except Exception as metrics_exc:
+                        print(
+                            f"[copy][warn] cortex.get_metrics failed: {metrics_exc}",
+                            flush=True,
+                        )
+                        epoch_metrics = {}
+                # If eval poisoned CUDA, keep the pre_eval checkpoint and restart cleanly.
+                if eval_cuda_poisoned:
+                    print(
+                        "[copy][fatal] CUDA misaligned during eval after healthy train steps. "
+                        f"Resume from pre_eval checkpoint: {args.checkpoint_out}",
+                        flush=True,
+                    )
+                    raise SystemExit(4)
             summary = {
                 "schema_version": 1,
                 "kind": "epoch_end",
@@ -1532,10 +2439,23 @@ def main():
             print(
                 f"[epoch {ep:02d}] train_mean={train_mean:.4f} train_acc={train_acc:.4f} "
                 f"val(curr_len={cur_len}) loss={val_loss_cur:.4f} acc={val_acc_cur:.4f} "
-                f"val(len8) loss={val_loss_8:.4f} acc={val_acc_8:.4f} "
-                f"val(len16) loss={val_loss_16:.4f} acc={val_acc_16:.4f}",
+                f"seq_curr={val_seq_acc_cur:.4f} "
+                f"val(len8) loss={val_loss_8:.4f} acc={val_acc_8:.4f} seq8={val_seq_acc_8:.4f} "
+                f"val(len16) loss={val_loss_16:.4f} acc={val_acc_16:.4f} seq16={val_seq_acc_16:.4f}",
                 flush=True,
             )
+            if mastery_gate > 0.0 and not curriculum_unlocked and float(val_seq_acc_8) >= mastery_gate:
+                curriculum_unlocked = True
+                curriculum_progress_epoch = max(
+                    1, int(getattr(args, "copy_curriculum_hold_epochs", 0) or 0) + 1
+                )
+                print(
+                    f"[copy] curriculum_mastery_unlocked seq8={val_seq_acc_8:.4f} "
+                    f">= {mastery_gate:.4f}; progress_epoch={curriculum_progress_epoch}",
+                    flush=True,
+                )
+            elif curriculum_unlocked:
+                curriculum_progress_epoch += 1
             if val_acc_cur > best_acc:
                 best_acc = val_acc_cur
             if bool(args.save_checkpoints) and int(args.checkpoint_every_epochs) > 0 and (ep % int(args.checkpoint_every_epochs) == 0):
@@ -1609,6 +2529,14 @@ def main():
             flush=True,
         )
     print(f"[copy] full metrics captured at {args.metrics_jsonl}", flush=True)
+    if args.report_capacity:
+        print_literal_training_bytes(
+            "final",
+            model,
+            optimizer=opt,
+            cps_store=store,
+            cuda_device=device,
+        )
     if best_record is not None:
         accept_failures = []
         if float(args.accept_min_val_acc) >= 0.0 and float(best_record.get("val_acc_curriculum_len", 0.0)) < float(args.accept_min_val_acc):

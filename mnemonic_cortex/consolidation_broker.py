@@ -91,15 +91,19 @@ class ConsolidationBroker(nn.Module):
             "commonsense": ["CSS"],
             "safety": ["SNS"],
             "meta": ["MLS"],
-            "auto": ["CRS", "SKS"],
+            # Full multi-store fusion so CAS/PSS are exercised under default training.
+            "auto": ["CRS", "SKS", "CAS", "PSS"],
+            "all": ["CRS", "SKS", "CAS", "PSS"],
         }
         self._unified: Dict[str, Dict[str, Any]] = {}
 
     def _choose_stores(self, intent: str) -> List[str]:
         key = str(intent or "auto").lower()
         if key in self.intent_map:
-            return self.intent_map[key]
-        return self.intent_map["auto"]
+            return list(self.intent_map[key])
+        if key in self.stores:
+            return [key]
+        return list(self.intent_map["auto"])
 
     def _resolve_store_name(self, logical_name: str) -> str:
         return self.store_alias.get(logical_name, logical_name)
@@ -185,8 +189,9 @@ class ConsolidationBroker(nn.Module):
         domain_map = {
             "reasoning": "CRS", "logic": "CRS", "math": "CRS", "proof": "CRS",
             "science": "SKS", "stem": "SKS", "facts": "SKS",
-            "creativity": "CAS", "analogy": "CAS", "style": "CAS",
-            "skills": "PSS", "tools": "PSS", "procedure": "PSS",
+            "creativity": "CAS", "creative": "CAS", "analogy": "CAS", "style": "CAS",
+            "skills": "PSS", "skill": "PSS", "tools": "PSS",
+            "procedure": "PSS", "procedural": "PSS",
             "causal": "CGS", "symbolic": "MSS", "planning": "TEPS",
             "commonsense": "CSS", "safety": "SNS", "meta": "MLS",
         }
@@ -238,7 +243,8 @@ class ConsolidationBroker(nn.Module):
             qp = self._unit_complex_real(store.cue_p(q))
             qe = store.cue_e(q)
 
-            rec = self._unified.get(name)
+            # Unified heads are keyed by physical store name.
+            rec = self._unified.get(physical)
             if rec is None:
                 proto = torch.full((q.size(0),), 1e3, device=q.device)
                 phase_agree = torch.zeros(q.size(0), device=q.device)
@@ -248,7 +254,7 @@ class ConsolidationBroker(nn.Module):
                 dh = torch.norm(qh - uh.unsqueeze(0), dim=-1)
                 dp = torch.norm(qp - up.unsqueeze(0), dim=-1)
                 de = torch.norm(qe - ue.unsqueeze(0), dim=-1)
-                cfg = self.store_configs[name]
+                cfg = self.store_configs[physical]
                 proto = cfg.w_h * dh + cfg.w_p * dp + cfg.w_e * de
                 phase_agree = 1.0 / (1.0 + dp)
                 fisher_unc = de

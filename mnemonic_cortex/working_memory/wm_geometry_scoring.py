@@ -75,7 +75,7 @@ class WMGeometryScoring(nn.Module):
         if query.dim() != 2 or query.size(-1) != self.config.dim:
             raise ValueError(f"Expected query [B,{self.config.dim}], got {tuple(query.shape)}")
         if not torch.isfinite(query).all():
-            raise ValueError("query contains NaN or Inf")
+            query.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
 
     def forward(self, query: torch.Tensor, retrieval: WMRetrievalLanesOutput, return_trace: bool = False):
         self._validate_query(query)

@@ -9,6 +9,7 @@ if ROOT not in sys.path:
 
 from data.copy_task_dataloader import (
     CopyTaskDataConfig,
+    CopyTaskDataset,
     CopyTaskMasteryModel,
     align_logits_targets,
     build_copy_task_dataloader,
@@ -71,6 +72,44 @@ def test_curriculum_length_ramps():
     )
     assert cfg.curriculum_length(1) == 4
     assert cfg.curriculum_length(4) >= 8
+
+
+def test_curriculum_hold_then_ramp():
+    cfg = CopyTaskDataConfig(
+        curriculum_enabled=True,
+        curriculum_start_len=8,
+        curriculum_end_len=16,
+        curriculum_hold_epochs=3,
+        curriculum_ramp_epochs=4,
+        min_len=8,
+        max_len=16,
+    )
+    assert cfg.curriculum_length(1) == 8
+    assert cfg.curriculum_length(3) == 8
+    assert cfg.curriculum_length(4) == 8  # ramp starts; t=0 still start_len
+    assert cfg.curriculum_length(8) == 16
+
+
+def test_curriculum_short_mix_prefers_anchor():
+    cfg = CopyTaskDataConfig(
+        n_samples=200,
+        curriculum_enabled=True,
+        curriculum_start_len=8,
+        curriculum_end_len=16,
+        curriculum_hold_epochs=0,
+        curriculum_ramp_epochs=1,
+        curriculum_short_mix_prob=1.0,
+        curriculum_mix_anchor_len=8,
+        min_len=8,
+        max_len=16,
+        seed=0,
+    )
+    # Epoch 2 is at end length 16; with mix_prob=1 all samples capped via mix path.
+    ds = CopyTaskDataset(cfg, epoch=2)
+    lengths = [int((meta.get("content_len") or src.numel() - 1)) for src, _tgt, meta in ds.data]
+    # Most should be short/anchor under mix_prob=1.0 (75% exact anchor).
+    shortish = sum(1 for L in lengths if L <= 10)
+    assert shortish >= 100
 
 
 def test_sinusoidal_pe_dim():

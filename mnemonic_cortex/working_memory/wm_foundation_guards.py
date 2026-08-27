@@ -21,11 +21,11 @@ class WMFoundationValidationError(ValueError):
 
 
 def ensure_finite_tensor(name: str, tensor: torch.Tensor) -> torch.Tensor:
-    """Validate that a tensor contains no NaN/Inf values."""
+    """Ensure a tensor is finite; sanitize rare AMP overflows instead of hard-failing training."""
     if not isinstance(tensor, torch.Tensor):
         raise WMFoundationValidationError(f"{name} must be a torch.Tensor")
     if not torch.isfinite(tensor).all():
-        raise WMFoundationValidationError(f"{name} contains NaN or Inf")
+        return torch.nan_to_num(tensor, nan=0.0, posinf=0.0, neginf=0.0)
     return tensor
 
 

@@ -39,6 +39,29 @@ class TestConsolidationAndTopologySafety(unittest.TestCase):
         self.assertGreaterEqual(m2["unified_n"], 20.0)
         self.assertGreaterEqual(m2["unified_updates"], 2.0)
 
+    def test_auto_intent_hits_all_physical_stores(self):
+        broker = ConsolidationBroker(vocab_size=64, model_dim=24)
+        token_ids = torch.randint(0, 64, (16,), dtype=torch.long)
+        base = torch.randn(16, 24)
+        ctx = torch.randn(16, 24)
+        fused, aux = broker.route_fuse(token_ids, base, ctx, intent="auto")
+        self.assertEqual(tuple(fused.shape), (16, 24))
+        metrics = broker.get_metrics()
+        for store in ("CRS", "SKS", "CAS", "PSS"):
+            self.assertGreaterEqual(metrics[store]["hits"], 1.0, store)
+        self.assertEqual(set(aux["stores"].keys()), {"CRS", "SKS", "CAS", "PSS"})
+
+    def test_cms_broker_unify_from_ltm_updates_all_domains(self):
+        cortex = EnhancedMnemonicCortex(input_dim=24, output_dim=24, cms_vocab_size=64)
+        cortex.enable_consolidation_broker(vocab_size=64)
+        written = cortex._cms_broker_unify_from_ltm(max_items_per_bank=8)
+        self.assertTrue(written)
+        metrics = cortex.consolidation_broker.get_metrics()
+        self.assertGreaterEqual(metrics["CRS"]["unified_updates"], 1.0)
+        self.assertGreaterEqual(metrics["SKS"]["unified_updates"], 1.0)
+        self.assertGreaterEqual(metrics["CAS"]["unified_updates"], 1.0)
+        self.assertGreaterEqual(metrics["PSS"]["unified_updates"], 1.0)
+
     def test_topology_v2_clamp_and_curved_mutation(self):
         model = EnhancedMnemonicCortex(input_dim=24, output_dim=24)
         top = TopologyManagerV2(default_policy="safe_test")

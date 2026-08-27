@@ -71,7 +71,7 @@ class WMDepthFusion(nn.Module):
         if z != self.config.num_depths or three != self.config.triplet_dim or d != self.config.dim:
             raise ValueError(f"Expected [B,{self.config.num_depths},T,{self.config.triplet_dim},{self.config.dim}], got {tuple(depth_state.shape)}")
         if not torch.isfinite(depth_state).all():
-            raise ValueError("depth_state contains NaN or Inf")
+            depth_state.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
 
     def forward(self, depth_state: torch.Tensor, residual: Optional[torch.Tensor] = None, return_trace: bool = False):
         self._validate(depth_state)

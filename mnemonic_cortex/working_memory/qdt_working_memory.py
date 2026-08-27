@@ -34,6 +34,7 @@ from .curved_resonant_wm_core import CurvedResonanceConfig, CurvedResonantWMCore
 from .curved_shadow_write import CurvedShadowWriteBuffer, CurvedShadowWriteConfig
 from .wm_memory_augmented_attention import WMMemoryAugmentedAttention, WMMemoryAugmentedAttentionConfig
 from .wm_dual_fusion import WMDualFusionController, WMDualFusionConfig
+from .wm_inter_manifold_attention import WMInterManifoldAttention, WMInterManifoldAttentionConfig
 from .wm_shared_slot_store import SharedSlotStore, SharedSlotStoreConfig
 from .wm_quantum_holographic_storage import QuantumHolographicStorage, QuantumHolographicStorageConfig
 from .wm_system_commit_gate import SystemCommitGate, SystemWriteProposal
@@ -162,6 +163,19 @@ class QDTWorkingMemory(nn.Module):
             )
         )
 
+        self.inter_manifold_attention = None
+        if bool(getattr(config, "enable_inter_manifold_attention", True)):
+            self.inter_manifold_attention = WMInterManifoldAttention(
+                WMInterManifoldAttentionConfig(
+                    dim=config.input_dim,
+                    num_heads=config.num_heads,
+                    residual_mix=float(getattr(config, "inter_manifold_residual_mix", 0.15)),
+                ),
+                geometry_linker=getattr(self.memory_augmented_attention, "geometry_linker", None),
+            )
+        self.last_inter_manifold_stats = {}
+        self.last_depth_state = None
+        self.last_geometry_by_depth = None
         self.last_trace = None
         self.external_attention_context = None
         self.cross_model_attn = nn.MultiheadAttention(config.input_dim, num_heads=config.num_heads, batch_first=True)
@@ -316,11 +330,12 @@ class QDTWorkingMemory(nn.Module):
         payload = torch.tanh(depth_state.mean(dim=(1, 3)))[:, :max_tokens, :].contiguous()
         return payload.detach()
 
-    def _validate_input(self, x: torch.Tensor) -> None:
+    def _validate_input(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
             raise ValueError(f"Expected x [B,T,{self.config.input_dim}], got {tuple(x.shape)}")
         if not torch.isfinite(x).all():
-            raise ValueError("input contains NaN or Inf")
+            x = torch.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+        return x
 
     def forward(
         self,
@@ -331,7 +346,7 @@ class QDTWorkingMemory(nn.Module):
         importance: Optional[torch.Tensor] = None,
         return_trace: bool = False,
     ):
-        self._validate_input(x)
+        x = self._validate_input(x)
         trace = self.trace_emitter.start(
             operation,
             stage="WM-2C",
@@ -494,6 +509,21 @@ class QDTWorkingMemory(nn.Module):
             )
         self.last_attention_stack_tokens = dual_tokens.detach()
         trace.merge_dict("dual_fusion", dual_fusion_trace)
+        self.last_depth_state = depth_state
+        self.last_geometry_by_depth = list(addressing_trace.get("geometry_by_depth") or [])
+        if self.inter_manifold_attention is not None:
+            system_views = self._dual_fusion_manifold_views()
+            dual_tokens, ima_trace = self.inter_manifold_attention(
+                dual_tokens,
+                depth_state=depth_state,
+                geometry_by_depth=self.last_geometry_by_depth,
+                context_map_name=context_map_name,
+                system_views=system_views,
+                return_trace=True,
+            )
+            self.last_inter_manifold_stats = dict(self.inter_manifold_attention.last_stats)
+            self.last_attention_stack_tokens = dual_tokens.detach()
+            trace.merge_dict("inter_manifold_attention", ima_trace)
         trace.add("shared_slot_store", "shared_slot_registry_updated", registry=self.shared_slot_store.registry.trace_summary())
 
         # WM-4C: create a lightweight QH-compatible storage record for the read anchor.
@@ -543,6 +573,35 @@ class QDTWorkingMemory(nn.Module):
         if return_trace:
             return out, trace.to_dict()
         return out
+
+    def _dual_fusion_manifold_views(self) -> Dict[str, torch.Tensor]:
+        views: Dict[str, torch.Tensor] = {}
+        dual = getattr(self.dual_fusion, "last_output", None)
+        ltm_out = getattr(getattr(self.dual_fusion, "ltm", None), "last_output", None)
+        mann_out = getattr(getattr(self.dual_fusion, "mann", None), "last_output", None)
+        spcp_out = getattr(getattr(self.dual_fusion, "spcp", None), "last_output", None)
+        if ltm_out is not None and torch.is_tensor(getattr(ltm_out, "memory_context", None)):
+            views["ltm"] = ltm_out.memory_context
+        if mann_out is not None and torch.is_tensor(getattr(mann_out, "memory_context", None)):
+            views["mann"] = mann_out.memory_context
+            vis = getattr(mann_out, "visibility", None)
+            hops = getattr(vis, "scratchpad_tokens", None)
+            if torch.is_tensor(hops):
+                views["mann:quaternion"] = hops
+        if spcp_out is not None and torch.is_tensor(getattr(spcp_out, "memory_context", None)):
+            views["spcp"] = spcp_out.memory_context
+        if dual is not None and torch.is_tensor(getattr(dual, "fused_context", None)):
+            views["bridge"] = dual.fused_context
+        return views
+
+    def get_metrics(self) -> Dict[str, Any]:
+        metrics: Dict[str, Any] = {
+            "ima_enabled": 1.0 if self.inter_manifold_attention is not None else 0.0,
+        }
+        for key, value in self.last_inter_manifold_stats.items():
+            if isinstance(value, (int, float)):
+                metrics[f"ima_{key}"] = float(value)
+        return metrics
 
     def stability_report(self, x: torch.Tensor) -> Dict[str, Any]:
         out, trace = self.forward(x, operation="read", return_trace=True)

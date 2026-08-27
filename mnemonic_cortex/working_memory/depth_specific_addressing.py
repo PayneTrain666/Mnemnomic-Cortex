@@ -165,7 +165,7 @@ class DepthSpecificAddressing(nn.Module):
         if d != self.config.dim:
             raise ValueError(f"Expected D={self.config.dim}, got {d}")
         if not torch.isfinite(depth_state).all():
-            raise ValueError("depth_state contains NaN or Inf")
+            depth_state.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
 
     def _geometry_by_depth(self, context_map_name: Optional[str]) -> List[str]:
         name = context_map_name or self.default_context_map

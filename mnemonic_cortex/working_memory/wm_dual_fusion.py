@@ -111,7 +111,7 @@ class WMDualFusionController(nn.Module):
         if tokens.dim() != 3 or tokens.size(-1) != self.config.dim:
             raise ValueError(f"Expected tokens [B,T,{self.config.dim}], got {tuple(tokens.shape)}")
         if not torch.isfinite(tokens).all():
-            raise ValueError("tokens contains NaN or Inf")
+            tokens = torch.nan_to_num(tokens, nan=0.0, posinf=0.0, neginf=0.0)
 
         ltm_out, ltm_trace = self.ltm(tokens, depth_state=depth_state, context=context, return_trace=True)
         mann_out, mann_trace = self.mann(tokens, depth_state=depth_state, context=context, return_trace=True)

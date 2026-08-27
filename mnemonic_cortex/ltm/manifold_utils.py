@@ -29,7 +29,9 @@ def _as_query_key(q: torch.Tensor, k: torch.Tensor) -> tuple[torch.Tensor, torch
     if k.ndim not in (2, 3):
         raise ValueError("k must be [S,D] or [B,S,D]")
     if k.ndim == 2:
-        k = k.unsqueeze(0).expand(q.size(0), -1, -1)
+        # Materialize the batch broadcast so later in-place bank updates cannot
+        # invalidate autograd versions of expanded key views.
+        k = k.unsqueeze(0).expand(q.size(0), -1, -1).contiguous()
     if q.size(0) != k.size(0) or q.size(-1) != k.size(-1):
         raise ValueError("q and k batch/dim mismatch")
     return q, k
@@ -107,10 +109,15 @@ def spatial_dist(q: torch.Tensor, k: torch.Tensor) -> torch.Tensor:
     d = q.size(-1)
     if d < 7:
         return euclid_dist(q, k)
+    # Clone key slices: spatial LTM banks often update keys/values in-place in the
+    # same forward, which breaks autograd if distance ops keep views into those buffers.
     pos_q, quat_q, rem_q = q[:, :3], q[:, 3:7], q[:, 7:]
-    pos_k, quat_k, rem_k = k[:, :, :3], k[:, :, 3:7], k[:, :, 7:]
+    pos_k = k[:, :, :3].clone()
+    quat_k = k[:, :, 3:7].clone()
+    rem_k = k[:, :, 7:].clone()
     d_pos = torch.linalg.norm(pos_q.unsqueeze(1) - pos_k, dim=-1)
-    d_quat = quaternion_distance(quat_q.unsqueeze(1).expand_as(quat_k), quat_k)
+    # Broadcast query quaternions; avoid expand_as views that share storage.
+    d_quat = quaternion_distance(quat_q.unsqueeze(1), quat_k)
     if rem_q.numel() == 0:
         d_rem = torch.zeros_like(d_pos)
     else:

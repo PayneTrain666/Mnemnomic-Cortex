@@ -5,9 +5,12 @@ from mnemonic_cortex.optimizer import (
     OptimizerConfig,
     build_optimizer,
     guard_optimizer_parameter_replacement,
+    load_optimizer_state_dict_checked,
     migrate_optimizer_parameter_replacements,
+    optimizer_parameter_layout,
     optimizer_references_parameters,
     unique_trainable_parameters,
+    validate_optimizer_parameter_coverage,
 )
 
 
@@ -82,3 +85,25 @@ def test_structural_replacement_guard_refuses_stale_optimizer_migration():
         guard_optimizer_parameter_replacement(optimizer, [old])
     with pytest.raises(RuntimeError, match="rebuild the optimizer"):
         migrate_optimizer_parameter_replacements(optimizer, [(old, new)])
+
+
+def test_optimizer_layout_rejects_same_count_different_shape():
+    original = torch.nn.Parameter(torch.ones(2, 3))
+    optimizer = build_optimizer([original], OptimizerConfig(name="adam"))
+    layout = optimizer_parameter_layout(optimizer)
+    state = optimizer.state_dict()
+
+    replacement = torch.nn.Parameter(torch.ones(3, 2))
+    rebuilt = build_optimizer([replacement], OptimizerConfig(name="adam"))
+    with pytest.raises(RuntimeError, match="layout does not match"):
+        load_optimizer_state_dict_checked(rebuilt, state, saved_layout=layout)
+
+
+def test_optimizer_coverage_detects_stale_structural_parameters():
+    first = torch.nn.Parameter(torch.ones(2))
+    replacement = torch.nn.Parameter(torch.ones(2))
+    optimizer = build_optimizer([first], OptimizerConfig(name="adam"))
+
+    validate_optimizer_parameter_coverage(optimizer, [first])
+    with pytest.raises(RuntimeError, match="ownership mismatch"):
+        validate_optimizer_parameter_coverage(optimizer, [replacement])

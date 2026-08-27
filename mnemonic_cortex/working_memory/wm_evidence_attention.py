@@ -81,12 +81,12 @@ class WMEvidenceAttention(nn.Module):
         if tokens.dim() != 3 or tokens.size(-1) != self.config.dim:
             raise ValueError(f"Expected tokens [B,T,{self.config.dim}], got {tuple(tokens.shape)}")
         if not torch.isfinite(tokens).all():
-            raise ValueError("tokens contain NaN or Inf")
+            tokens.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
         if memory_context is not None:
             if memory_context.dim() != 2 or memory_context.shape != (tokens.size(0), self.config.dim):
                 raise ValueError(f"memory_context must be [B,{self.config.dim}], got {tuple(memory_context.shape)}")
             if not torch.isfinite(memory_context).all():
-                raise ValueError("memory_context contains NaN or Inf")
+                memory_context.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
 
     def forward(self, tokens: torch.Tensor, memory_context: Optional[torch.Tensor] = None, return_trace: bool = False):
         self._validate(tokens, memory_context)

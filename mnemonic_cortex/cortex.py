@@ -9,7 +9,8 @@ Important notes for non-coders: Huge file — look for section banners (INIT / B
 
 import torch
 import torch.nn as nn
-from typing import Any, Dict, List, Optional, Sequence
+from torch.utils.checkpoint import checkpoint as activation_checkpoint
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 from types import SimpleNamespace
 from .sensory_buffer import EnhancedSensoryBuffer
 from .memory_curved import EnhancedCurvedMemory
@@ -119,6 +120,10 @@ class EnhancedMnemonicCortex(nn.Module):
                  parameter_loop_consolidation_min_total_numel: int = 1024,
                  parameter_loop_consolidation_include: Optional[Sequence[str]] = None,
                  parameter_loop_consolidation_exclude: Optional[Sequence[str]] = None,
+                 parameter_loop_gate_init: float = 0.01,
+                 parameter_loop_gate_min: float = 0.08,
+                 parameter_loop_gate_max: float = 0.35,
+                 enable_activation_checkpointing: bool = False,
                  enable_trainable_parameter_cps: bool = False,
                  trainable_parameter_cps_include: Optional[Sequence[str]] = None,
                  trainable_parameter_cps_exclude: Optional[Sequence[str]] = None,
@@ -135,6 +140,8 @@ class EnhancedMnemonicCortex(nn.Module):
                  qdt_qspin_live_activation: Optional[bool] = False,
                  qdt_qspin_live_kill_switch_enabled: bool = True,
                  qdt_qspin_live_max_payload_tokens: int = 8,
+                 enable_inter_manifold_attention: bool = True,
+                 inter_manifold_residual_mix: float = 0.12,
                  hgm_enabled: bool = False):
         super().__init__()
         self.input_dim = input_dim
@@ -178,11 +185,27 @@ class EnhancedMnemonicCortex(nn.Module):
         self.parameter_loop_consolidation_min_params = int(max(1, parameter_loop_consolidation_min_params))
         self.parameter_loop_consolidation_min_total_numel = int(max(1, parameter_loop_consolidation_min_total_numel))
         self.parameter_loop_consolidation_include = tuple(str(v) for v in (parameter_loop_consolidation_include or ()))
-        self.parameter_loop_consolidation_exclude = tuple(str(v) for v in (parameter_loop_consolidation_exclude or ()))
+        self.parameter_loop_consolidation_exclude = tuple(
+            str(v)
+            for v in (
+                parameter_loop_consolidation_exclude
+                or ("parameter_storage_loop_stack", "trainable_parameter_cps")
+            )
+        )
+        self.parameter_loop_gate_min = float(max(0.0, min(1.0, parameter_loop_gate_min)))
+        self.parameter_loop_gate_max = float(max(0.0, min(1.0, parameter_loop_gate_max)))
+        if self.parameter_loop_gate_min > self.parameter_loop_gate_max:
+            raise ValueError("parameter_loop_gate_min must be <= parameter_loop_gate_max")
+        parameter_loop_gate_init = float(
+            max(1e-6, min(1.0 - 1e-6, parameter_loop_gate_init))
+        )
+        self.enable_activation_checkpointing = bool(enable_activation_checkpointing)
         self.parameter_loop_consolidation_step = 0
         self.last_parameter_loop_consolidation_trace: Dict[str, Any] = {}
         self.parameter_storage_loop_stack: Optional[ParameterStorageLoopStack] = None
-        self.parameter_storage_loop_gate = nn.Parameter(torch.tensor(-2.0))
+        self.parameter_storage_loop_gate = nn.Parameter(
+            torch.logit(torch.tensor(parameter_loop_gate_init))
+        )
         self.last_parameter_storage_loop_stats: Dict[str, Any] = {}
         self.enable_trainable_parameter_cps_flag = bool(enable_trainable_parameter_cps)
         self.trainable_parameter_cps_include = tuple(
@@ -301,6 +324,23 @@ class EnhancedMnemonicCortex(nn.Module):
                 free_hidden_layers=self.parameter_loop_free_hidden_layers,
             )
         self.last_global_hidden_attention_stats = {}
+        self.enable_inter_manifold_attention = bool(enable_inter_manifold_attention)
+        self.inter_manifold_residual_mix = float(max(0.0, min(1.0, inter_manifold_residual_mix)))
+        self.inter_manifold_attention = None
+        self.last_inter_manifold_stats: Dict[str, Any] = {}
+        if self.enable_inter_manifold_attention:
+            from .working_memory.wm_inter_manifold_attention import (
+                WMInterManifoldAttention,
+                WMInterManifoldAttentionConfig,
+            )
+
+            self.inter_manifold_attention = WMInterManifoldAttention(
+                WMInterManifoldAttentionConfig(
+                    dim=int(input_dim),
+                    num_heads=int(self._ctx_heads),
+                    residual_mix=self.inter_manifold_residual_mix,
+                )
+            )
 
         # Context projection (kept simple: same dim by default)
         self.ctx_proj = nn.Linear(input_dim, input_dim)
@@ -1532,26 +1572,96 @@ class EnhancedMnemonicCortex(nn.Module):
         )
 
     @torch.no_grad()
+    def _cms_broker_unify_from_ltm(self, *, max_items_per_bank: int = 64) -> Dict[str, int]:
+        """
+        Push LTM bank snapshots into ConsolidationBroker unified heads.
+
+        Maps banks onto CRS/SKS/CAS/PSS domains so unified_updates are non-zero
+        during normal training ticks (not only explicit consolidate_memories()).
+        """
+        written: Dict[str, int] = {}
+        if self.consolidation_broker is None:
+            return written
+        ltm = getattr(self, "long_term_memory", None)
+        if ltm is None:
+            return written
+
+        def _subsample(items: torch.Tensor) -> torch.Tensor:
+            if items.ndim != 2 or items.size(0) <= int(max_items_per_bank):
+                return items
+            idx = torch.randperm(items.size(0), device=items.device)[: int(max_items_per_bank)]
+            return items.index_select(0, idx)
+
+        bank_jobs = []
+        try:
+            hg_vals = ltm.hg.values.detach().unsqueeze(0)
+            hg = ltm.hg.output_projection(hg_vals).squeeze(0)
+            bank_jobs.append(("reasoning", hg))
+        except Exception:
+            pass
+        try:
+            cg_slots = ltm.cgmn.memory_slots.detach().unsqueeze(0)
+            cg = ltm.cgmn.output_projection(cg_slots).squeeze(0)
+            bank_jobs.append(("science", cg))
+        except Exception:
+            pass
+        try:
+            cv = ltm.curved.decoder(ltm.curved.memory_slots.detach())
+            bank_jobs.append(("creativity", cv))
+        except Exception:
+            pass
+        try:
+            spcp = getattr(ltm, "procedural_spcp", None)
+            if spcp is not None:
+                sp = spcp.decoder(spcp.memory_slots.detach())
+                bank_jobs.append(("procedural", sp))
+        except Exception:
+            pass
+
+        for domain, items in bank_jobs:
+            if items is None or not torch.is_tensor(items) or items.numel() == 0:
+                continue
+            items = _subsample(items)
+            metas = [{"domain": domain, "tags": [domain]}] * int(items.size(0))
+            try:
+                self.consolidation_broker.unify_and_route_write(items, metas, domain=domain)
+                written[domain] = int(items.size(0))
+            except Exception as exc:
+                self.diagnostics.log(
+                    "cms_broker_unify_error",
+                    {"domain": domain, "error": str(exc)},
+                )
+        if written:
+            self.diagnostics.log("cms_broker_unify_from_ltm", written)
+        return written
+
+    @torch.no_grad()
     def _tick_advanced_consolidation(self, token_keys: Optional[List[str]] = None) -> None:
-        if self.advanced_broker is None:
-            return
-        if token_keys:
-            for k in token_keys:
-                self._advanced_nudge_keys.add(str(k))
-        pending = self._advanced_merge_queue[:256]
-        self._advanced_merge_queue = self._advanced_merge_queue[256:]
-        for key, cand_view, importance, src_info in pending:
+        if self.advanced_broker is not None:
+            if token_keys:
+                for k in token_keys:
+                    self._advanced_nudge_keys.add(str(k))
+            pending = self._advanced_merge_queue[:256]
+            self._advanced_merge_queue = self._advanced_merge_queue[256:]
+            for key, cand_view, importance, src_info in pending:
+                try:
+                    self.advanced_broker.ingest_from_ltm(key, cand_view, importance, src_info=src_info)
+                    self._advanced_nudge_keys.add(key)
+                except Exception as exc:
+                    self.diagnostics.log("advanced_merge_error", {"key": key, "error": str(exc)})
+            for key in list(self._advanced_nudge_keys)[:256]:
+                try:
+                    self.advanced_broker.cms_pull_to_cps(key)
+                    self.advanced_broker.cps_push_to_cms(key)
+                except Exception as exc:
+                    self.diagnostics.log("advanced_nudge_error", {"key": key, "error": str(exc)})
+        # Keep Phase-A multi-store unified heads warm even when only the broker
+        # (without advanced_broker queue activity) is mounted.
+        if self.consolidation_broker is not None:
             try:
-                self.advanced_broker.ingest_from_ltm(key, cand_view, importance, src_info=src_info)
-                self._advanced_nudge_keys.add(key)
+                self._cms_broker_unify_from_ltm()
             except Exception as exc:
-                self.diagnostics.log("advanced_merge_error", {"key": key, "error": str(exc)})
-        for key in list(self._advanced_nudge_keys)[:256]:
-            try:
-                self.advanced_broker.cms_pull_to_cps(key)
-                self.advanced_broker.cps_push_to_cms(key)
-            except Exception as exc:
-                self.diagnostics.log("advanced_nudge_error", {"key": key, "error": str(exc)})
+                self.diagnostics.log("cms_broker_unify_tick_error", {"error": str(exc)})
 
     def enable_diagnostics(
         self,
@@ -1938,6 +2048,20 @@ class EnhancedMnemonicCortex(nn.Module):
         }
         return result
 
+    def finalize_trainable_parameter_consolidation(self, commit_id: Optional[str] = None):
+        """Irreversibly release retained rollback module snapshots after validation."""
+        store = getattr(self, "trainable_parameter_cps", None)
+        if store is None:
+            raise RuntimeError("trainable_parameter_cps is not enabled")
+        result = store.release_rollback_snapshot(commit_id)
+        self.last_trainable_parameter_cps_trace = {
+            **dict(self.last_trainable_parameter_cps_trace),
+            "phase": "finalized",
+            "transaction_id": result.transaction_id,
+            "capacity": store.capacity_report(),
+        }
+        return result
+
     def rollback_trainable_parameter_consolidation(self, *, optimizer=None):
         store = getattr(self, "trainable_parameter_cps", None)
         if store is None:
@@ -1953,6 +2077,11 @@ class EnhancedMnemonicCortex(nn.Module):
         }
         return result
 
+    def _maybe_activation_checkpoint(self, module: nn.Module, *args):
+        if not self.enable_activation_checkpointing or not self.training:
+            return module(*args)
+        return activation_checkpoint(module, *args, use_reentrant=False)
+
     def describe_trainable_parameter_cps(self) -> Dict[str, Any]:
         store = getattr(self, "trainable_parameter_cps", None)
         if store is None:
@@ -1963,6 +2092,7 @@ class EnhancedMnemonicCortex(nn.Module):
             "committed": bool(
                 commit is not None and commit.committed and not commit.rolled_back
             ),
+            "finalized": bool(commit is not None and commit.finalized),
             "capacity": store.capacity_report(),
             "manifest": store.to_manifest(),
             "last_trace": dict(self.last_trainable_parameter_cps_trace),
@@ -2127,7 +2257,10 @@ class EnhancedMnemonicCortex(nn.Module):
             return_trace=True,
         )
         gate = torch.sigmoid(self.parameter_storage_loop_gate)
-        mixed = self.mem_bridge_norm((1.0 - gate) * seq + gate * loop_out)
+        # True gated residual: gate=0 must be the identity so a newly mounted
+        # PSLS cannot destroy a mature checkpoint through unconditional norm.
+        normalized_loop = self.mem_bridge_norm(loop_out)
+        mixed = seq + gate * (normalized_loop - seq)
         self.last_parameter_storage_loop_stats = {
             **dict(self.last_parameter_storage_loop_stats),
             "phase": str(phase),
@@ -2143,6 +2276,16 @@ class EnhancedMnemonicCortex(nn.Module):
         if getattr(self, "diagnostics", None) is not None:
             self.diagnostics.log(f"parameter_storage_loop_{phase}", self.last_parameter_storage_loop_stats)
         return mixed
+
+    def parameter_loop_gate_regularization(self) -> torch.Tensor:
+        """Keep the learnable PSLS residual gate active without allowing domination."""
+        gate = torch.sigmoid(self.parameter_storage_loop_gate)
+        if self.parameter_storage_loop_stack is None:
+            return gate * 0.0
+        return (
+            torch.relu(gate.new_tensor(self.parameter_loop_gate_min) - gate)
+            + torch.relu(gate - gate.new_tensor(self.parameter_loop_gate_max))
+        )
 
     def _apply_consolidated_memory_depth(self, seq: torch.Tensor, phase: str) -> torch.Tensor:
         cms = self.advanced_cms
@@ -2182,6 +2325,7 @@ class EnhancedMnemonicCortex(nn.Module):
 
     def _maybe_consolidate_trainable_parameters(self) -> Dict[str, Any]:
         stack = self.parameter_storage_loop_stack
+        trainable_cps = getattr(self, "trainable_parameter_cps", None)
         self.parameter_loop_consolidation_step += 1
         if stack is None:
             return {"triggered": False, "reason": "parameter_storage_loop_disabled"}
@@ -2196,6 +2340,16 @@ class EnhancedMnemonicCortex(nn.Module):
             }
         trace = stack.consolidate_parameter_bundles(
             self.named_parameters(),
+            cps_registry=(
+                trainable_cps.registry
+                if trainable_cps is not None and trainable_cps.registry
+                else None
+            ),
+            cps_resolver=(
+                trainable_cps.materialize
+                if trainable_cps is not None and trainable_cps.registry
+                else None
+            ),
             trigger_state={
                 "step": int(self.parameter_loop_consolidation_step),
                 "factors": (
@@ -2234,6 +2388,91 @@ class EnhancedMnemonicCortex(nn.Module):
         self.diagnostics.record_scalar(f"bridge_attn_wm_{phase}", float(w_wm.detach().mean().item()))
         self.diagnostics.record_scalar(f"bridge_attn_ltm_{phase}", float(w_ltm.detach().mean().item()))
         return merged
+
+    def _align_inter_manifold_view(self, tensor: Optional[torch.Tensor], seq: torch.Tensor) -> Optional[torch.Tensor]:
+        if not torch.is_tensor(tensor) or tensor.numel() == 0:
+            return None
+        if tensor.size(-1) != seq.size(-1):
+            return None
+        aligned = tensor.to(device=seq.device, dtype=seq.dtype)
+        if aligned.size(0) == seq.size(0):
+            return aligned
+        if aligned.size(0) == 1:
+            return aligned.expand(seq.size(0), *aligned.shape[1:])
+        return None
+
+    def _collect_inter_manifold_views(
+        self,
+        wm_seq: torch.Tensor,
+        ltm_seq: torch.Tensor,
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, Dict[str, Any]], Optional[torch.Tensor], Optional[List[str]]]:
+        views: Dict[str, torch.Tensor] = {}
+        reads = getattr(self.long_term_memory, "last_bank_reads", None)
+        if isinstance(reads, dict):
+            for name in ("hg", "cgmn", "curved", "spatial", "spcp"):
+                aligned = self._align_inter_manifold_view(reads.get(name), wm_seq)
+                if aligned is not None:
+                    views[name] = aligned
+        geom_weights: Dict[str, Dict[str, Any]] = {}
+        bank_map = {
+            "hg": getattr(self.long_term_memory, "hg", None),
+            "cgmn": getattr(self.long_term_memory, "cgmn", None),
+            "curved": getattr(self.long_term_memory, "curved", None),
+            "spatial": getattr(self.long_term_memory, "spatial_ltm", None),
+        }
+        for name, bank in bank_map.items():
+            weights = getattr(bank, "last_geom_weights", None) if bank is not None else None
+            if isinstance(weights, dict) and weights:
+                geom_weights[name] = weights
+        qdt = self._resolve_qdt_working_memory()
+        depth_state = None
+        geometry_by_depth = None
+        if qdt is not None:
+            depth_state = self._align_inter_manifold_view(getattr(qdt, "last_depth_state", None), wm_seq)
+            chart = getattr(qdt, "last_geometry_by_depth", None)
+            if isinstance(chart, list):
+                geometry_by_depth = list(chart)
+            if hasattr(qdt, "_dual_fusion_manifold_views"):
+                for name, tensor in qdt._dual_fusion_manifold_views().items():
+                    aligned = self._align_inter_manifold_view(tensor, wm_seq)
+                    if aligned is not None:
+                        views.setdefault(name, aligned)
+        psls = getattr(self, "parameter_storage_loop_stack", None)
+        psls_tokens = getattr(psls, "last_context_tokens", None) if psls is not None else None
+        aligned_psls = self._align_inter_manifold_view(psls_tokens, wm_seq)
+        if aligned_psls is not None:
+            views["psls"] = aligned_psls
+        if wm_seq is not None:
+            views.setdefault("wm", wm_seq)
+        if ltm_seq is not None:
+            views.setdefault("ltm", ltm_seq)
+        return views, geom_weights, depth_state, geometry_by_depth
+
+    def _apply_inter_manifold_attention(
+        self,
+        seq: torch.Tensor,
+        wm_seq: torch.Tensor,
+        ltm_seq: torch.Tensor,
+        phase: str,
+    ) -> torch.Tensor:
+        if self.inter_manifold_attention is None:
+            return seq
+        views, geom_weights, depth_state, geometry_by_depth = self._collect_inter_manifold_views(wm_seq, ltm_seq)
+        mixed, packed = self.inter_manifold_attention(
+            seq,
+            depth_state=depth_state,
+            geometry_by_depth=geometry_by_depth,
+            system_views=views,
+            geometry_weights=geom_weights,
+            residual_mix=self.inter_manifold_residual_mix,
+            return_trace=True,
+        )
+        stats = dict(getattr(self.inter_manifold_attention, "last_stats", {}) or {})
+        stats["phase"] = str(phase)
+        self.last_inter_manifold_stats = stats
+        if getattr(self, "diagnostics", None) is not None:
+            self.diagnostics.log(f"inter_manifold_attention_{phase}", stats)
+        return mixed
 
     def _apply_secondary_hidden_stack(
         self,
@@ -2293,7 +2532,7 @@ class EnhancedMnemonicCortex(nn.Module):
             )
             mixed = self.secondary_hidden_norm(mixed)
 
-        refined = self.secondary_hidden_encoder(mixed)
+        refined = self._maybe_activation_checkpoint(self.secondary_hidden_encoder, mixed)
         stack_out = self.secondary_hidden_output_norm(mixed + refined)
         bridge_gate = torch.sigmoid(self.secondary_hidden_bridge_gate)
         out = self.mem_bridge_norm((1.0 - bridge_gate) * base_seq + bridge_gate * stack_out)
@@ -2328,7 +2567,7 @@ class EnhancedMnemonicCortex(nn.Module):
         self.sensory_buffer.update(sensory_input)
         base = self.sensory_buffer.attention_filter(sensory_input)
         attn_out, _ = self.ctx_attn(base, base, base, need_weights=False)
-        enc_out = self.ctx_encoder(base)
+        enc_out = self._maybe_activation_checkpoint(self.ctx_encoder, base)
         out = self.ctx_norm(base + 0.5 * attn_out + 0.5 * enc_out)
         self.diagnostics.record_scalar("sensory_norm", float(out.norm(dim=-1).mean().item()))
         return out
@@ -2466,6 +2705,7 @@ class EnhancedMnemonicCortex(nn.Module):
         wm_r = self.working_memory(c, operation=self._wm_read_operation())
         ltm_r = r
         r = self._bridge_wm_ltm(wm_r, ltm_r, phase="retrieve")
+        r = self._apply_inter_manifold_attention(r, wm_r, ltm_r, phase="retrieve")
         r = self._apply_secondary_hidden_stack(r, wm_r, ltm_r, ctx, phase="retrieve")
         r = self._apply_global_hidden_attention(r, ctx, phase="retrieve")
         inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
@@ -2494,23 +2734,10 @@ class EnhancedMnemonicCortex(nn.Module):
         self.diagnostics.log("consolidate_memories", {"threshold": th})
         if self.consolidation_broker is not None:
             try:
-                hg_vals = self.long_term_memory.hg.values.detach().unsqueeze(0)
-                hg = self.long_term_memory.hg.output_projection(hg_vals).squeeze(0)
-                cg_slots = self.long_term_memory.cgmn.memory_slots.detach().unsqueeze(0)
-                cg = self.long_term_memory.cgmn.output_projection(cg_slots).squeeze(0)
-                cv = self.long_term_memory.curved.decoder(
-                    self.long_term_memory.curved.memory_slots.detach()
-                )
-                items = torch.cat([hg, cg, cv], dim=0)
-                metas = (
-                    [{"domain": "reasoning", "tags": ["hg"]}] * hg.size(0)
-                    + [{"domain": "reasoning", "tags": ["cgmn"]}] * cg.size(0)
-                    + [{"domain": "reasoning", "tags": ["curved"]}] * cv.size(0)
-                )
-                self.consolidation_broker.unify_and_route_write(items, metas, domain="reasoning")
+                written = self._cms_broker_unify_from_ltm()
                 self.diagnostics.log(
                     "unify_and_route_write",
-                    {"items": int(items.size(0)), "domain": "reasoning"},
+                    {"domains": written, "items": int(sum(written.values()))},
                 )
             except Exception:
                 pass
@@ -2558,6 +2785,16 @@ class EnhancedMnemonicCortex(nn.Module):
         if isinstance(inter, dict):
             for k, v in inter.items():
                 metrics[f"ltm_inter_{k}"] = float(v)
+        ima = getattr(self, "last_inter_manifold_stats", None)
+        if isinstance(ima, dict):
+            metrics["ima_enabled"] = 1.0 if self.inter_manifold_attention is not None else 0.0
+            for k, v in ima.items():
+                if isinstance(v, (int, float)):
+                    metrics[f"ima_{k}"] = float(v)
+        elif self.inter_manifold_attention is not None:
+            metrics["ima_enabled"] = 1.0
+        else:
+            metrics["ima_enabled"] = 0.0
         rstats = getattr(self.long_term_memory, "last_router_stats", None)
         if isinstance(rstats, dict):
             for k, v in rstats.items():
@@ -2642,6 +2879,33 @@ class EnhancedMnemonicCortex(nn.Module):
                     metrics[f"cms_depth_{k}"] = float(v)
         else:
             metrics["cms_depth_stack_enabled"] = 0.0
+        if self.parameter_storage_loop_stack is not None:
+            metrics["parameter_loop_enabled"] = 1.0
+            metrics["parameter_loop_gate"] = float(
+                torch.sigmoid(self.parameter_storage_loop_gate).detach().item()
+            )
+            metrics["parameter_loop_gate_regularization"] = float(
+                self.parameter_loop_gate_regularization().detach().item()
+            )
+            metrics["parameter_loop_free_hidden_layers"] = float(
+                self.parameter_loop_free_hidden_layers
+            )
+            metrics["parameter_loop_slots_per_layer"] = float(
+                self.parameter_loop_slots_per_layer
+            )
+            metrics["parameter_loop_bundle_registry_size"] = float(
+                len(self.parameter_storage_loop_stack.parameter_bundle_registry)
+            )
+            trace = self.last_parameter_loop_consolidation_trace
+            if isinstance(trace, dict):
+                metrics["parameter_loop_last_created_bundles"] = float(
+                    trace.get("created_bundle_count", 0)
+                )
+                metrics["parameter_loop_last_referenced_cps_numel"] = float(
+                    (trace.get("accounting") or {}).get("referenced_cps_numel", 0)
+                )
+        else:
+            metrics["parameter_loop_enabled"] = 0.0
         return metrics
 
     @torch.no_grad()
@@ -2699,6 +2963,8 @@ class EnhancedMnemonicCortex(nn.Module):
                 'parameter_loop_consolidation_min_total_numel': int(self.parameter_loop_consolidation_min_total_numel),
                 'parameter_loop_consolidation_include': list(self.parameter_loop_consolidation_include),
                 'parameter_loop_consolidation_exclude': list(self.parameter_loop_consolidation_exclude),
+                'parameter_loop_gate_min': float(self.parameter_loop_gate_min),
+                'parameter_loop_gate_max': float(self.parameter_loop_gate_max),
                 'parameter_loop_bundle_registry': (
                     self.parameter_storage_loop_stack.parameter_bundle_registry_state()
                     if self.parameter_storage_loop_stack is not None
@@ -2760,6 +3026,8 @@ class EnhancedMnemonicCortex(nn.Module):
             self.parameter_loop_consolidation_min_total_numel = int(optional.get('parameter_loop_consolidation_min_total_numel', self.parameter_loop_consolidation_min_total_numel))
             self.parameter_loop_consolidation_include = tuple(optional.get('parameter_loop_consolidation_include', self.parameter_loop_consolidation_include) or ())
             self.parameter_loop_consolidation_exclude = tuple(optional.get('parameter_loop_consolidation_exclude', self.parameter_loop_consolidation_exclude) or ())
+            self.parameter_loop_gate_min = float(optional.get('parameter_loop_gate_min', self.parameter_loop_gate_min))
+            self.parameter_loop_gate_max = float(optional.get('parameter_loop_gate_max', self.parameter_loop_gate_max))
             self.parameter_loop_consolidation_step = int(optional.get('parameter_loop_consolidation_step', self.parameter_loop_consolidation_step))
             self.enable_parameter_storage_loop(
                 slots_per_layer=int(optional.get('parameter_loop_slots_per_layer', self.parameter_loop_slots_per_layer)),
@@ -2866,6 +3134,12 @@ class EnhancedMnemonicCortex(nn.Module):
 
             # --- Working-memory read phase -----------------------------------
             wm_out = self.working_memory(filtered, operation=self._wm_read_operation())  # (B,S,d)
+            # PSLS acts as a depth amplifier directly on the compact WM stream.
+            # This keeps the task decoder's established WM-facing interface while
+            # ensuring loop depth and slots participate in the training graph.
+            wm_out = self._apply_parameter_storage_loop(
+                wm_out, phase="working_memory"
+            )
             self._sync_attention_stacks(wm_out)
             self._sync_parameter_loop_ltm_context(wm_out)
             self._sync_cms_depth_ltm_context(wm_out)
@@ -2881,10 +3155,10 @@ class EnhancedMnemonicCortex(nn.Module):
                 except Exception:
                     pass
             bridged = self._bridge_wm_ltm(wm_out, ltm_ctx, phase="process")
+            bridged = self._apply_inter_manifold_attention(bridged, wm_out, ltm_ctx, phase="process")
             bridged = self._apply_secondary_hidden_stack(
                 bridged, wm_out, ltm_ctx, filtered, phase="process"
             )
-            bridged = self._apply_parameter_storage_loop(bridged, phase="process")
             bridged = self._apply_consolidated_memory_depth(bridged, phase="process")
             bridged = self._apply_global_hidden_attention(bridged, filtered, phase="process")
             inter = getattr(self.long_term_memory, "last_inter_memory_stats", None)
@@ -2896,7 +3170,9 @@ class EnhancedMnemonicCortex(nn.Module):
 
             # --- Consolidation into long-term memory ------------------------
             if self.training:  # consolidate only during training
-                self._maybe_consolidate_trainable_parameters()
+                # Parameter-bundle consolidation is invoked by the trainer after
+                # optimizer.step(). Mutating PSLS slot parameters here would
+                # invalidate tensors already captured by this forward's autograd graph.
                 # Learned write gate with STE
                 gate, gate_prob = self._ste_write_gate(filtered)  # (B,1)
                 scaled = bridged * imp.unsqueeze(-1)  # (B,S,d)
@@ -2915,6 +3191,9 @@ class EnhancedMnemonicCortex(nn.Module):
                 gate, gate_prob = self._ste_write_gate(filtered)
                 self.diagnostics.record_scalar("recall_loss", float(recall_loss.detach().item()))
                 aux = {'recall_loss': recall_loss, 'write_gate_prob': gate_prob.mean()}
+                if self.parameter_storage_loop_stack is not None:
+                    aux["parameter_loop_gate_loss"] = self.parameter_loop_gate_regularization()
+                    aux["parameter_loop_gate"] = torch.sigmoid(self.parameter_storage_loop_gate)
                 if bool(getattr(self.distillation_config, "enabled", False)):
                     aux["distill_loss"] = recall_loss.detach() * 0.0
                 if self.enable_global_hidden_attention:

@@ -20,6 +20,33 @@ Important defaults:
 - 30 epochs, validation checkpoint selection, target accuracy `0.95`;
 - JSONL metrics and resumable `best.pt` / `last.pt` checkpoints.
 
+`--amp_dtype auto` prefers BF16 on CUDA devices that report native BF16
+support and otherwise uses FP16. `--amp_dtype bf16` also falls back safely to
+FP16 when BF16 is unavailable. Use `--report_capacity` to print literal
+parameter, live-gradient, optimizer-state, publicly reported CPS rollback, and
+CUDA peak-allocation bytes as separate values. Trainers also request fused SDPA
+backends when CUDA is available; this is a runtime preference, not a weight
+compression claim.
+
+For copy/reverse metric meanings and the live training dashboard, see
+`docs/copy_training_metrics_guide.md`.
+
+## Hybrid capacity profile notes
+
+Capacity features remain opt-in and measured separately:
+
+- Trainable Parameter CPS exact consolidation, optional shared-template / low-rank
+  / sparse-exception compression, and irreversible
+  `finalize_trainable_parameter_consolidation()` / rollback-snapshot release.
+- Parameter Loop shadow routing can reference CPS handles; its manifold
+  scalar-equivalent estimates are never added to literal capacity.
+- Task-decoder `shared_gqa` capacity profile and activation-checkpointing flags
+  live on `CortexSeqModel` and default to the standard MultiheadAttention path.
+- QDT-specific attention edits remain deferred until the QD6A source-truth
+  inventory is available.
+- Optimizer state resume fails closed when a CPS/layout fingerprint no longer
+  matches.
+
 The default dataset source is the maintained `Muennighoff/babi` mirror because
 the original Facebook archive URL currently returns HTTP 404. The runner
 filters the mirror by the task number in `--config`.

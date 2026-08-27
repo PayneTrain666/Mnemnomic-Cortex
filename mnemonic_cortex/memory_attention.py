@@ -51,13 +51,23 @@ class MultiScaleAttention(nn.Module):
 
     def forward(self, query, key, value, need_weights=False):
         outs = []
+        # Prefer full-resolution (scale=1) weights for inter-memory diagnostics.
+        # Pooled branches can have different key lengths, so they are not averaged.
+        primary_weights = None
         for scale, attn in zip(self.scales, self.branches):
             k = self._match_query_len(query, self._pool_seq(key, scale))
             v = self._match_query_len(query, self._pool_seq(value, scale))
-            out, _ = attn(query, k, v, need_weights=False)
+            want_w = bool(need_weights and int(scale) == 1)
+            out, w = attn(query, k, v, need_weights=want_w)
             outs.append(out)
+            if want_w and w is not None:
+                primary_weights = w
         mix = torch.softmax(self.branch_gate, dim=0)
         merged = sum(mix[i] * outs[i] for i in range(len(outs)))
         if need_weights:
-            return merged, None
+            if primary_weights is not None:
+                return merged, primary_weights
+            # No scale-1 branch: fall back to branch-mixture masses so metrics
+            # are non-zero when exchange runs (still better than silent None).
+            return merged, mix.detach()
         return merged, None

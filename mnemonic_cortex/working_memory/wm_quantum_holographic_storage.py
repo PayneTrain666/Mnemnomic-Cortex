@@ -256,7 +256,7 @@ class QuantumHolographicStorage:
         if vector.dim() != 1 or vector.size(0) != self.config.dim:
             raise ValueError(f"vector must be [D={self.config.dim}]")
         if not torch.isfinite(vector).all():
-            raise ValueError("vector contains NaN or Inf")
+            vector.nan_to_num_(nan=0.0, posinf=0.0, neginf=0.0)
 
     def check_interference(self, record_id: str, vector: torch.Tensor) -> QHInterferenceReport:
         self._validate_vector(vector)

@@ -8,6 +8,7 @@ Important notes for non-coders: Stores episode-like patterns rather than only wo
 """
 
 import math
+import contextlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -462,6 +463,7 @@ class EnhancedHyperGeometricMemory(nn.Module):
         # fallback to brute if too many candidates removed
         if candid_keys.size(0) < 32:
             candid_keys = self.keys
+            mask_cent = torch.ones(self.M, device=device, dtype=torch.bool)
         # compute full fractal distance on restricted keys
         dsum = 0.0
         for s, w in enumerate(wts):
@@ -469,10 +471,19 @@ class EnhancedHyperGeometricMemory(nn.Module):
             d = fast_pairwise_l2(q / sf, candid_keys / sf)  # (B,S,M')
             dsum = dsum + w * d
         # need to map distances back to full M size for downstream logic
-        # create large tensor filled with inf
-        dist_full = torch.full((B,S,self.M), float('inf'), device=device, dtype=dsum.dtype)
+        if int(candid_keys.size(0)) == int(self.M):
+            return dsum
+        dist_full = torch.full((B, S, self.M), float("inf"), device=device, dtype=dsum.dtype)
         idx_full = torch.nonzero(mask_cent, as_tuple=False).view(-1)
-        dist_full[:,:,idx_full] = dsum
+        if idx_full.numel() != dsum.size(-1):
+            # Defensive: keep ANN path aligned if centroid mask drifts.
+            candid_keys = self.keys
+            dsum = 0.0
+            for s, w in enumerate(wts):
+                sf = 2 ** s
+                dsum = dsum + w * fast_pairwise_l2(q / sf, candid_keys / sf)
+            return dsum
+        dist_full[:, :, idx_full] = dsum
         return dist_full
 
     @torch.no_grad()
@@ -510,6 +521,8 @@ class EnhancedHyperGeometricMemory(nn.Module):
         """
         B,S,_ = x.shape
         M = self.active_slots
+        weights = torch.nan_to_num(weights, nan=0.0, posinf=0.0, neginf=0.0)
+        x = torch.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
         kc = self._key_complex(x)             # (B,S,H)
         vc = self._val_complex(x)             # (B,S,H)
         Kf = torch.fft.fft(kc, dim=-1)        # (B,S,H)
@@ -545,6 +558,10 @@ class EnhancedHyperGeometricMemory(nn.Module):
         avg = accum / counts
 
         lr = self.holo_lr * lr_mult
+        # no_grad write path: sanitize complex contribs via real/imag (safer than nan_to_num).
+        avg_r = torch.where(torch.isfinite(avg.real), avg.real, torch.zeros_like(avg.real))
+        avg_i = torch.where(torch.isfinite(avg.imag), avg.imag, torch.zeros_like(avg.imag))
+        avg = torch.complex(avg_r, avg_i)
         self.holograms_fft[:M].copy_(self.holo_decay * self.holograms_fft[:M] + lr * avg)
 
         # After applying, run clamp/sync steps
@@ -560,13 +577,15 @@ class EnhancedHyperGeometricMemory(nn.Module):
         """
         B,S,_ = x.shape
         M = self.active_slots
-        kc = self._key_complex(x)                             # (B,S,H)
+        weights = torch.nan_to_num(weights, nan=0.0, posinf=0.0, neginf=0.0)
+        x = torch.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0).contiguous()
+        kc = self._key_complex(x).contiguous()                # (B,S,H)
         Kf = torch.fft.fft(kc, dim=-1)                        # (B,S,H)
         Kf = self._entangle_fft(Kf, 'key')
         # Holograms are updated via no-grad EMA writes; detach on read for AMP-safe grads.
-        Hsel = self.holograms_fft[:M][indices].detach()       # (B,S,K,H) complex
+        Hsel = self.holograms_fft[:M][indices].detach().contiguous()  # (B,S,K,H) complex
         Vhatf = torch.conj(Kf).unsqueeze(2) * Hsel            # (B,S,K,H)
-        Vhatf = (weights.unsqueeze(-1) * Vhatf).sum(dim=2)    # (B,S,H)
+        Vhatf = (weights.unsqueeze(-1) * Vhatf).sum(dim=2).contiguous()  # (B,S,H)
         vhat = torch.fft.ifft(Vhatf, dim=-1)                  # (B,S,H) complex
         feat = torch.cat([vhat.real, vhat.imag], dim=-1)      # (B,S,2H)
         return feat
@@ -644,21 +663,37 @@ class EnhancedHyperGeometricMemory(nn.Module):
             conformal_mlp=self.conformal_mlp,
             b=self.conformal_b,
         )
-        qc = self.qc_head(q_feat)
-        q_complex = (qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]).to(torch.complex64)
-        self.geometry_merger.spd_L = self.spd_L
-        w = self.geometry_merger(
-            base_dist=dtop_warp,
-            indices=itop.reshape(B * S, K),
-            q_feat=q_feat,
-            mem_feat=self.keys[:M],
-            slot_curv=self.memory_curvature[:M],
-            q_quat=q_query.reshape(B * S, 4),
-            mem_quat=self.q_memory_slots[:M],
-            q_complex=q_complex,
-            mem_complex=self.mem_complex[:M],
-            return_weights=True,
-        ).view(B, S, K)
+        # AMP fp16 can materialize ComplexHalf before the cast; that path is
+        # experimental and a common source of nonfinite HG logits. Force FP32.
+        amp_ctx = (
+            torch.amp.autocast("cuda", enabled=False)
+            if q_feat.is_cuda
+            else contextlib.nullcontext()
+        )
+        with amp_ctx:
+            q_feat32 = q_feat.float()
+            qc = self.qc_head(q_feat32)
+            # Sanitize real head outputs (complex nan_to_num has no autograd).
+            qc = torch.nan_to_num(qc.float(), nan=0.0, posinf=0.0, neginf=0.0)
+            q_complex = (
+                qc[:, : self.qc_dim] + 1j * qc[:, self.qc_dim :]
+            ).to(torch.complex64)
+            self.geometry_merger.spd_L = self.spd_L
+            w = self.geometry_merger(
+                base_dist=dtop_warp.float(),
+                indices=itop.reshape(B * S, K),
+                q_feat=q_feat32,
+                mem_feat=self.keys[:M].float(),
+                slot_curv=self.memory_curvature[:M].float(),
+                q_quat=q_query.reshape(B * S, 4).float(),
+                mem_quat=self.q_memory_slots[:M].float(),
+                q_complex=q_complex,
+                mem_complex=self.mem_complex[:M],
+                return_weights=True,
+            ).view(B, S, K)
+        if not torch.isfinite(w).all():
+            w = torch.nan_to_num(w, nan=0.0, posinf=0.0, neginf=0.0)
+            w = w / w.sum(dim=-1, keepdim=True).clamp_min(1e-6)
         self.holo.renorm_slots()
         w = self._blend_qhm_weights(
             q_feat,

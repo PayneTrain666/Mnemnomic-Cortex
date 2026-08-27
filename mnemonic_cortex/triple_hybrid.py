@@ -438,6 +438,7 @@ class EnhancedTripleHybridMemory(nn.Module):
         self.global_inter_attn = self._make_attention(fusion_heads)
         self.inter_exchange_gate = nn.Parameter(torch.tensor(0.20))
         self.last_inter_memory_stats = {}
+        self.last_bank_reads: Dict[str, torch.Tensor] = {}
         self.last_router_weights = None
         self.last_router_stats = {}
         self.refiner = nn.TransformerEncoder(
@@ -1441,6 +1442,7 @@ class EnhancedTripleHybridMemory(nn.Module):
                 result["spcp"] = rspcp
             if rsp is not None:
                 result["spatial"] = rsp
+            self.last_bank_reads = result
             self._read_pipeline_cache = {
                 "x_id": id(x),
                 "fire_mask_id": None if fire_mask is None else id(fire_mask),

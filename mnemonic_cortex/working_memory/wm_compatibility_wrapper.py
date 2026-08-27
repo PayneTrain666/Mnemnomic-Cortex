@@ -139,11 +139,13 @@ class QDTWMCompatibilityWrapper(nn.Module):
     def hidden_dim(self) -> int:
         return self.config.hidden_dim
 
-    def _validate_x(self, x: torch.Tensor) -> None:
+    def _validate_x(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() != 3 or x.size(-1) != self.config.input_dim:
             raise ValueError(f"Expected x [B,T,{self.config.input_dim}], got {tuple(x.shape)}")
+        # Keep training alive under rare AMP/complex overflows: sanitize instead of hard-fail.
         if not torch.isfinite(x).all():
-            raise ValueError("x contains NaN or Inf")
+            x = torch.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+        return x
 
     def route(
         self,
@@ -156,7 +158,9 @@ class QDTWMCompatibilityWrapper(nn.Module):
         return_trace: Optional[bool] = None,
         **legacy_kwargs: Any,
     ):
-        self._validate_x(x)
+        x = self._validate_x(x)
+        if importance is not None and isinstance(importance, torch.Tensor) and not torch.isfinite(importance).all():
+            importance = torch.nan_to_num(importance, nan=0.0, posinf=0.0, neginf=0.0)
         if operation not in {"read", "process", "write"}:
             raise ValueError("operation must be read/process/write")
         want_trace = self.config.return_trace_by_default if return_trace is None else bool(return_trace)

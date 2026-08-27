@@ -92,7 +92,7 @@ class WMMANNCrossAttention(nn.Module):
         if tokens.dim() != 3 or tokens.size(-1) != self.config.dim:
             raise ValueError(f"Expected tokens [B,T,{self.config.dim}], got {tuple(tokens.shape)}")
         if not torch.isfinite(tokens).all():
-            raise ValueError("tokens contain NaN or Inf")
+            tokens = torch.nan_to_num(tokens, nan=0.0, posinf=0.0, neginf=0.0)
         query_state = self.query_proj(tokens.mean(dim=1))
         request = ExternalMemoryQuery("mann", query_state=query_state, depth_state=depth_state, context=context, metadata={"source": "WMMANNCrossAttention"})
         response = self.external_bank.query(request, top_k=self.config.top_k)

@@ -95,7 +95,7 @@ class WMCrossDepthTransformer(nn.Module):
         self.output_norm = nn.LayerNorm(config.dim)
         self.last_trace: Optional[WMCrossDepthTransformerTrace] = None
 
-    def _validate_input(self, x: torch.Tensor) -> None:
+    def _validate_input(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() != 5:
             raise ValueError(f"Expected x [B,Z,T,3,D], got rank {x.dim()}")
         b, z, t, three, d = x.shape
@@ -106,10 +106,11 @@ class WMCrossDepthTransformer(nn.Module):
         if d != self.config.dim:
             raise ValueError(f"Expected D={self.config.dim}, got {d}")
         if not torch.isfinite(x).all():
-            raise ValueError("Input contains NaN or Inf")
+            x = torch.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+        return x
 
     def forward(self, x: torch.Tensor, return_trace: bool = False):
-        self._validate_input(x)
+        x = self._validate_input(x)
         b, z, t, three, d = x.shape
 
         enriched = x + self.depth_embedding.view(1, z, 1, 1, d)

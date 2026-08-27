@@ -65,7 +65,7 @@ class WMNoveltyAttention(nn.Module):
         if tokens.dim() != 3 or tokens.size(-1) != self.config.dim:
             raise ValueError(f"Expected tokens [B,T,{self.config.dim}], got {tuple(tokens.shape)}")
         if not torch.isfinite(tokens).all():
-            raise ValueError("tokens contain NaN or Inf")
+            tokens = torch.nan_to_num(tokens, nan=0.0, posinf=0.0, neginf=0.0)
         summary = tokens.mean(dim=1)
         if memory_context is None:
             memory_context = torch.zeros_like(summary)

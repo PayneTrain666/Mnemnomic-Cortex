@@ -7,6 +7,8 @@ Status: WORKING
 Important notes for non-coders: Used by smoke training and some tool scripts.
 """
 
+import hashlib
+import json
 import math
 import time
 from dataclasses import dataclass
@@ -186,6 +188,85 @@ def migrate_optimizer_parameter_replacements(
     old_parameters = [old_param for old_param, _new_param in pairs]
     guard_optimizer_parameter_replacement(optimizer, old_parameters)
     return optimizer
+
+
+def optimizer_parameter_layout(optimizer: Optimizer) -> dict[str, Any]:
+    """Describe optimizer-owned tensors without relying on transient object ids."""
+
+    groups = []
+    for group in optimizer.param_groups:
+        params = []
+        for param in group["params"]:
+            params.append(
+                {
+                    "shape": [int(v) for v in param.shape],
+                    "dtype": str(param.dtype).replace("torch.", ""),
+                    "numel": int(param.numel()),
+                    "requires_grad": bool(param.requires_grad),
+                }
+            )
+        groups.append({"params": params})
+    payload = {"version": 1, "groups": groups}
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    payload["fingerprint"] = hashlib.sha256(encoded).hexdigest()
+    return payload
+
+
+def validate_optimizer_parameter_coverage(
+    optimizer: Optimizer,
+    parameters: Iterable,
+) -> None:
+    """Fail if an optimizer has stale, missing, or duplicate trainable parameters."""
+
+    expected = unique_trainable_parameters(parameters)
+    actual = [
+        param
+        for group in optimizer.param_groups
+        for param in group["params"]
+        if getattr(param, "requires_grad", False)
+    ]
+    actual_ids = [id(param) for param in actual]
+    if len(actual_ids) != len(set(actual_ids)):
+        raise RuntimeError("optimizer contains duplicate trainable Parameter references")
+    expected_ids = {id(param) for param in expected}
+    actual_id_set = set(actual_ids)
+    if expected_ids != actual_id_set:
+        missing = len(expected_ids - actual_id_set)
+        stale = len(actual_id_set - expected_ids)
+        raise RuntimeError(
+            "optimizer/model parameter ownership mismatch "
+            f"(missing={missing}, stale={stale}); rebuild the optimizer after "
+            "a structural CPS transaction"
+        )
+
+
+def load_optimizer_state_dict_checked(
+    optimizer: Optimizer,
+    state_dict: Mapping[str, Any],
+    *,
+    saved_layout: Optional[Mapping[str, Any]] = None,
+) -> None:
+    """Load optimizer state only when its saved tensor layout is compatible."""
+
+    current_layout = optimizer_parameter_layout(optimizer)
+    if saved_layout is not None:
+        saved_fingerprint = str(saved_layout.get("fingerprint", ""))
+        if not saved_fingerprint or saved_fingerprint != current_layout["fingerprint"]:
+            raise RuntimeError(
+                "optimizer layout does not match the current model; rebuild optimizer "
+                "state after the CPS representation change"
+            )
+    else:
+        saved_groups = state_dict.get("param_groups")
+        if not isinstance(saved_groups, list):
+            raise ValueError("optimizer state_dict is missing param_groups")
+        current_counts = [len(group["params"]) for group in optimizer.param_groups]
+        saved_counts = [len(group.get("params", ())) for group in saved_groups]
+        if current_counts != saved_counts:
+            raise RuntimeError(
+                "optimizer parameter-group layout changed; refusing stale optimizer state"
+            )
+    optimizer.load_state_dict(dict(state_dict))
 
 
 def build_warmup_cosine_scheduler(

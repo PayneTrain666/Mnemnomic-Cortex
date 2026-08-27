@@ -67,6 +67,14 @@ def sph_warp(d, gamma=0.9):
 
 def fubini_study_batched(psi, phi):
     # psi:[B,d] complex; phi:[B,K,d] complex -> [B,K]
+    # Avoid torch.nan_to_num on complex (no autograd support); sanitize via real/imag.
+    def _finite_complex(z: torch.Tensor) -> torch.Tensor:
+        r = torch.where(torch.isfinite(z.real), z.real, torch.zeros_like(z.real))
+        i = torch.where(torch.isfinite(z.imag), z.imag, torch.zeros_like(z.imag))
+        return torch.complex(r, i)
+
+    psi = _finite_complex(psi)
+    phi = _finite_complex(phi)
     psi = psi / (psi.abs().pow(2).sum(-1, keepdim=True).sqrt() + 1e-9)
     phi = phi / (phi.abs().pow(2).sum(-1, keepdim=True).sqrt() + 1e-9)
     ip = (psi.unsqueeze(1).conj() * phi).sum(-1).abs().clamp(0.0, 1.0 - 1e-6)

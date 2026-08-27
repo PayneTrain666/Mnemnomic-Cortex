@@ -16,6 +16,7 @@ def test_qd3a_classifier_scans_attention_scope_bounded():
         "mnemonic_cortex/working_memory/wm_conflict_attention.py",
         "mnemonic_cortex/working_memory/wm_novelty_attention.py",
         "mnemonic_cortex/working_memory/wm_stability_attention.py",
+        "mnemonic_cortex/working_memory/wm_inter_manifold_attention.py",
     ]
     clf = WMQualityClassifier(WMQualityClassifierConfig(max_files=32, max_issues=128))
     issue_set = clf.classify_tree(root, include_globs=patterns)

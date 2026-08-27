@@ -1,6 +1,13 @@
 import inspect
+from dataclasses import replace
 import torch
 import torch.nn as nn
+from benchmark.model_capacity import (
+    SharedCapacityConfig,
+    SharedGQADecoder,
+    checkpoint_decoder,
+    checkpoint_encoder,
+)
 from mnemonic_cortex.cortex import EnhancedMnemonicCortex
 from mnemonic_cortex.anti_hallucination import AHGThresholds, HallucinationGuard
 from mnemonic_cortex.model_audit import run_model_audit
@@ -52,6 +59,11 @@ class CortexSeqModel(nn.Module):
         task_decoder_heads: int = 8,
         task_decoder_dropout: float = 0.1,
         task_decoder_use_sinusoidal: bool = True,
+        task_decoder_capacity_profile: str = "standard",
+        task_decoder_kv_heads: int = 2,
+        task_decoder_low_rank: int = 4,
+        task_decoder_activation_checkpointing: bool = False,
+        context_encoder_activation_checkpointing: bool = False,
         **cortex_kwargs,
     ):
         super().__init__()
@@ -118,6 +130,18 @@ class CortexSeqModel(nn.Module):
         self.task_decoder_use_sinusoidal = bool(task_decoder_use_sinusoidal)
         self.task_decoder_layers = int(task_decoder_layers)
         self.task_decoder_heads = int(task_decoder_heads)
+        self.task_decoder_capacity_profile = str(task_decoder_capacity_profile).lower()
+        if self.task_decoder_capacity_profile not in {"standard", "shared_gqa"}:
+            raise ValueError(
+                "task_decoder_capacity_profile must be 'standard' or 'shared_gqa'"
+            )
+        self.task_decoder_activation_checkpointing = bool(
+            task_decoder_activation_checkpointing
+        )
+        self.context_encoder_activation_checkpointing = bool(
+            context_encoder_activation_checkpointing
+        )
+        self.task_decoder_capacity_backend = "disabled"
         if self.task_decoder_enabled:
             nhead = self._resolve_heads(d_model, max(1, int(task_decoder_heads)))
             self.pre_fusion_stack_attn = nn.MultiheadAttention(
@@ -149,15 +173,37 @@ class CortexSeqModel(nn.Module):
                 nn.GELU(),
                 nn.Linear(d_model, 3),
             )
-            dec_layer = nn.TransformerDecoderLayer(
+            capacity_config = SharedCapacityConfig(
                 d_model=d_model,
-                nhead=nhead,
+                num_heads=nhead,
+                num_kv_heads=int(task_decoder_kv_heads),
                 dim_feedforward=max(256, d_model * 4),
                 dropout=float(task_decoder_dropout),
-                activation="gelu",
-                batch_first=True,
+                low_rank=int(task_decoder_low_rank),
             )
-            self.task_decoder = nn.TransformerDecoder(dec_layer, num_layers=max(1, int(task_decoder_layers)))
+            if (
+                self.task_decoder_capacity_profile == "shared_gqa"
+                and capacity_config.validate()
+            ):
+                self.task_capacity_stack = SharedGQADecoder(
+                    capacity_config,
+                    num_layers=max(1, int(task_decoder_layers)),
+                )
+                self.task_decoder = None
+                self.task_decoder_capacity_backend = "shared_gqa"
+            else:
+                dec_layer = nn.TransformerDecoderLayer(
+                    d_model=d_model,
+                    nhead=nhead,
+                    dim_feedforward=max(256, d_model * 4),
+                    dropout=float(task_decoder_dropout),
+                    activation="gelu",
+                    batch_first=True,
+                )
+                self.task_decoder = nn.TransformerDecoder(
+                    dec_layer, num_layers=max(1, int(task_decoder_layers))
+                )
+                self.task_decoder_capacity_backend = "standard_mha"
             self.task_decoder_norm = nn.LayerNorm(d_model)
             self.last_task_decoder_stats = {}
 
@@ -173,12 +219,28 @@ class CortexSeqModel(nn.Module):
         existing = getattr(self, "trainable_parameter_cps", None)
         if existing is not None:
             return existing
-        store = TrainableParameterCPS(
-            config
-            or TrainableParameterCPSConfig(
-                exclude=("*qspin*", "*trainable_parameter_cps*"),
+        if config is None:
+            config = TrainableParameterCPSConfig(
+                exclude=(
+                    "*qspin*",
+                    "*trainable_parameter_cps*",
+                    "*task_capacity_stack*",
+                ),
             )
-        )
+        elif (
+            self.task_decoder_capacity_backend == "shared_gqa"
+            and not any(
+                "task_capacity_stack" in pattern for pattern in config.include
+            )
+            and not any(
+                "task_capacity_stack" in pattern for pattern in config.exclude
+            )
+        ):
+            config = replace(
+                config,
+                exclude=(*config.exclude, "*task_capacity_stack*"),
+            )
+        store = TrainableParameterCPS(config)
         object.__setattr__(self, "trainable_parameter_cps", store)
         return store
 
@@ -198,6 +260,12 @@ class CortexSeqModel(nn.Module):
     def compress_trainable_parameter_groups(self, *, probe=None, optimizer=None):
         store = self.enable_trainable_parameter_cps()
         return store.compress_committed(probe=probe, optimizer=optimizer)
+
+    def finalize_trainable_parameter_consolidation(self, commit_id=None):
+        store = getattr(self, "trainable_parameter_cps", None)
+        if store is None:
+            raise RuntimeError("trainable_parameter_cps is not enabled")
+        return store.release_rollback_snapshot(commit_id)
 
     def rollback_trainable_parameter_consolidation(self, *, optimizer=None):
         if optimizer is not None:
@@ -430,7 +498,11 @@ class CortexSeqModel(nn.Module):
         mem_flat = mem_tokens.reshape(bsz * seq, nsys, dim)
         compared, _ = self.memory_compare_attn(mem_flat, mem_flat, mem_flat, need_weights=False)
         cooperative = self.memory_compare_norm(mem_flat + compared)
-        cooperative = self.memory_compare_encoder(cooperative)
+        cooperative = checkpoint_encoder(
+            self.memory_compare_encoder,
+            cooperative,
+            enabled=self.context_encoder_activation_checkpointing,
+        )
         spec_logits = self.system_specialization_head(cooperative).squeeze(-1)  # (B*T,5)
         spec_weights = torch.softmax(spec_logits, dim=-1)
         cooperative_weighted = (spec_weights.unsqueeze(-1) * cooperative).sum(dim=1).reshape(bsz, seq, dim)
@@ -455,17 +527,31 @@ class CortexSeqModel(nn.Module):
             q = q + pe_q
             stack = stack + pe_s
         attended, _ = self.pre_fusion_stack_attn(q, stack, stack, need_weights=False)
-        decoded = self.task_decoder(tgt=q, memory=stack)
+        if self.task_decoder_capacity_backend == "shared_gqa":
+            decoded = self.task_capacity_stack(
+                tgt=q,
+                memory=stack,
+                activation_checkpointing=self.task_decoder_activation_checkpointing,
+            )
+        else:
+            decoded = checkpoint_decoder(
+                self.task_decoder,
+                q,
+                stack,
+                enabled=self.task_decoder_activation_checkpointing,
+            )
         self.last_task_decoder_stats = {
-            "wm_weight_mean": float(triplet_weights[:, :, 0].detach().mean().item()),
-            "ltm_weight_mean": float(triplet_weights[:, :, 1].detach().mean().item()),
-            "mann_weight_mean": float(triplet_weights[:, :, 2].detach().mean().item()),
-            "spec_wm_mean": float(spec_weights[:, 0].detach().mean().item()),
-            "spec_hg_mean": float(spec_weights[:, 1].detach().mean().item()),
-            "spec_cgmn_mean": float(spec_weights[:, 2].detach().mean().item()),
-            "spec_curved_mean": float(spec_weights[:, 3].detach().mean().item()),
-            "spec_mann_mean": float(spec_weights[:, 4].detach().mean().item()),
+            "wm_weight_mean": float(triplet_weights[:, :, 0].detach().float().mean().cpu()),
+            "ltm_weight_mean": float(triplet_weights[:, :, 1].detach().float().mean().cpu()),
+            "mann_weight_mean": float(triplet_weights[:, :, 2].detach().float().mean().cpu()),
+            "spec_wm_mean": float(spec_weights[:, 0].detach().float().mean().cpu()),
+            "spec_hg_mean": float(spec_weights[:, 1].detach().float().mean().cpu()),
+            "spec_cgmn_mean": float(spec_weights[:, 2].detach().float().mean().cpu()),
+            "spec_curved_mean": float(spec_weights[:, 3].detach().float().mean().cpu()),
+            "spec_mann_mean": float(spec_weights[:, 4].detach().float().mean().cpu()),
         }
+        # Keep attached means so trainers can regularize against LTM-only collapse.
+        self.last_triplet_weight_means = triplet_weights.mean(dim=(0, 1))
         return self.task_decoder_norm(
             fused_out + 0.20 * cooperative_weighted + 0.25 * hierarchical_fused + 0.20 * attended + 0.55 * decoded
         )
@@ -493,6 +579,12 @@ class CortexSeqModel(nn.Module):
             if self.task_decoder_enabled and isinstance(self.last_task_decoder_stats, dict):
                 for k, v in self.last_task_decoder_stats.items():
                     aux[k] = torch.tensor(float(v), device=out.device, dtype=out.dtype)
+                tw = getattr(self, "last_triplet_weight_means", None)
+                if isinstance(tw, torch.Tensor) and tw.numel() >= 3:
+                    floor = float(getattr(self, "fusion_balance_floor", 0.12))
+                    aux["fusion_balance_loss"] = (
+                        torch.relu(floor - tw[0]) + torch.relu(floor - tw[2])
+                    )
             logits = self.proj(out)        # (B,T,V)
             return logits, aux
         else:

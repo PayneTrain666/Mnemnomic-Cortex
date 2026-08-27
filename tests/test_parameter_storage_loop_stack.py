@@ -9,6 +9,10 @@ from mnemonic_cortex import (
     estimate_parameter_storage_loop_capacity,
 )
 from mnemonic_cortex.cortex import EnhancedMnemonicCortex
+from mnemonic_cortex.trainable_parameter_cps import (
+    TrainableParameterCPS,
+    TrainableParameterCPSConfig,
+)
 
 
 def test_parameter_storage_loop_stack_forward_trace_and_shape():
@@ -157,6 +161,48 @@ def test_parameter_storage_loop_consolidates_referenced_shadow_bundles():
     assert {name: id(param) for name, param in source.named_parameters()} == source_param_ids
 
 
+def test_parameter_loop_uses_stable_cps_handles_without_reconsolidating_slabs():
+    source = torch.nn.Sequential(torch.nn.Linear(16, 16), torch.nn.Linear(16, 16))
+    cps = TrainableParameterCPS(
+        TrainableParameterCPSConfig(include=("*",), enable_compression=False)
+    )
+    cps.commit(cps.stage(source))
+    optimizer = torch.optim.Adam(source.parameters(), lr=1e-3)
+    optimizer_ids = {
+        id(param) for group in optimizer.param_groups for param in group["params"]
+    }
+    slab_values = [param.detach().clone() for param in cps.parameters()]
+    store = ParameterStorageLoopStack(
+        ParameterStorageLoopConfig(model_dim=16, parameter_slots_per_layer=2)
+    )
+
+    trace = store.consolidate_parameter_bundles(
+        source.named_parameters(),
+        cps_registry=cps.registry,
+        cps_resolver=cps.materialize,
+        max_bundles=4,
+    )
+
+    refs = [
+        ref
+        for bundle in trace["created_bundles"]
+        for ref in bundle["refs"]
+    ]
+    assert refs
+    assert all(ref["cps_handle"] in cps.registry for ref in refs)
+    assert all("_trainable_parameter_cps" not in ref["name"] for ref in refs)
+    assert trace["accounting"]["literal_named_parameter_numel"] == 0
+    assert trace["accounting"]["referenced_cps_numel"] > 0
+    assert trace["accounting"]["cps_weights_copied"] is False
+    assert {
+        id(param) for group in optimizer.param_groups for param in group["params"]
+    } == optimizer_ids
+    assert all(
+        torch.equal(before, after.detach())
+        for before, after in zip(slab_values, cps.parameters())
+    )
+
+
 def test_cortex_auto_parameter_consolidation_trigger_preserves_parameter_ids():
     model = EnhancedMnemonicCortex(
         input_dim=16,
@@ -183,6 +229,57 @@ def test_cortex_auto_parameter_consolidation_trigger_preserves_parameter_ids():
     assert model.describe_parameter_storage_loop()["bundle_registry"]["registry_size"] > 0
     after_ids = {name: id(param) for name, param in model.named_parameters()}
     assert before_ids == after_ids
+
+
+def test_parameter_loop_gate_regularization_keeps_gate_in_safe_band():
+    model = EnhancedMnemonicCortex(
+        input_dim=16,
+        output_dim=16,
+        ltm_hg_slots=16,
+        ltm_cgmn_slots=16,
+        ltm_curved_slots=8,
+        ltm_spatial_slots=8,
+        enable_parameter_storage_loop_stack=True,
+        parameter_loop_slots_per_layer=2,
+        parameter_loop_free_hidden_layers=1,
+        parameter_loop_gate_min=0.08,
+        parameter_loop_gate_max=0.35,
+    )
+
+    with torch.no_grad():
+        model.parameter_storage_loop_gate.fill_(-20.0)
+    assert model.parameter_loop_gate_regularization().item() > 0.0
+
+    with torch.no_grad():
+        model.parameter_storage_loop_gate.fill_(20.0)
+    assert model.parameter_loop_gate_regularization().item() > 0.0
+
+    with torch.no_grad():
+        model.parameter_storage_loop_gate.fill_(
+            torch.logit(torch.tensor(0.20)).item()
+        )
+    assert model.parameter_loop_gate_regularization().item() == 0.0
+
+
+def test_parameter_loop_zero_gate_is_identity_residual():
+    model = EnhancedMnemonicCortex(
+        input_dim=16,
+        output_dim=16,
+        ltm_hg_slots=16,
+        ltm_cgmn_slots=16,
+        ltm_curved_slots=8,
+        ltm_spatial_slots=8,
+        enable_parameter_storage_loop_stack=True,
+        parameter_loop_slots_per_layer=2,
+        parameter_loop_free_hidden_layers=1,
+    )
+    model.eval()
+    x = torch.randn(2, 3, 16)
+    with torch.no_grad():
+        model.parameter_storage_loop_gate.fill_(-30.0)
+        out = model._apply_parameter_storage_loop(x, phase="identity_test")
+
+    assert torch.allclose(out, x, atol=1e-6, rtol=1e-6)
 
 
 def test_parameter_loop_bundle_registry_survives_checkpoint_roundtrip():
@@ -216,3 +313,54 @@ def test_parameter_loop_bundle_registry_survives_checkpoint_roundtrip():
     registry = loaded.describe_parameter_storage_loop()["bundle_registry"]
     assert registry["registry_size"] == 1
     assert next(iter(registry["bundles"].values()))["refs"]
+
+
+def test_cortex_cps_handle_bundle_registry_survives_checkpoint_roundtrip():
+    def build_model():
+        return EnhancedMnemonicCortex(
+            input_dim=16,
+            output_dim=16,
+            ltm_hg_slots=16,
+            ltm_cgmn_slots=16,
+            ltm_curved_slots=8,
+            ltm_spatial_slots=8,
+            enable_parameter_storage_loop_stack=True,
+            parameter_loop_slots_per_layer=2,
+            parameter_loop_free_hidden_layers=0,
+            enable_parameter_loop_auto_consolidation=True,
+            parameter_loop_consolidation_interval=1,
+            parameter_loop_consolidation_max_bundles=2,
+            parameter_loop_consolidation_min_total_numel=1,
+            parameter_loop_consolidation_include=("ctx_proj",),
+        )
+
+    model = build_model()
+    cps = model.enable_trainable_parameter_cps(
+        TrainableParameterCPSConfig(include=("ctx_proj",))
+    )
+    cps.commit(cps.stage(model))
+    model.train()
+    trace = model._maybe_consolidate_trainable_parameters()
+    refs = [
+        ref
+        for bundle in trace["created_bundles"]
+        for ref in bundle["refs"]
+    ]
+    assert refs and all(ref["cps_handle"] for ref in refs)
+
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "cps_parameter_loop.pt"
+        model.save_checkpoint(str(path))
+        loaded = build_model()
+        loaded.load_checkpoint(str(path), strict=True)
+
+    loaded_refs = [
+        ref
+        for bundle in loaded.describe_parameter_storage_loop()["bundle_registry"][
+            "bundles"
+        ].values()
+        for ref in bundle["refs"]
+    ]
+    assert sorted(ref["cps_handle"] for ref in loaded_refs) == sorted(
+        ref["cps_handle"] for ref in refs
+    )

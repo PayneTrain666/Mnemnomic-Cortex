@@ -61,6 +61,7 @@ class DistillConfig:
 @dataclass
 class CortexBuildConfig:
     capacity_profile: str = "standard"
+    apply_capacity_profile: bool = False
     input_dim: int = 160
     output_dim: int = 160
     sensory_buffer_size: int = 8
@@ -90,7 +91,10 @@ class CortexBuildConfig:
     parameter_loop_consolidation_min_params: int = 1
     parameter_loop_consolidation_min_total_numel: int = 1024
     parameter_loop_consolidation_include: Tuple[str, ...] = ()
-    parameter_loop_consolidation_exclude: Tuple[str, ...] = ("parameter_storage_loop_stack",)
+    parameter_loop_consolidation_exclude: Tuple[str, ...] = (
+        "parameter_storage_loop_stack",
+        "trainable_parameter_cps",
+    )
     enable_trainable_parameter_cps: bool = False
     trainable_parameter_cps_include: Tuple[str, ...] = ()
     trainable_parameter_cps_exclude: Tuple[str, ...] = ("qspin", "trainable_parameter_cps")
@@ -107,6 +111,24 @@ class CortexBuildConfig:
     qdt_qspin_live_activation: Optional[bool] = False
     qdt_qspin_live_kill_switch_enabled: bool = True
     qdt_qspin_live_max_payload_tokens: int = 8
+
+    def __post_init__(self) -> None:
+        profile = CapacityProfile.from_name(self.capacity_profile)
+        self.capacity_profile = profile.name
+        if not bool(self.apply_capacity_profile):
+            return
+        self.input_dim = int(profile.input_dim)
+        self.output_dim = int(profile.output_dim)
+        self.sensory_buffer_size = int(profile.sensory_buffer_size)
+        self.wm_slots = int(profile.wm_slots)
+        self.wm_slot_dim = int(profile.wm_slot_dim)
+        self.ltm_hg_slots = int(profile.hg_slots)
+        self.ltm_cgmn_slots = int(profile.cgmn_slots)
+        self.ltm_curved_slots = int(profile.curved_slots)
+        self.ltm_spatial_slots = int(profile.spatial_slots)
+        self.max_external_context_tokens = int(profile.max_external_context_tokens)
+        self.global_hidden_max_layers = int(profile.global_hidden_max_layers)
+        self.max_parameter_tokens = int(profile.max_parameter_tokens)
 
     def to_cortex_kwargs(self) -> Dict[str, Any]:
         return {
@@ -248,6 +270,9 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
     profile = CapacityProfile.from_name(profile_name)
     cortex_cfg = CortexBuildConfig(
         capacity_profile=profile.name,
+        apply_capacity_profile=_as_bool(
+            cortex_obj.get("apply_capacity_profile", False), False
+        ),
         input_dim=int(cortex_obj.get("input_dim", profile.input_dim)),
         output_dim=int(cortex_obj.get("output_dim", cortex_obj.get("input_dim", profile.output_dim))),
         sensory_buffer_size=int(cortex_obj.get("sensory_buffer_size", profile.sensory_buffer_size)),
@@ -278,7 +303,10 @@ def load_unified_yaml_config(path: str) -> UnifiedYamlConfig:
         parameter_loop_consolidation_min_total_numel=int(cortex_obj.get("parameter_loop_consolidation_min_total_numel", 1024)),
         parameter_loop_consolidation_include=_as_str_list(cortex_obj.get("parameter_loop_consolidation_include")),
         parameter_loop_consolidation_exclude=_as_str_list(
-            cortex_obj.get("parameter_loop_consolidation_exclude", ["parameter_storage_loop_stack"])
+            cortex_obj.get(
+                "parameter_loop_consolidation_exclude",
+                ["parameter_storage_loop_stack", "trainable_parameter_cps"],
+            )
         ),
         enable_trainable_parameter_cps=_as_bool(
             cortex_obj.get("enable_trainable_parameter_cps", False), False

@@ -12,6 +12,7 @@ ATTENTION_MODULES = [
     "wm_conflict_attention",
     "wm_novelty_attention",
     "wm_stability_attention",
+    "wm_inter_manifold_attention",
 ]
 
 

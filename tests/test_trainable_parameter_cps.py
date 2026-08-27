@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import gc
+import weakref
 
 import pytest
 import torch
@@ -156,6 +158,70 @@ def test_failed_compression_tolerance_stays_exact() -> None:
     assert all(ref.storage_kind == "exact" for ref in cps.registry.values())
 
 
+def test_sparse_exceptions_are_adaptive_literal_and_differentiable() -> None:
+    model = nn.Module()
+    model.first = nn.Linear(16, 16, bias=False)
+    model.second = nn.Linear(16, 16, bias=False)
+    template = torch.randn(16, 16)
+    with torch.no_grad():
+        model.first.weight.copy_(template)
+        model.second.weight.copy_(template)
+        model.first.weight[2, 7].add_(1.0)
+        model.second.weight[2, 7].sub_(1.0)
+    expected = (model.first.weight.detach().clone(), model.second.weight.detach().clone())
+    cps = TrainableParameterCPS(
+        TrainableParameterCPSConfig(
+            enable_compression=True,
+            enable_sparse_exceptions=True,
+            max_rank=1,
+            reconstruction_tolerance=0.0,
+            output_tolerance=0.0,
+        )
+    )
+    cps.commit(cps.stage(model))
+    evaluation = cps.compress_committed()
+
+    assert evaluation.compression_applied
+    assert evaluation.scalar_savings > 0
+    assert evaluation.byte_savings > 0
+    assert evaluation.sparse_exception_scalars == 4
+    assert all(
+        ref.storage_kind == "shared_low_rank_sparse"
+        for ref in cps.registry.values()
+    )
+    assert torch.equal(model.first.weight, expected[0])
+    assert torch.equal(model.second.weight, expected[1])
+    report = cps.capacity_report()
+    assert report["stored_scalar_count"] == 16 * 16 + 4
+    assert report["literal_trainable_scalars"] == 16 * 16 + 2
+    assert report["literal_index_scalars"] == 2
+    assert report["byte_savings"] > 0
+
+    (model.first(torch.randn(3, 16)).sum() + model.second(torch.randn(3, 16)).sum()).backward()
+    assert all(parameter.grad is not None for parameter in cps.slabs)
+
+
+def test_sparse_candidate_without_literal_savings_stays_exact() -> None:
+    model = nn.Module()
+    model.first = nn.Linear(2, 2, bias=False)
+    model.second = nn.Linear(2, 2, bias=False)
+    cps = TrainableParameterCPS(
+        TrainableParameterCPSConfig(
+            enable_compression=True,
+            enable_sparse_exceptions=True,
+            max_rank=0,
+            reconstruction_tolerance=0.0,
+            output_tolerance=0.0,
+        )
+    )
+    cps.commit(cps.stage(model))
+    evaluation = cps.compress_committed()
+    assert not evaluation.compression_applied
+    assert evaluation.scalar_savings == 0
+    assert evaluation.byte_savings == 0
+    assert all(ref.storage_kind == "exact" for ref in cps.registry.values())
+
+
 def test_commit_rollback_idempotency_optimizer_rejection_and_manifest() -> None:
     model = nn.Sequential(nn.Linear(4, 3), nn.ReLU(), nn.Linear(3, 2))
     x = torch.randn(2, 4)
@@ -195,6 +261,27 @@ def test_rollback_preserves_training_updates_from_canonical_store() -> None:
     assert torch.equal(model[0].weight, trained)
 
 
+def test_finalize_irreversibly_releases_rollback_snapshot_and_emits_metadata() -> None:
+    model = nn.Sequential(nn.Linear(4, 3))
+    original_ref = weakref.ref(model[0])
+    cps = TrainableParameterCPS()
+    commit = cps.commit(cps.stage(model))
+    finalized = cps.release_rollback_snapshot(commit.transaction_id)
+    gc.collect()
+
+    assert finalized.finalized
+    assert original_ref() is None
+    assert cps.finalize() is finalized
+    with pytest.raises(RuntimeError, match="irreversibly released"):
+        cps.rollback()
+    manifest = cps.to_manifest()
+    report = cps.capacity_report()
+    assert manifest["commit"]["finalized"] is True
+    assert manifest["rollback"]["available"] is False
+    assert report["finalized"] is True
+    assert report["rollback"]["reason"] == "rollback snapshot irreversibly released"
+
+
 def test_compressed_manifest_rebuilds_layout_before_state_load() -> None:
     model = _low_rank_pair()
     cps = TrainableParameterCPS(
@@ -216,6 +303,55 @@ def test_compressed_manifest_rebuilds_layout_before_state_load() -> None:
     restored.prepare_from_manifest(restored_model, manifest)
     restored.load_state_dict(state)
     assert torch.allclose(restored_model.first(x), expected, atol=1.0e-6)
+
+
+def test_sparse_finalized_manifest_and_state_json_roundtrip() -> None:
+    model = nn.Module()
+    model.first = nn.Linear(12, 12, bias=False)
+    model.second = nn.Linear(12, 12, bias=False)
+    with torch.no_grad():
+        model.second.weight.copy_(model.first.weight)
+        model.first.weight[0, 0].add_(0.5)
+        model.second.weight[0, 0].sub_(0.5)
+    cps = TrainableParameterCPS(
+        TrainableParameterCPSConfig(
+            enable_compression=True,
+            enable_sparse_exceptions=True,
+            max_rank=0,
+            reconstruction_tolerance=0.0,
+            output_tolerance=0.0,
+        )
+    )
+    cps.commit(cps.stage(model))
+    cps.compress_committed()
+    cps.finalize()
+    manifest = json.loads(json.dumps(cps.to_manifest()))
+    state = cps.state_dict()
+    sample = torch.randn(2, 12)
+    expected = model.first(sample)
+
+    restored_model = nn.Module()
+    restored_model.first = nn.Linear(12, 12, bias=False)
+    restored_model.second = nn.Linear(12, 12, bias=False)
+    restored = TrainableParameterCPS(cps.config)
+    restored.prepare_from_manifest(restored_model, manifest)
+    restored.load_state_dict(state, strict=True)
+
+    assert torch.equal(restored_model.first(sample), expected)
+    assert restored.commit_metadata is not None
+    assert restored.commit_metadata.finalized
+    with pytest.raises(RuntimeError, match="irreversibly released"):
+        restored.rollback()
+
+
+def test_manifest_rejects_inconsistent_layout_metadata() -> None:
+    model = nn.Sequential(nn.Linear(3, 2))
+    cps = TrainableParameterCPS()
+    cps.commit(cps.stage(model))
+    manifest = cps.to_manifest()
+    manifest["slab_dtypes"] = []
+    with pytest.raises(ValueError, match="shape/dtype counts differ"):
+        TrainableParameterCPS().load_manifest(manifest)
 
 
 def test_capacity_is_literal_and_discovery_rejections_are_explained() -> None:

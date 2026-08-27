@@ -17,6 +17,7 @@ from .capacity_profile import CapacityProfile
 class CortexConfig:
     # Canonical sizing profile
     capacity_profile: str = "standard"
+    apply_capacity_profile: bool = False
 
     # Core dims
     input_dim: int = 160
@@ -65,7 +66,10 @@ class CortexConfig:
     parameter_loop_consolidation_min_params: int = 1
     parameter_loop_consolidation_min_total_numel: int = 1024
     parameter_loop_consolidation_include: Tuple[str, ...] = ()
-    parameter_loop_consolidation_exclude: Tuple[str, ...] = ("parameter_storage_loop_stack",)
+    parameter_loop_consolidation_exclude: Tuple[str, ...] = (
+        "parameter_storage_loop_stack",
+        "trainable_parameter_cps",
+    )
 
     # Optional literal trainable-weight CPS (separate from token CPS and shadow loop)
     enable_trainable_parameter_cps: bool = False
@@ -101,6 +105,21 @@ class CortexConfig:
 
     def __post_init__(self) -> None:
         profile = CapacityProfile.from_name(self.capacity_profile)
+        self.capacity_profile = profile.name
+        if bool(self.apply_capacity_profile):
+            self.input_dim = int(profile.input_dim)
+            self.output_dim = int(profile.output_dim)
+            self.wm_slots = int(profile.wm_slots)
+            self.wm_slot_dim = int(profile.wm_slot_dim)
+            self.hg_mem_slots = int(profile.hg_slots)
+            self.cgmn_mem_slots = int(profile.cgmn_slots)
+            self.curved_mem_slots = int(profile.curved_slots)
+            self.sensory_buffer_size = int(profile.sensory_buffer_size)
+            self.max_external_context_tokens = int(
+                profile.max_external_context_tokens
+            )
+            self.global_hidden_max_layers = int(profile.global_hidden_max_layers)
+            self.max_parameter_tokens = int(profile.max_parameter_tokens)
         if int(self.input_dim) <= 0:
             self.input_dim = int(profile.input_dim)
         if int(self.output_dim) <= 0:
